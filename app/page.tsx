@@ -9,12 +9,21 @@ import ComparisonTable, { CompareRow } from "@/components/ComparisonTable";
 import DatasetBrowser from "@/components/DatasetBrowser";
 import PromptHistorySidebar, { saveToHistory } from "@/components/PromptHistorySidebar";
 
-type Mode = "single" | "compare";
+type ViewMode = "single" | "compare" | "dataset";
+
+const SUGGESTIONS = [
+  { domain: "Actuarial", text: "Calculate the pure premium and risk margin for a property portfolio with expected loss ratio of 68% and €12.5M earned premium." },
+  { domain: "Solvency II", text: "Explain the difference between Solvency Capital Requirement (SCR) and Minimum Capital Requirement (MCR) under EU Solvency II Pillar 1." },
+  { domain: "Reasoning", text: "Analyze whether an insurer can exercise subrogation rights against a co-insured party under standard commercial property coverage." },
+  { domain: "Tool Math", text: "Use the calculator tool to compute: (145000 * 0.045) + (230000 * 0.038) / 12 and explain the monthly reserve implication." },
+  { domain: "Compliance", text: "What are the mandatory elements of the Own Risk and Solvency Assessment (ORSA) report required by EIOPA guidelines?" }
+];
 
 export default function Page() {
-  const [mode, setMode] = useState<Mode>("single");
+  const [mode, setMode] = useState<ViewMode>("single");
   const [prompt, setPrompt] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
+  const [showSystemPrompt, setShowSystemPrompt] = useState(false);
   const [useTools, setUseTools] = useState(true);
   const [selectedModels, setSelectedModels] = useState<string[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -38,8 +47,13 @@ export default function Page() {
     const model = selectedModels[0];
     saveToHistory(prompt, systemPrompt);
     setIsRunning(true);
-    setReasoning(""); setAnswer(""); setToolEvents([]); setUsage(null); setError("");
+    setReasoning("");
+    setAnswer("");
+    setToolEvents([]);
+    setUsage(null);
+    setError("");
     abortRef.current = new AbortController();
+
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -47,38 +61,77 @@ export default function Page() {
         body: JSON.stringify({ model, prompt, systemPrompt, useTools }),
         signal: abortRef.current.signal,
       });
-      if (!res.ok || !res.body) { setError(`Request failed: ${res.status}`); setIsRunning(false); return; }
+
+      if (!res.ok || !res.body) {
+        setError(`Inference request failed with status: ${res.status}`);
+        setIsRunning(false);
+        return;
+      }
+
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split("\n");
         buffer = lines.pop() ?? "";
+
         for (const line of lines) {
           if (!line.startsWith("data: ")) continue;
           const data = line.slice(6).trim();
           if (!data) continue;
           let event: Record<string, unknown>;
-          try { event = JSON.parse(data); } catch { continue; }
+          try {
+            event = JSON.parse(data);
+          } catch {
+            continue;
+          }
+
           switch (event.type) {
-            case "reasoning": setReasoning((p) => p + (event.delta as string)); break;
-            case "content":   setAnswer((p) => p + (event.delta as string)); break;
+            case "reasoning":
+              setReasoning((prev) => prev + (event.delta as string));
+              break;
+            case "content":
+              setAnswer((prev) => prev + (event.delta as string));
+              break;
             case "tool_call":
-              setToolEvents((p) => [...p, { type: "call", name: String(event.name), data: JSON.stringify(event.args, null, 2), timestamp: Date.now() }]);
+              setToolEvents((prev) => [
+                ...prev,
+                {
+                  type: "call",
+                  name: String(event.name),
+                  data: JSON.stringify(event.args, null, 2),
+                  timestamp: Date.now(),
+                },
+              ]);
               break;
             case "tool_result":
-              setToolEvents((p) => [...p, { type: "result", name: String(event.name), data: String(event.result), timestamp: Date.now() }]);
+              setToolEvents((prev) => [
+                ...prev,
+                {
+                  type: "result",
+                  name: String(event.name),
+                  data: String(event.result),
+                  timestamp: Date.now(),
+                },
+              ]);
               break;
-            case "usage": setUsage(event.usage as typeof usage); break;
-            case "error":  setError(String(event.error)); break;
+            case "usage":
+              setUsage(event.usage as typeof usage);
+              break;
+            case "error":
+              setError(String(event.error));
+              break;
           }
         }
       }
     } catch (err) {
-      if ((err as Error).name !== "AbortError") setError((err as Error).message);
+      if ((err as Error).name !== "AbortError") {
+        setError((err as Error).message);
+      }
     } finally {
       setIsRunning(false);
     }
@@ -92,16 +145,29 @@ export default function Page() {
   const runCompare = useCallback(async () => {
     if (!prompt.trim() || selectedModels.length === 0) return;
     saveToHistory(prompt, systemPrompt);
-    setIsComparing(true); setCompareResults([]); setCompareError("");
+    setIsComparing(true);
+    setCompareResults([]);
+    setCompareError("");
+
     try {
       const res = await fetch("/api/compare", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ models: selectedModels, prompt, systemPrompt, useTools, modelSystemPrompts }),
+        body: JSON.stringify({
+          models: selectedModels,
+          prompt,
+          systemPrompt,
+          useTools,
+          modelSystemPrompts,
+        }),
       });
+
       const data = await res.json();
-      if (!res.ok) setCompareError(data.error ?? "Compare failed");
-      else setCompareResults(data.results ?? []);
+      if (!res.ok) {
+        setCompareError(data.error ?? "Compare benchmark failed");
+      } else {
+        setCompareResults(data.results ?? []);
+      }
     } catch (err) {
       setCompareError((err as Error).message);
     } finally {
@@ -110,263 +176,398 @@ export default function Page() {
   }, [prompt, systemPrompt, useTools, selectedModels, modelSystemPrompts]);
 
   const handleRun = mode === "single" ? (isRunning ? stopRun : runSingle) : runCompare;
-  const runLabel = mode === "single" ? (isRunning ? "Stop" : "Run") : (isComparing ? "Running…" : "Compare");
+  const isExecuting = isRunning || isComparing;
   const isDisabled = !prompt.trim() || selectedModels.length === 0 || (mode === "compare" && isComparing);
   const latestModelAnswer = mode === "single" ? answer : (compareResults.find((r) => r.ok)?.answer ?? "");
   const hasResults = answer || compareResults.length > 0 || error || compareError || isRunning || isComparing;
 
   return (
-    <div className="layout">
+    <div style={{ position: "relative", minHeight: "100vh" }}>
+      {/* Background Ambient Mesh Orbs */}
+      <div className="ambient-mesh">
+        <div className="mesh-orb mesh-orb-1" />
+        <div className="mesh-orb mesh-orb-2" />
+        <div className="mesh-orb mesh-orb-3" />
+      </div>
 
-      {/* ── Left control rail ──────────────────────────────────────────── */}
-      <aside className="rail">
-
-        {/* Header */}
-        <div className="rail-header">
-          <div>
-            <div className="rail-logo">AI Arena</div>
-            <div className="rail-logo-sub">OpenRouter · Insurance Pipeline</div>
+      {/* Top Floating Glass Navbar */}
+      <header className="top-navbar">
+        <div className="navbar-inner">
+          {/* Brand */}
+          <div className="brand-section" onClick={() => setMode("single")}>
+            <div className="brand-badge">⚡</div>
+            <div>
+              <div className="brand-name">AI Arena</div>
+            </div>
+            <span className="brand-tag">v3.0</span>
           </div>
-          <ThemeToggle />
-        </div>
 
-        {/* Mode selector */}
-        <div className="rail-section">
-          <div className="rail-label">Mode</div>
-          <div className="mode-tabs">
-            <button className={`mode-tab${mode === "single" ? " active" : ""}`} onClick={() => setMode("single")}>
-              Single
+          {/* Central Segmented Navigation Tabs */}
+          <nav className="nav-tab-deck">
+            <button
+              className={`nav-tab${mode === "single" ? " active" : ""}`}
+              onClick={() => setMode("single")}
+            >
+              <span className="tab-icon">🎯</span>
+              <span>Single Arena</span>
             </button>
-            <button className={`mode-tab${mode === "compare" ? " active" : ""}`} onClick={() => setMode("compare")}>
-              Compare
+            <button
+              className={`nav-tab${mode === "compare" ? " active" : ""}`}
+              onClick={() => setMode("compare")}
+            >
+              <span className="tab-icon">⚔️</span>
+              <span>Head-to-Head</span>
             </button>
-          </div>
-        </div>
+            <button
+              className={`nav-tab${mode === "dataset" ? " active" : ""}`}
+              onClick={() => setMode("dataset")}
+            >
+              <span className="tab-icon">🏛️</span>
+              <span>Data Lake</span>
+            </button>
+          </nav>
 
-        {/* Prompt */}
-        <div className="rail-section">
-          <div className="rail-label">Prompt</div>
-          <textarea
-            id="prompt-input"
-            rows={6}
-            placeholder="What do you want to know?"
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !isDisabled) handleRun();
-            }}
-          />
-          <div className="muted" style={{ fontSize: 10, marginTop: 5, textAlign: "right" }}>⌘↵ to run</div>
-        </div>
-
-        {/* System prompt */}
-        <div className="rail-section">
-          <div className="rail-label">System prompt</div>
-          <textarea
-            id="system-prompt-input"
-            rows={2}
-            placeholder="Optional system instructions…"
-            value={systemPrompt}
-            onChange={(e) => setSystemPrompt(e.target.value)}
-          />
-        </div>
-
-        {/* Tools toggle */}
-        <div className="rail-section">
-          <div className="toggle-row">
-            <span className="toggle-label">Allow tool use</span>
-            <label className="toggle">
-              <input type="checkbox" checked={useTools} onChange={(e) => setUseTools(e.target.checked)} />
-              <span className="toggle-track" />
-            </label>
-          </div>
-          {useTools && (
-            <div style={{ marginTop: 8, display: "flex", gap: 4, flexWrap: "wrap" }}>
-              <span className="badge badge-tool">calculator</span>
-              <span className="badge badge-tool">get_current_time</span>
-              <span className="badge badge-tool">insurance_search</span>
+          {/* Right Action Controls */}
+          <div className="navbar-actions">
+            <div className="status-pill">
+              <span className="live-dot" />
+              <span>OpenRouter Live</span>
             </div>
-          )}
-        </div>
 
-        {/* Model selector */}
-        <div className="rail-section">
-          <div className="rail-label">
-            {mode === "single" ? "Model" : "Models — select up to 4"}
+            <button
+              className="icon-button"
+              onClick={() => setHistoryOpen(true)}
+              title="View prompt history"
+            >
+              📜
+            </button>
+
+            <ThemeToggle />
           </div>
-          <ModelSelector mode={mode} selected={selectedModels} onChange={setSelectedModels} />
         </div>
+      </header>
 
-        {/* Run button */}
-        <div className="rail-section">
-          <button
-            id="run-button"
-            className={`btn-primary${isRunning ? " running" : ""}`}
-            onClick={handleRun}
-            disabled={isDisabled}
-          >
-            {runLabel}
-          </button>
-          {selectedModels.length === 0 && (
-            <p className="muted" style={{ fontSize: 11, marginTop: 7, textAlign: "center" }}>
-              Select a model above
-            </p>
-          )}
-        </div>
+      {/* Main Workspace Layout */}
+      <main className="app-container">
+        {/* Command Deck (Prompt Console) — visible in Single & Compare modes */}
+        {mode !== "dataset" && (
+          <section className="command-deck">
+            <div className="command-header">
+              <div className="command-title-group">
+                <span style={{ fontSize: 20 }}>⚡</span>
+                <span className="command-title">
+                  {mode === "single" ? "Prompt Execution Console" : "Benchmark Prompt Console"}
+                </span>
+                <span className="mode-badge">
+                  {mode === "single" ? "1 Model Streaming" : `Parallel (${selectedModels.length} Models)`}
+                </span>
+              </div>
 
-        {/* Prompt history */}
-        <div className="rail-section" style={{ flex: 1 }}>
-          <PromptHistorySidebar
-            open={historyOpen}
-            onToggle={() => setHistoryOpen((o) => !o)}
-            onRestore={(p, sp) => { setPrompt(p); setSystemPrompt(sp); setHistoryOpen(false); }}
-          />
-        </div>
-      </aside>
-
-      {/* ── Right content area ────────────────────────────────────────── */}
-      <main className="content-area">
-
-        {/* Empty state */}
-        {!hasResults && (
-          <div className="content-empty">
-            <div className="content-empty-logo">⚡</div>
-            <div className="content-empty-title">AI Arena</div>
-            <div className="content-empty-sub">
-              Run any prompt against the world's best LLMs. Stream reasoning traces, watch tool calls live, and compare models side by side.
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span className="kbd-shortcut">⌘ + Enter to run</span>
+              </div>
             </div>
-            <div className="feature-chips">
-              <span className="feature-chip"><span className="accent">◈</span> Reasoning traces</span>
-              <span className="feature-chip"><span className="tool-color">⟳</span> Live tool calls</span>
-              <span className="feature-chip"><span className="good">≡</span> Side-by-side compare</span>
-              <span className="feature-chip"><span className="muted">◎</span> Insurance data pipeline</span>
+
+            {/* Quick Inspiration Carousel */}
+            <div className="suggestion-carousel">
+              {SUGGESTIONS.map((s, idx) => (
+                <button
+                  key={idx}
+                  className="suggestion-pill"
+                  onClick={() => setPrompt(s.text)}
+                >
+                  <span className="pill-domain">{s.domain}</span>
+                  <span>{s.text.slice(0, 60)}…</span>
+                </button>
+              ))}
             </div>
-          </div>
+
+            {/* Prompt Input Box */}
+            <div className="prompt-box-wrapper">
+              <textarea
+                id="prompt-input"
+                className="main-prompt-input"
+                rows={4}
+                placeholder="Enter an insurance question, actuarial calculation, or regulatory inquiry…"
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !isDisabled) {
+                    handleRun();
+                  }
+                }}
+              />
+
+              {/* Optional System Prompt Accordion */}
+              <div>
+                <button
+                  className="system-prompt-toggle"
+                  onClick={() => setShowSystemPrompt((prev) => !prev)}
+                >
+                  <span>{showSystemPrompt ? "▼" : "▶"}</span>
+                  <span>{showSystemPrompt ? "Hide system prompt" : "+ Add system prompt instructions"}</span>
+                </button>
+
+                {showSystemPrompt && (
+                  <textarea
+                    id="system-prompt-input"
+                    className="system-prompt-input"
+                    rows={2}
+                    placeholder="Provide specific system role or behavioral instructions (e.g. You are a senior EU insurance actuary)…"
+                    value={systemPrompt}
+                    onChange={(e) => setSystemPrompt(e.target.value)}
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Command Deck Footer Controls */}
+            <div className="command-footer">
+              <div className="footer-left-controls">
+                {/* Tool toggle deck */}
+                <div className="tool-switch-deck">
+                  <span className="switch-label">Tool Calling</span>
+                  <label className="toggle-switch">
+                    <input
+                      type="checkbox"
+                      checked={useTools}
+                      onChange={(e) => setUseTools(e.target.checked)}
+                    />
+                    <span className="toggle-slider" />
+                  </label>
+
+                  {useTools && (
+                    <div className="tool-active-pills">
+                      <span className="tool-chip">calculator</span>
+                      <span className="tool-chip">time</span>
+                      <span className="tool-chip">insurance_search</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="char-counter">
+                  {prompt.length} chars
+                </div>
+              </div>
+
+              <div className="footer-right-actions">
+                <button
+                  id="run-button"
+                  className={`btn-execute${isRunning ? " running" : ""}`}
+                  onClick={handleRun}
+                  disabled={isDisabled}
+                >
+                  {isRunning ? (
+                    <>
+                      <span className="live-dot" style={{ background: "#fff" }} />
+                      <span>Stop Execution</span>
+                    </>
+                  ) : isComparing ? (
+                    <>
+                      <span className="live-dot" style={{ background: "#fff" }} />
+                      <span>Running Arena…</span>
+                    </>
+                  ) : mode === "single" ? (
+                    <>
+                      <span>Run Model</span>
+                      <span>↵</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Compare {selectedModels.length} Models</span>
+                      <span>⚔️</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </section>
         )}
 
-        {/* ── Single-run results ─────────────────────────────────────── */}
+        {/* Model Selection Deck */}
+        {mode !== "dataset" && (
+          <ModelSelector
+            mode={mode}
+            selected={selectedModels}
+            onChange={setSelectedModels}
+          />
+        )}
+
+        {/* ── Single Model Results Workspace ───────────────────────────── */}
         {mode === "single" && (
-          <>
-            {/* Running banner */}
-            {isRunning && !reasoning && !answer && (
-              <div className="running-banner">
-                <span className="live-dot" />
-                <div>
-                  <div className="running-banner-text">Waiting for response…</div>
-                  <div className="running-banner-model">{selectedModels[0]}</div>
+          <div className="bento-workspace">
+            {/* Empty Hero Card when no results yet */}
+            {!hasResults && (
+              <div className="empty-hero-card">
+                <div className="empty-spark">⚡</div>
+                <h1 className="empty-title">AI Arena Intelligence Studio</h1>
+                <p className="empty-desc">
+                  Select a state-of-the-art model above and run complex insurance inquiries. Inspect reasoning traces in real time, observe autonomous tool invocations, and benchmark performance.
+                </p>
+                <div className="empty-feature-grid">
+                  <span className="feature-pill">🧠 DeepSeek R1 Reasoning</span>
+                  <span className="feature-pill">🛠 Live Tool Call Chronometer</span>
+                  <span className="feature-pill">🏛 38 DIL Insurance Records</span>
+                  <span className="feature-pill">⚡ Real-time SSE Streaming</span>
                 </div>
               </div>
             )}
 
-            {/* Reasoning trace */}
+            {/* Waiting status bar */}
+            {isRunning && !reasoning && !answer && (
+              <div className="running-status-bar">
+                <div className="running-left">
+                  <span className="live-dot" />
+                  <div>
+                    <div className="running-text">Awaiting model stream generation…</div>
+                    <div className="running-model">{selectedModels[0]}</div>
+                  </div>
+                </div>
+                <button className="btn-secondary" onClick={stopRun} style={{ fontSize: 11 }}>
+                  Cancel
+                </button>
+              </div>
+            )}
+
+            {/* Live Neural Reasoning Stream */}
             {(reasoning || (isRunning && !answer)) && (
-              <div className={isRunning ? "panel panel-active panel-glow-amber" : "panel"}>
-                <ThinkingStream text={reasoning} isRunning={isRunning} />
-              </div>
+              <ThinkingStream text={reasoning} isRunning={isRunning} />
             )}
 
-            {/* Tool timeline */}
+            {/* Tool Chronometer */}
             {toolEvents.length > 0 && (
-              <div className="panel-glow-blue" style={{ borderBottom: "1px solid var(--border)" }}>
-                <ToolTimeline events={toolEvents} />
-              </div>
+              <ToolTimeline events={toolEvents} />
             )}
 
-            {/* Answer */}
+            {/* Answer Card */}
             {(answer || (isRunning && reasoning)) && (
-              <div className={`panel${isRunning ? " panel-active" : ""}`}>
-                <div className="panel-header open">
-                  <div className="panel-title">
-                    <span className="badge badge-muted">Answer</span>
+              <div className="answer-panel">
+                <div className="answer-header">
+                  <div className="answer-title-group">
+                    <span style={{ fontSize: 18 }}>✨</span>
+                    <span className="answer-badge">Inference Output</span>
                     {isRunning && <span className="live-dot" />}
                     {!isRunning && answer && (
-                      <span className="muted" style={{ fontSize: 11 }}>
+                      <span className="brand-tag">
                         {answer.split(/\s+/).filter(Boolean).length} words
                       </span>
                     )}
                   </div>
-                  <span className="model-pill">{selectedModels[0]}</span>
+                  <span className="model-source-pill">{selectedModels[0]}</span>
                 </div>
-                <div className="panel-body">
-                  {error && <div className="error-banner" style={{ marginBottom: 12 }}>⚠ {error}</div>}
-                  <div className={`answer-content${isRunning && !answer.endsWith(" ") ? " streaming-cursor" : ""}`}>
+
+                <div className="answer-body">
+                  {error && (
+                    <div style={{ color: "var(--rose)", background: "var(--rose-dim)", padding: "12px 16px", borderRadius: "8px", marginBottom: "16px" }}>
+                      ⚠ {error}
+                    </div>
+                  )}
+                  <div className={isRunning && !answer.endsWith(" ") ? "streaming-active" : ""}>
                     <ReactMarkdown>{answer}</ReactMarkdown>
                   </div>
                 </div>
+
                 {usage && (
-                  <div className="usage-row">
-                    <span>↑ {usage.prompt_tokens.toLocaleString()} tok</span>
-                    <span>↓ {usage.completion_tokens.toLocaleString()} tok</span>
-                    {usage.total_cost_usd > 0 && (
-                      <span>
-                        $ {usage.total_cost_usd < 0.0001
-                          ? usage.total_cost_usd.toExponential(2)
-                          : usage.total_cost_usd.toFixed(4)}
-                      </span>
-                    )}
+                  <div className="answer-telemetry-bar">
+                    <div className="telemetry-metrics">
+                      <div className="metric-pill">
+                        <span>Prompt:</span>
+                        <span className="metric-val">{usage.prompt_tokens.toLocaleString()} tok</span>
+                      </div>
+                      <div className="metric-pill">
+                        <span>Completion:</span>
+                        <span className="metric-val">{usage.completion_tokens.toLocaleString()} tok</span>
+                      </div>
+                      {usage.total_cost_usd > 0 && (
+                        <div className="metric-pill">
+                          <span>Est. Cost:</span>
+                          <span className="metric-val" style={{ color: "var(--emerald)" }}>
+                            ${usage.total_cost_usd < 0.0001
+                              ? usage.total_cost_usd.toExponential(2)
+                              : usage.total_cost_usd.toFixed(4)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    <button
+                      className="btn-secondary"
+                      onClick={() => navigator.clipboard.writeText(answer)}
+                      style={{ fontSize: 11 }}
+                    >
+                      Copy Output
+                    </button>
                   </div>
                 )}
               </div>
             )}
 
-            {/* Error with no answer */}
+            {/* Error banner if failed without answer */}
             {error && !answer && !isRunning && (
-              <div style={{ padding: 20 }}>
-                <div className="error-banner">⚠ {error}</div>
+              <div style={{ color: "var(--rose)", background: "var(--rose-dim)", padding: "16px 20px", borderRadius: "12px", border: "1px solid rgba(244,63,94,0.3)" }}>
+                ⚠ {error}
               </div>
             )}
-          </>
+          </div>
         )}
 
-        {/* ── Compare results ────────────────────────────────────────── */}
+        {/* ── Head-to-Head Compare Workspace ───────────────────────────── */}
         {mode === "compare" && (
-          <>
+          <div className="bento-workspace">
             {isComparing && (
-              <div className="running-banner">
-                <span className="live-dot" />
-                <div>
-                  <div className="running-banner-text">
-                    Running {selectedModels.length} models in parallel…
+              <div className="running-status-bar">
+                <div className="running-left">
+                  <span className="live-dot" />
+                  <div>
+                    <div className="running-text">
+                      Evaluating {selectedModels.length} models in parallel…
+                    </div>
+                    <div className="running-model">{selectedModels.join(" · ")}</div>
                   </div>
-                  <div className="running-banner-model">{selectedModels.join(" · ")}</div>
                 </div>
               </div>
             )}
 
             {compareError && (
-              <div style={{ padding: 20 }}>
-                <div className="error-banner">⚠ {compareError}</div>
+              <div style={{ color: "var(--rose)", background: "var(--rose-dim)", padding: "16px 20px", borderRadius: "12px", border: "1px solid rgba(244,63,94,0.3)" }}>
+                ⚠ {compareError}
               </div>
             )}
 
             {compareResults.length > 0 && (
-              <div className="panel">
-                <div className="panel-header open">
-                  <div className="panel-title">
-                    <span className="badge badge-muted">Comparison</span>
-                    <span className="muted" style={{ fontSize: 11 }}>
-                      {compareResults.filter((r) => r.ok).length}/{compareResults.length} succeeded
-                    </span>
-                  </div>
-                </div>
-                <ComparisonTable
-                  results={compareResults}
-                  modelSystemPrompts={modelSystemPrompts}
-                  onSystemPromptChange={(model, value) =>
-                    setModelSystemPrompts((prev) => ({ ...prev, [model]: value }))
-                  }
-                />
-              </div>
+              <ComparisonTable
+                results={compareResults}
+                modelSystemPrompts={modelSystemPrompts}
+                onSystemPromptChange={(model, value) =>
+                  setModelSystemPrompts((prev) => ({ ...prev, [model]: value }))
+                }
+              />
             )}
-          </>
+          </div>
         )}
 
-        {/* Dataset browser — always at the bottom */}
-        <DatasetBrowser onLoadRecord={(p) => setPrompt(p)} modelAnswer={latestModelAnswer} />
-
-        {/* Bottom padding */}
-        <div style={{ height: 32 }} />
+        {/* ── Insurance Data Lake Studio Workspace ─────────────────────── */}
+        {mode === "dataset" && (
+          <DatasetBrowser
+            onLoadRecord={(p) => {
+              setPrompt(p);
+              setMode("single");
+            }}
+            modelAnswer={latestModelAnswer}
+          />
+        )}
       </main>
+
+      {/* Slide-over Prompt History Drawer */}
+      <PromptHistorySidebar
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        onRestore={(p, sp) => {
+          setPrompt(p);
+          setSystemPrompt(sp);
+          if (sp) setShowSystemPrompt(true);
+        }}
+      />
     </div>
   );
 }

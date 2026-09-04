@@ -18,37 +18,42 @@ export default function ToolTimeline({ events }: Props) {
   if (events.length === 0) return null;
 
   return (
-    <div className="panel">
-      <div
-        className={`panel-header${open ? " open" : ""}`}
-        onClick={() => setOpen((o) => !o)}
-      >
-        <div className="panel-title">
-          <span className="badge badge-tool">Tool calls</span>
-          <span className="muted" style={{ fontSize: 11 }}>{events.length} event{events.length !== 1 ? "s" : ""}</span>
+    <div className="tool-chronometer">
+      <div className="tool-header" onClick={() => setOpen((o) => !o)}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 16 }}>🛠</span>
+          <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "14px", color: "var(--cyan-light)" }}>
+            Tool Execution Chronometer
+          </span>
+          <span className="brand-tag" style={{ background: "var(--cyan-dim)", color: "var(--cyan-light)", borderColor: "var(--cyan-border)" }}>
+            {events.length} event{events.length !== 1 ? "s" : ""}
+          </span>
         </div>
-        <span className={`chevron${open ? " open" : ""}`}>▶</span>
+
+        <span style={{ fontSize: 12, opacity: 0.7, transform: open ? "rotate(90deg)" : "none", transition: "transform 150ms" }}>
+          ▶
+        </span>
       </div>
 
       {open && (
-        <div className="panel-body" style={{ padding: "8px 20px" }}>
+        <div className="tool-event-list">
           {events.map((ev, i) => (
-            <div key={i} className="tool-event">
-              <div style={{ paddingTop: 2 }}>
-                {ev.type === "call" ? (
-                  <span className="badge badge-tool">call</span>
-                ) : (
-                  <span
-                    className="badge"
-                    style={{ background: "var(--tool-dim)", color: "var(--good)", opacity: 0.85 }}
-                  >
-                    result
-                  </span>
-                )}
+            <div key={i} className="tool-event-item">
+              <div className={`tool-type-badge ${ev.type}`}>
+                {ev.type}
               </div>
-              <div className="tool-event-body">
-                <div className="tool-name">{ev.name}</div>
-                <div className="tool-data">{ev.data}</div>
+
+              <div className="tool-event-content">
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span className="tool-fn-name">{ev.name}()</span>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: "var(--text-subtle)" }}>
+                    {new Date(ev.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                  </span>
+                </div>
+
+                <pre className="tool-payload">
+                  <code>{ev.data}</code>
+                </pre>
               </div>
             </div>
           ))}

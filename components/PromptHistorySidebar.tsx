@@ -1,18 +1,18 @@
 "use client";
 import { useState, useEffect } from "react";
 
-interface HistoryEntry {
+export interface HistoryEntry {
   prompt: string;
   systemPrompt: string;
   timestamp: number;
 }
 
 const STORAGE_KEY = "ai-arena-prompt-history";
-const MAX_ENTRIES = 20;
+const MAX_ENTRIES = 25;
 
 interface Props {
   open: boolean;
-  onToggle: () => void;
+  onClose: () => void;
   onRestore: (prompt: string, systemPrompt: string) => void;
 }
 
@@ -29,8 +29,9 @@ export function saveToHistory(prompt: string, systemPrompt: string) {
   } catch {}
 }
 
-export default function PromptHistorySidebar({ open, onToggle, onRestore }: Props) {
+export default function PromptHistorySidebar({ open, onClose, onRestore }: Props) {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     if (!open) return;
@@ -45,7 +46,7 @@ export default function PromptHistorySidebar({ open, onToggle, onRestore }: Prop
   function formatTime(ts: number) {
     const d = new Date(ts);
     return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) +
-      " " + d.toLocaleDateString([], { month: "short", day: "numeric" });
+      " · " + d.toLocaleDateString([], { month: "short", day: "numeric" });
   }
 
   function clearHistory() {
@@ -53,40 +54,80 @@ export default function PromptHistorySidebar({ open, onToggle, onRestore }: Prop
     setHistory([]);
   }
 
-  return (
-    <>
-      <button
-        className="btn-ghost"
-        onClick={onToggle}
-        style={{ width: "100%", textAlign: "left" }}
-      >
-        {open ? "▼" : "▶"} History ({history.length})
-      </button>
+  if (!open) return null;
 
-      {open && (
-        <div style={{ borderTop: "1px solid var(--border)" }}>
-          {history.length === 0 && (
-            <p className="empty-state">No prompt history yet.</p>
+  const filtered = history.filter((h) =>
+    h.prompt.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className="history-drawer-backdrop" onClick={onClose}>
+      <div className="history-drawer" onClick={(e) => e.stopPropagation()}>
+        <div className="drawer-header">
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 18 }}>📜</span>
+            <div className="drawer-title">Prompt History</div>
+            <span className="brand-tag">{history.length}</span>
+          </div>
+          <button className="icon-button" onClick={onClose} title="Close drawer">
+            ✕
+          </button>
+        </div>
+
+        <div style={{ padding: "12px 18px", borderBottom: "1px solid var(--border-subtle)" }}>
+          <input
+            type="text"
+            placeholder="Search past prompts…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "7px 12px",
+              background: "var(--bg-canvas-subtle)",
+              border: "1px solid var(--border-default)",
+              borderRadius: "var(--radius-md)",
+              color: "var(--text-main)",
+              fontSize: "12.5px",
+              outline: "none",
+            }}
+          />
+        </div>
+
+        <div className="drawer-content">
+          {filtered.length === 0 && (
+            <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--text-subtle)" }}>
+              {history.length === 0 ? "No prompts saved yet." : "No matching prompts found."}
+            </div>
           )}
-          {history.map((entry, i) => (
+
+          {filtered.map((entry, i) => (
             <div
               key={i}
-              className="history-item"
-              onClick={() => onRestore(entry.prompt, entry.systemPrompt)}
+              className="history-card"
+              onClick={() => {
+                onRestore(entry.prompt, entry.systemPrompt);
+                onClose();
+              }}
             >
-              <div className="history-prompt">{entry.prompt}</div>
-              <div className="history-time">{formatTime(entry.timestamp)}</div>
+              <div className="history-prompt-text">{entry.prompt}</div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
+                <span className="history-time-stamp">{formatTime(entry.timestamp)}</span>
+                {entry.systemPrompt && (
+                  <span className="brand-tag" style={{ fontSize: 10 }}>+ System Prompt</span>
+                )}
+              </div>
             </div>
           ))}
-          {history.length > 0 && (
-            <div style={{ padding: "6px 10px" }}>
-              <button className="btn-ghost" onClick={clearHistory} style={{ fontSize: 11 }}>
-                Clear history
-              </button>
-            </div>
-          )}
         </div>
-      )}
-    </>
+
+        {history.length > 0 && (
+          <div style={{ padding: "14px 18px", borderTop: "1px solid var(--border-subtle)", display: "flex", justifyContent: "flex-end" }}>
+            <button className="btn-secondary" onClick={clearHistory}>
+              Clear all history
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

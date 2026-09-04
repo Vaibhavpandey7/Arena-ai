@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 
 interface Props {
   text: string;
@@ -8,43 +8,77 @@ interface Props {
 
 export default function ThinkingStream({ text, isRunning }: Props) {
   const [open, setOpen] = useState(true);
+  const [copied, setCopied] = useState(false);
+  const bodyRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom as reasoning streams in
+  useEffect(() => {
+    if (isRunning && open && bodyRef.current) {
+      bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
+    }
+  }, [text, isRunning, open]);
+
+  function copyTrace(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  }
 
   return (
-    <>
-      <div
-        className={`panel-header${open ? " open" : ""}`}
-        onClick={() => setOpen((o) => !o)}
-      >
-        <div className="panel-title">
-          <span className="badge badge-reason">Reasoning</span>
+    <div className={`neural-terminal${isRunning ? " active" : ""}`}>
+      <div className="terminal-header" onClick={() => setOpen((o) => !o)}>
+        <div className="terminal-title-group">
+          <span style={{ fontSize: 16 }}>🧠</span>
+          <span className="neural-badge">Neural Reasoning Trace</span>
           {isRunning && <span className="live-dot" />}
-          {!isRunning && text && (
-            <span className="muted" style={{ fontSize: 11, fontFamily: 'var(--font-mono)' }}>
+          {text && (
+            <span className="brand-tag">
               {text.length.toLocaleString()} chars
             </span>
           )}
         </div>
-        <span className={`chevron${open ? " open" : ""}`}>▶</span>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {text && (
+            <button
+              className="btn-secondary"
+              onClick={copyTrace}
+              style={{ padding: "3px 10px", fontSize: "11px" }}
+            >
+              {copied ? "✓ Copied" : "Copy Trace"}
+            </button>
+          )}
+          <span style={{ fontSize: 12, opacity: 0.7, transform: open ? "rotate(90deg)" : "none", transition: "transform 150ms" }}>
+            ▶
+          </span>
+        </div>
       </div>
 
       {open && (
-        <div className="panel-body">
+        <div className="terminal-body" ref={bodyRef}>
           {!text && !isRunning && (
-            <p className="muted" style={{ fontSize: 12, fontStyle: 'italic' }}>
-              No reasoning trace — this model does not expose a thinking stream.
-            </p>
+            <span style={{ color: "var(--text-subtle)", fontStyle: "italic" }}>
+              No thinking trace available for this model run.
+            </span>
           )}
+
           {!text && isRunning && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--accent)" }}>
               <span className="live-dot" />
-              <p className="muted" style={{ fontSize: 12 }}>Waiting for reasoning…</p>
+              <span>Generating chain of thought reasoning…</span>
             </div>
           )}
+
           {text && (
-            <div className="thinking-text">{text}</div>
+            <div>
+              {text}
+              {isRunning && <span className="streaming-active" />}
+            </div>
           )}
         </div>
       )}
-    </>
+    </div>
   );
 }

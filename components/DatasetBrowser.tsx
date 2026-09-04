@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 
-interface DILRecord {
+export interface DILRecord {
   id: string;
   domain: string;
   split: string;
@@ -14,10 +14,15 @@ interface DILRecord {
   difficulty: string;
 }
 
-const DOMAINS = [
-  "", "insurance_knowledge", "eu_regulatory_compliance", "insurance_documents",
-  "actuarial_numerical_data", "tool_api_data", "agentic_trajectory_data",
-  "human_feedback_preferences",
+const DOMAINS: { id: string; label: string; icon: string }[] = [
+  { id: "", label: "All Domains", icon: "🌐" },
+  { id: "insurance_knowledge", label: "Insurance Knowledge", icon: "🛡️" },
+  { id: "eu_regulatory_compliance", label: "EU Solvency II & Regulations", icon: "⚖️" },
+  { id: "insurance_documents", label: "Policy Documents & Claims", icon: "📄" },
+  { id: "actuarial_numerical_data", label: "Actuarial & Numerical", icon: "🔢" },
+  { id: "tool_api_data", label: "Tool & API Calling", icon: "🛠️" },
+  { id: "agentic_trajectory_data", label: "Agentic Trajectories", icon: "🧭" },
+  { id: "human_feedback_preferences", label: "Human Feedback / RLHF", icon: "👤" },
 ];
 
 const SPLITS = ["", "train", "validation", "test"];
@@ -28,11 +33,11 @@ interface Props {
   activeRecordId?: string;
 }
 
-export default function DatasetBrowser({ onLoadRecord, modelAnswer, activeRecordId }: Props) {
-  const [open, setOpen] = useState(false);
+export default function DatasetBrowser({ onLoadRecord, modelAnswer }: Props) {
   const [records, setRecords] = useState<DILRecord[]>([]);
   const [domain, setDomain] = useState("");
   const [split, setSplit] = useState("");
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [activeRecord, setActiveRecord] = useState<DILRecord | null>(null);
 
@@ -46,10 +51,15 @@ export default function DatasetBrowser({ onLoadRecord, modelAnswer, activeRecord
     const params = new URLSearchParams({ limit: "50" });
     if (domain) params.set("domain", domain);
     if (split) params.set("split", split);
-    const res = await fetch(`/api/pipeline/records?${params}`);
-    const data = await res.json();
-    setRecords(data.records ?? []);
-    setLoading(false);
+    try {
+      const res = await fetch(`/api/pipeline/records?${params}`);
+      const data = await res.json();
+      setRecords(data.records ?? []);
+    } catch {
+      setRecords([]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   function handleSelect(record: DILRecord) {
@@ -60,83 +70,182 @@ export default function DatasetBrowser({ onLoadRecord, modelAnswer, activeRecord
     onLoadRecord(prompt);
   }
 
+  const filtered = records.filter((r) =>
+    search === "" ||
+    r.question.toLowerCase().includes(search.toLowerCase()) ||
+    r.task.toLowerCase().includes(search.toLowerCase()) ||
+    (r.evidence && r.evidence.toLowerCase().includes(search.toLowerCase()))
+  );
+
   return (
-    <div className="panel">
-      <div
-        className={`panel-header${open ? " open" : ""}`}
-        onClick={() => setOpen((o) => !o)}
-      >
-        <div className="panel-title">
-          <span className="badge badge-muted">Dataset</span>
-          <span className="muted" style={{ fontSize: 11 }}>{records.length} records</span>
-        </div>
-        <span className={`chevron${open ? " open" : ""}`}>▶</span>
-      </div>
-
-      {open && (
-        <div className="panel-body">
-          <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-            <select value={domain} onChange={(e) => setDomain(e.target.value)}>
-              {DOMAINS.map((d) => (
-                <option key={d} value={d}>{d || "All domains"}</option>
-              ))}
-            </select>
-            <select value={split} onChange={(e) => setSplit(e.target.value)} style={{ width: 120 }}>
-              {SPLITS.map((s) => (
-                <option key={s} value={s}>{s || "All splits"}</option>
-              ))}
-            </select>
-          </div>
-
-          {loading && <p className="muted empty-state">Loading…</p>}
-
-          {!loading && (
-            <div className="record-list">
-              {records.length === 0 && <p className="empty-state">No records</p>}
-              {records.map((r) => (
-                <div
-                  key={r.id}
-                  className={`record-card${activeRecord?.id === r.id ? " active" : ""}`}
-                  onClick={() => handleSelect(r)}
-                >
-                  <div className="record-q">{r.question}</div>
-                  <div className="record-meta">
-                    {r.domain} · {r.split} · {r.difficulty} · score {r.quality_score.toFixed(2)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Gold comparison panel */}
-          {activeRecord && modelAnswer && (
-            <div style={{ marginTop: 12, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
-              <div className="rail-label" style={{ marginBottom: 8 }}>Eval comparison</div>
-              <div className="gold-panel">
-                <div>
-                  <div className="gold-col-label">Model answer</div>
-                  <div className="gold-text">{modelAnswer}</div>
-                </div>
-                <div>
-                  <div className="gold-col-label">
-                    Gold response
-                    <span className="badge badge-muted" style={{ marginLeft: 6 }}>
-                      quality {activeRecord.quality_score.toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="gold-text">{activeRecord.response}</div>
-                  {activeRecord.evidence && (
-                    <>
-                      <div className="gold-col-label" style={{ marginTop: 10 }}>Evidence</div>
-                      <div className="gold-text" style={{ color: "var(--muted)", fontSize: 12 }}>
-                        {activeRecord.evidence}
-                      </div>
-                    </>
-                  )}
-                </div>
+    <div className="lake-studio-deck">
+      {/* Studio Header & Filter Controls */}
+      <div className="studio-hero">
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 22 }}>🏛️</span>
+            <div>
+              <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "18px", color: "var(--text-main)" }}>
+                Insurance Domain Intelligence Lake
+              </div>
+              <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+                38 Curated Synthetic Gold Records · 7 Regulatory & Actuarial Categories · Deterministic Train/Val/Test Split
               </div>
             </div>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div className="deck-search" style={{ width: 220 }}>
+              <span>🔍</span>
+              <input
+                type="search"
+                placeholder="Search domain questions…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+
+            {/* Split Switcher */}
+            <div style={{ display: "flex", background: "var(--bg-canvas-subtle)", padding: 3, borderRadius: "var(--radius-full)", border: "1px solid var(--border-default)" }}>
+              {SPLITS.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setSplit(s)}
+                  style={{
+                    padding: "3px 10px",
+                    borderRadius: "var(--radius-full)",
+                    border: "none",
+                    background: split === s ? "var(--bg-surface-elevated)" : "transparent",
+                    color: split === s ? "var(--text-main)" : "var(--text-muted)",
+                    fontSize: "11px",
+                    fontWeight: split === s ? 600 : 400,
+                    cursor: "pointer",
+                  }}
+                >
+                  {s || "All Splits"}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Domain Filter Badges */}
+        <div className="domain-filters-bar">
+          {DOMAINS.map((d) => (
+            <button
+              key={d.id}
+              className={`domain-chip${domain === d.id ? " active" : ""}`}
+              onClick={() => setDomain(d.id)}
+            >
+              <span>{d.icon}</span>
+              <span>{d.label}</span>
+              {domain === d.id && <span className="chip-count">{filtered.length}</span>}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Gold Evaluation Side-by-Side Comparator */}
+      {activeRecord && modelAnswer && (
+        <div className="gold-eval-deck">
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 20 }}>⚖️</span>
+              <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "16px", color: "var(--text-main)" }}>
+                Ground Truth Evaluation Benchmark
+              </div>
+            </div>
+            <span className="brand-tag" style={{ background: "var(--accent-dim)", color: "var(--accent)", borderColor: "var(--accent-border)" }}>
+              Active Record: {activeRecord.id}
+            </span>
+          </div>
+
+          <div className="gold-eval-grid">
+            <div className="eval-col">
+              <div className="eval-col-header">
+                <span>Model Generated Answer</span>
+                <span className="brand-tag">Evaluated Model</span>
+              </div>
+              <div className="eval-col-content">
+                {modelAnswer}
+              </div>
+            </div>
+
+            <div className="eval-col" style={{ borderColor: "var(--accent-border)" }}>
+              <div className="eval-col-header">
+                <span>Verified Gold Response</span>
+                <span className="quality-badge">
+                  ★ Score {(activeRecord.quality_score * 100).toFixed(0)}%
+                </span>
+              </div>
+              <div className="eval-col-content">
+                {activeRecord.response}
+              </div>
+
+              {activeRecord.evidence && (
+                <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid var(--border-subtle)" }}>
+                  <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-subtle)", textTransform: "uppercase", marginBottom: 4 }}>
+                    Regulatory / Contractual Evidence
+                  </div>
+                  <div style={{ fontSize: "12px", color: "var(--text-muted)", fontStyle: "italic" }}>
+                    "{activeRecord.evidence}"
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Records Cards Grid */}
+      {loading ? (
+        <div style={{ textAlign: "center", padding: "50px 0", color: "var(--text-subtle)" }}>
+          <span className="live-dot cyan" style={{ display: "inline-block", marginRight: 8 }} />
+          Loading verified dataset records…
+        </div>
+      ) : (
+        <div className="records-grid">
+          {filtered.length === 0 && (
+            <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "40px", color: "var(--text-subtle)" }}>
+              No records match your filters.
+            </div>
           )}
+
+          {filtered.map((r) => {
+            const isSelected = activeRecord?.id === r.id;
+            return (
+              <div
+                key={r.id}
+                className={`dil-record-card${isSelected ? " active" : ""}`}
+                onClick={() => handleSelect(r)}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                  <span className="brand-tag" style={{ fontSize: 10 }}>
+                    {r.domain.replace(/_/g, " ")}
+                  </span>
+                  <span className="quality-badge">
+                    {(r.quality_score * 100).toFixed(0)}% Quality
+                  </span>
+                </div>
+
+                <div className="dil-card-q">
+                  {r.question}
+                </div>
+
+                {r.context && (
+                  <div style={{ fontSize: "11.5px", color: "var(--text-subtle)", lineClamp: 2, overflow: "hidden", display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 2 }}>
+                    {r.context}
+                  </div>
+                )}
+
+                <div className="dil-card-meta">
+                  <span>Split: <b>{r.split}</b></span>
+                  <span>Difficulty: <b>{r.difficulty}</b></span>
+                  <span style={{ color: "var(--accent)", fontWeight: 600 }}>Click to Load ↵</span>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

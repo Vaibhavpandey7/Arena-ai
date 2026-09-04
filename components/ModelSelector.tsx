@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 
-interface NormalizedModel {
+export interface NormalizedModel {
   id: string;
   name: string;
   context_length: number;
@@ -20,19 +20,32 @@ export default function ModelSelector({ mode, selected, onChange }: Props) {
   const [models, setModels] = useState<NormalizedModel[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [activeFilter, setActiveFilter] = useState<"all" | "reasoning" | "tools">("all");
   const [error, setError] = useState("");
 
   useEffect(() => {
     fetch("/api/models")
       .then((r) => r.json())
-      .then((d) => { setModels(d.models ?? []); setLoading(false); })
-      .catch(() => { setError("Failed to load models"); setLoading(false); });
+      .then((d) => {
+        setModels(d.models ?? []);
+        setLoading(false);
+      })
+      .catch(() => {
+        setError("Failed to load models");
+        setLoading(false);
+      });
   }, []);
 
-  const filtered = models.filter((m) =>
-    m.name.toLowerCase().includes(search.toLowerCase()) ||
-    m.id.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = models.filter((m) => {
+    const matchesSearch =
+      m.name.toLowerCase().includes(search.toLowerCase()) ||
+      m.id.toLowerCase().includes(search.toLowerCase());
+    if (!matchesSearch) return false;
+
+    if (activeFilter === "reasoning") return m.supportsReasoning;
+    if (activeFilter === "tools") return m.supportsTools;
+    return true;
+  });
 
   function toggleModel(id: string) {
     if (mode === "single") {
@@ -53,48 +66,108 @@ export default function ModelSelector({ mode, selected, onChange }: Props) {
   }
 
   return (
-    <div>
-      <input
-        type="search"
-        placeholder="Search models…"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        style={{ marginBottom: 6 }}
-      />
-      {mode === "compare" && (
-        <p className="muted" style={{ fontSize: 11, marginBottom: 6 }}>
-          {selected.length}/4 selected
-        </p>
+    <div className="model-deck-card">
+      <div className="model-deck-header">
+        <div className="deck-title">
+          <span>🧠</span>
+          <span>{mode === "single" ? "Select Active Model" : "Select Models for Arena"}</span>
+          {mode === "compare" && (
+            <span className="brand-tag" style={{ color: selected.length === 4 ? "var(--accent)" : "inherit" }}>
+              {selected.length}/4 selected
+            </span>
+          )}
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          {/* Quick capability filter pills */}
+          <div style={{ display: "flex", gap: 4 }}>
+            <button
+              className={`domain-chip${activeFilter === "all" ? " active" : ""}`}
+              onClick={() => setActiveFilter("all")}
+              style={{ padding: "4px 10px", fontSize: "11px" }}
+            >
+              All
+            </button>
+            <button
+              className={`domain-chip${activeFilter === "reasoning" ? " active" : ""}`}
+              onClick={() => setActiveFilter("reasoning")}
+              style={{ padding: "4px 10px", fontSize: "11px" }}
+            >
+              ⚡ Reasoning
+            </button>
+            <button
+              className={`domain-chip${activeFilter === "tools" ? " active" : ""}`}
+              onClick={() => setActiveFilter("tools")}
+              style={{ padding: "4px 10px", fontSize: "11px" }}
+            >
+              🛠 Tools
+            </button>
+          </div>
+
+          <div className="deck-search">
+            <span style={{ fontSize: 12, opacity: 0.6 }}>🔍</span>
+            <input
+              type="search"
+              placeholder="Filter by name or id…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+
+      {loading && (
+        <div style={{ textAlign: "center", padding: "30px 0", color: "var(--text-subtle)" }}>
+          <span className="live-dot" style={{ display: "inline-block", marginRight: 8 }} />
+          Loading neural models from OpenRouter…
+        </div>
       )}
-      {loading && <p className="muted empty-state">Loading models…</p>}
-      {error && <p className="bad" style={{ fontSize: 12 }}>{error}</p>}
+
+      {error && (
+        <div style={{ color: "var(--rose)", fontSize: "12px", padding: "10px 0" }}>
+          ⚠ {error}
+        </div>
+      )}
+
       {!loading && !error && (
-        <div className="model-list">
-          {filtered.length === 0 && <p className="empty-state">No models match</p>}
+        <div className="model-grid">
+          {filtered.length === 0 && (
+            <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "20px", color: "var(--text-subtle)" }}>
+              No models match current filter criteria.
+            </div>
+          )}
+
           {filtered.map((m) => {
             const isSel = selected.includes(m.id);
             const disabled = mode === "compare" && !isSel && selected.length >= 4;
+
             return (
               <div
                 key={m.id}
-                className={`model-item${isSel ? " selected" : ""}${disabled ? " disabled" : ""}`}
+                className={`model-card${isSel ? " selected" : ""}${disabled ? " disabled" : ""}`}
                 onClick={() => !disabled && toggleModel(m.id)}
-                style={{ opacity: disabled ? 0.45 : 1 }}
               >
-                <input
-                  type={mode === "single" ? "radio" : "checkbox"}
-                  checked={isSel}
-                  onChange={() => !disabled && toggleModel(m.id)}
-                  readOnly={mode === "single"}
-                  onClick={(e) => e.stopPropagation()}
-                />
-                <div className="model-info">
-                  <div className="model-name">{m.name}</div>
-                  <div className="model-meta">{m.id} · {formatCtx(m.context_length)} ctx</div>
-                  <div className="model-badges">
-                    {m.supportsTools && <span className="badge badge-tool">tools</span>}
-                    {m.supportsReasoning && <span className="badge badge-reason">reasoning</span>}
+                <div className="model-card-top">
+                  <div style={{ overflow: "hidden" }}>
+                    <div className="model-card-name">{m.name}</div>
+                    <div className="model-card-id">{m.id}</div>
                   </div>
+
+                  <div className="selection-ring">
+                    {isSel && <span className="selection-check">✓</span>}
+                  </div>
+                </div>
+
+                <div className="model-card-bottom">
+                  <div className="model-badges">
+                    {m.supportsReasoning && (
+                      <span className="badge-reasoning">Reasoning</span>
+                    )}
+                    {m.supportsTools && (
+                      <span className="badge-tools">Tools</span>
+                    )}
+                  </div>
+                  <span className="model-ctx">{formatCtx(m.context_length)} ctx</span>
                 </div>
               </div>
             );
