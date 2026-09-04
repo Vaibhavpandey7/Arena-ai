@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 
 export interface NormalizedModel {
   id: string;
@@ -16,11 +16,27 @@ interface Props {
   onChange: (ids: string[]) => void;
 }
 
-export default function ModelSelector({ mode, selected, onChange }: Props) {
+const FEATURED_IDS = [
+  "deepseek/deepseek-r1",
+  "openai/gpt-4o",
+  "anthropic/claude-3.5-sonnet",
+  "google/gemini-2.0-flash-001",
+  "meta-llama/llama-3.3-70b-instruct",
+  "qwen/qwq-32b",
+  "deepseek/deepseek-chat",
+  "openai/gpt-4o-mini",
+  "anthropic/claude-3-haiku",
+  "mistralai/mistral-large-2407",
+];
+
+const INITIAL_LIMIT = 8;
+
+function ModelSelectorComponent({ mode, selected, onChange }: Props) {
   const [models, setModels] = useState<NormalizedModel[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [activeFilter, setActiveFilter] = useState<"all" | "reasoning" | "tools">("all");
+  const [activeFilter, setActiveFilter] = useState<"featured" | "reasoning" | "tools" | "all">("featured");
+  const [displayLimit, setDisplayLimit] = useState(INITIAL_LIMIT);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -36,16 +52,55 @@ export default function ModelSelector({ mode, selected, onChange }: Props) {
       });
   }, []);
 
-  const filtered = models.filter((m) => {
-    const matchesSearch =
-      m.name.toLowerCase().includes(search.toLowerCase()) ||
-      m.id.toLowerCase().includes(search.toLowerCase());
-    if (!matchesSearch) return false;
+  // Reset display limit when filter or search changes
+  useEffect(() => {
+    setDisplayLimit(search.trim() ? 12 : INITIAL_LIMIT);
+  }, [search, activeFilter]);
 
-    if (activeFilter === "reasoning") return m.supportsReasoning;
-    if (activeFilter === "tools") return m.supportsTools;
-    return true;
-  });
+  // Filter & prioritize models
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+
+    return models.filter((m) => {
+      // Search matching
+      if (q) {
+        const matchesSearch =
+          m.name.toLowerCase().includes(q) ||
+          m.id.toLowerCase().includes(q);
+        if (!matchesSearch) return false;
+      }
+
+      // Filter tabs (if not actively searching, or apply filter with search)
+      if (activeFilter === "featured" && !q) {
+        return FEATURED_IDS.some((fid) => m.id.toLowerCase().includes(fid.toLowerCase()));
+      }
+      if (activeFilter === "reasoning") {
+        return m.supportsReasoning;
+      }
+      if (activeFilter === "tools") {
+        return m.supportsTools;
+      }
+      return true;
+    }).sort((a, b) => {
+      // Pin selected models to the absolute top
+      const aSel = selected.includes(a.id);
+      const bSel = selected.includes(b.id);
+      if (aSel && !bSel) return -1;
+      if (!aSel && bSel) return 1;
+
+      // Then prioritize featured models
+      const aFeat = FEATURED_IDS.some((f) => a.id.toLowerCase().includes(f.toLowerCase()));
+      const bFeat = FEATURED_IDS.some((f) => b.id.toLowerCase().includes(f.toLowerCase()));
+      if (aFeat && !bFeat) return -1;
+      if (!aFeat && bFeat) return 1;
+
+      return a.name.localeCompare(b.name);
+    });
+  }, [models, search, activeFilter, selected]);
+
+  const visibleModels = useMemo(() => {
+    return filtered.slice(0, displayLimit);
+  }, [filtered, displayLimit]);
 
   function toggleModel(id: string) {
     if (mode === "single") {
@@ -65,6 +120,8 @@ export default function ModelSelector({ mode, selected, onChange }: Props) {
     return String(n);
   }
 
+  const hasMore = filtered.length > displayLimit;
+
   return (
     <div className="model-deck-card">
       <div className="model-deck-header">
@@ -76,17 +133,22 @@ export default function ModelSelector({ mode, selected, onChange }: Props) {
               {selected.length}/4 selected
             </span>
           )}
+          {!loading && (
+            <span className="brand-tag" style={{ fontSize: "10.5px" }}>
+              {filtered.length} of {models.length} models
+            </span>
+          )}
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          {/* Quick capability filter pills */}
+          {/* Capability filter tabs */}
           <div style={{ display: "flex", gap: 4 }}>
             <button
-              className={`domain-chip${activeFilter === "all" ? " active" : ""}`}
-              onClick={() => setActiveFilter("all")}
+              className={`domain-chip${activeFilter === "featured" ? " active" : ""}`}
+              onClick={() => setActiveFilter("featured")}
               style={{ padding: "4px 10px", fontSize: "11px" }}
             >
-              All
+              ⭐ Featured
             </button>
             <button
               className={`domain-chip${activeFilter === "reasoning" ? " active" : ""}`}
@@ -102,13 +164,20 @@ export default function ModelSelector({ mode, selected, onChange }: Props) {
             >
               🛠 Tools
             </button>
+            <button
+              className={`domain-chip${activeFilter === "all" ? " active" : ""}`}
+              onClick={() => setActiveFilter("all")}
+              style={{ padding: "4px 10px", fontSize: "11px" }}
+            >
+              🌐 All Models
+            </button>
           </div>
 
           <div className="deck-search">
             <span style={{ fontSize: 12, opacity: 0.6 }}>🔍</span>
             <input
               type="search"
-              placeholder="Filter by name or id…"
+              placeholder="Search 400+ models…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -117,9 +186,9 @@ export default function ModelSelector({ mode, selected, onChange }: Props) {
       </div>
 
       {loading && (
-        <div style={{ textAlign: "center", padding: "30px 0", color: "var(--text-subtle)" }}>
+        <div style={{ textAlign: "center", padding: "28px 0", color: "var(--text-subtle)" }}>
           <span className="live-dot" style={{ display: "inline-block", marginRight: 8 }} />
-          Loading neural models from OpenRouter…
+          Loading neural models from OpenRouter directory…
         </div>
       )}
 
@@ -130,50 +199,86 @@ export default function ModelSelector({ mode, selected, onChange }: Props) {
       )}
 
       {!loading && !error && (
-        <div className="model-grid">
-          {filtered.length === 0 && (
-            <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "20px", color: "var(--text-subtle)" }}>
-              No models match current filter criteria.
-            </div>
-          )}
-
-          {filtered.map((m) => {
-            const isSel = selected.includes(m.id);
-            const disabled = mode === "compare" && !isSel && selected.length >= 4;
-
-            return (
-              <div
-                key={m.id}
-                className={`model-card${isSel ? " selected" : ""}${disabled ? " disabled" : ""}`}
-                onClick={() => !disabled && toggleModel(m.id)}
-              >
-                <div className="model-card-top">
-                  <div style={{ overflow: "hidden" }}>
-                    <div className="model-card-name">{m.name}</div>
-                    <div className="model-card-id">{m.id}</div>
-                  </div>
-
-                  <div className="selection-ring">
-                    {isSel && <span className="selection-check">✓</span>}
-                  </div>
-                </div>
-
-                <div className="model-card-bottom">
-                  <div className="model-badges">
-                    {m.supportsReasoning && (
-                      <span className="badge-reasoning">Reasoning</span>
-                    )}
-                    {m.supportsTools && (
-                      <span className="badge-tools">Tools</span>
-                    )}
-                  </div>
-                  <span className="model-ctx">{formatCtx(m.context_length)} ctx</span>
-                </div>
+        <>
+          <div className="model-grid">
+            {visibleModels.length === 0 && (
+              <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "24px", color: "var(--text-subtle)" }}>
+                No models match "{search}". Try searching another name or switch to "All Models".
               </div>
-            );
-          })}
-        </div>
+            )}
+
+            {visibleModels.map((m) => {
+              const isSel = selected.includes(m.id);
+              const disabled = mode === "compare" && !isSel && selected.length >= 4;
+
+              return (
+                <div
+                  key={m.id}
+                  className={`model-card${isSel ? " selected" : ""}${disabled ? " disabled" : ""}`}
+                  onClick={() => !disabled && toggleModel(m.id)}
+                >
+                  <div className="model-card-top">
+                    <div style={{ overflow: "hidden" }}>
+                      <div className="model-card-name">{m.name}</div>
+                      <div className="model-card-id">{m.id}</div>
+                    </div>
+
+                    <div className="selection-ring">
+                      {isSel && <span className="selection-check">✓</span>}
+                    </div>
+                  </div>
+
+                  <div className="model-card-bottom">
+                    <div className="model-badges">
+                      {m.supportsReasoning && (
+                        <span className="badge-reasoning">Reasoning</span>
+                      )}
+                      {m.supportsTools && (
+                        <span className="badge-tools">Tools</span>
+                      )}
+                    </div>
+                    <span className="model-ctx">{formatCtx(m.context_length)} ctx</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Show More / Show All Controls */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginTop: 16 }}>
+            {hasMore && (
+              <>
+                <button
+                  className="btn-secondary"
+                  onClick={() => setDisplayLimit((prev) => prev + 12)}
+                  style={{ fontSize: "12px", padding: "6px 16px" }}
+                >
+                  ▼ Show More (+12)
+                </button>
+                <button
+                  className="btn-secondary"
+                  onClick={() => setDisplayLimit(filtered.length)}
+                  style={{ fontSize: "12px", padding: "6px 16px" }}
+                >
+                  Show All ({filtered.length})
+                </button>
+              </>
+            )}
+
+            {displayLimit > INITIAL_LIMIT && (
+              <button
+                className="btn-secondary"
+                onClick={() => setDisplayLimit(INITIAL_LIMIT)}
+                style={{ fontSize: "12px", padding: "6px 16px" }}
+              >
+                ▲ Show Less (Top {INITIAL_LIMIT})
+              </button>
+            )}
+          </div>
+        </>
       )}
     </div>
   );
 }
+
+export default React.memo(ModelSelectorComponent);

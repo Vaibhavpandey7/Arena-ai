@@ -25,9 +25,13 @@ export default function Page() {
   const [systemPrompt, setSystemPrompt] = useState("");
   const [showSystemPrompt, setShowSystemPrompt] = useState(false);
   const [useTools, setUseTools] = useState(true);
-  const [selectedModels, setSelectedModels] = useState<string[]>([]);
+  const [selectedModels, setSelectedModels] = useState<string[]>(["deepseek/deepseek-r1"]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [modelSystemPrompts, setModelSystemPrompts] = useState<Record<string, string>>({});
+
+  const handleModelChange = useCallback((ids: string[]) => {
+    setSelectedModels(ids);
+  }, []);
 
   const [isRunning, setIsRunning] = useState(false);
   const [reasoning, setReasoning] = useState("");
@@ -389,7 +393,7 @@ export default function Page() {
           <ModelSelector
             mode={mode}
             selected={selectedModels}
-            onChange={setSelectedModels}
+            onChange={handleModelChange}
           />
         )}
 
