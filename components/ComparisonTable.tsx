@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
 
 export interface CompareRow {
@@ -20,7 +20,7 @@ interface Props {
   onSystemPromptChange: (model: string, value: string) => void;
 }
 
-export default function ComparisonTable({ results, modelSystemPrompts, onSystemPromptChange }: Props) {
+function ComparisonTable({ results, modelSystemPrompts, onSystemPromptChange }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [copiedIndex, setCopiedIndex] = useState<string | null>(null);
 
@@ -276,3 +276,5 @@ export default function ComparisonTable({ results, modelSystemPrompts, onSystemP
     </div>
   );
 }
+
+export default React.memo(ComparisonTable);

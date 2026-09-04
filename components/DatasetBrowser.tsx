@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 
 export interface DILRecord {
   id: string;
@@ -33,7 +33,7 @@ interface Props {
   activeRecordId?: string;
 }
 
-export default function DatasetBrowser({ onLoadRecord, modelAnswer }: Props) {
+function DatasetBrowser({ onLoadRecord, modelAnswer }: Props) {
   const [records, setRecords] = useState<DILRecord[]>([]);
   const [domain, setDomain] = useState("");
   const [split, setSplit] = useState("");
@@ -98,6 +98,8 @@ export default function DatasetBrowser({ onLoadRecord, modelAnswer }: Props) {
             <div className="deck-search" style={{ width: 220 }}>
               <span>🔍</span>
               <input
+                id="dataset-search-input"
+                name="datasetSearch"
                 type="search"
                 placeholder="Search domain questions…"
                 value={search}
@@ -251,3 +253,5 @@ export default function DatasetBrowser({ onLoadRecord, modelAnswer }: Props) {
     </div>
   );
 }
+
+export default React.memo(DatasetBrowser);

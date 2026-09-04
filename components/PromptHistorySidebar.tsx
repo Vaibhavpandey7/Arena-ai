@@ -76,6 +76,8 @@ export default function PromptHistorySidebar({ open, onClose, onRestore }: Props
 
         <div style={{ padding: "12px 18px", borderBottom: "1px solid var(--border-subtle)" }}>
           <input
+            id="history-search-input"
+            name="historySearch"
             type="text"
             placeholder="Search past prompts…"
             value={search}

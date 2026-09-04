@@ -187,12 +187,6 @@ export default function Page() {
 
   return (
     <div style={{ position: "relative", minHeight: "100vh" }}>
-      {/* Background Ambient Mesh Orbs */}
-      <div className="ambient-mesh">
-        <div className="mesh-orb mesh-orb-1" />
-        <div className="mesh-orb mesh-orb-2" />
-        <div className="mesh-orb mesh-orb-3" />
-      </div>
 
       {/* Top Floating Glass Navbar */}
       <header className="top-navbar">
@@ -290,6 +284,7 @@ export default function Page() {
             <div className="prompt-box-wrapper">
               <textarea
                 id="prompt-input"
+                name="prompt"
                 className="main-prompt-input"
                 rows={4}
                 placeholder="Enter an insurance question, actuarial calculation, or regulatory inquiry…"
@@ -315,6 +310,7 @@ export default function Page() {
                 {showSystemPrompt && (
                   <textarea
                     id="system-prompt-input"
+                    name="systemPrompt"
                     className="system-prompt-input"
                     rows={2}
                     placeholder="Provide specific system role or behavioral instructions (e.g. You are a senior EU insurance actuary)…"

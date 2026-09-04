@@ -36,9 +36,10 @@ const KV_DEDUP_KEY = "ai-arena:lake:dedup"; // hash → id map
 const SEED_DIR = path.join(process.cwd(), "data", "seed");
 const LAKE_DIR = path.join(process.cwd(), "data", "lake");
 
-// ── In-memory cache ───────────────────────────────────────────────────────────
+// ── In-memory cache & fallback ────────────────────────────────────────────────
 let _cache: DILRecord[] | null = null;
 let _loadingPromise: Promise<DILRecord[]> | null = null;
+const _inMemoryLakeRecords: DILRecord[] = [];
 
 function invalidateCache() {
   _cache = null;
@@ -47,12 +48,16 @@ function invalidateCache() {
 
 // ── File helpers (local dev) ──────────────────────────────────────────────────
 function ensureLakeDir() {
-  if (!existsSync(LAKE_DIR)) mkdirSync(LAKE_DIR, { recursive: true });
+  try {
+    if (!existsSync(LAKE_DIR)) mkdirSync(LAKE_DIR, { recursive: true });
+  } catch {
+    // Read-only filesystem (e.g. AWS Lambda / Vercel Serverless /var/task)
+  }
 }
 
 function readJsonFile(filePath: string): DILRecord[] {
-  if (!existsSync(filePath)) return [];
   try {
+    if (!existsSync(filePath)) return [];
     const content = readFileSync(filePath, "utf-8").trim();
     return content ? (JSON.parse(content) as DILRecord[]) : [];
   } catch {
@@ -69,7 +74,7 @@ function loadSeedRecords(): DILRecord[] {
 }
 
 function loadLakeFromFiles(): DILRecord[] {
-  ensureLakeDir();
+  if (!existsSync(LAKE_DIR)) return [];
   const all: DILRecord[] = [];
   for (const domain of ALL_DOMAINS) {
     all.push(...readJsonFile(path.join(LAKE_DIR, `${domain}.json`)));
@@ -78,11 +83,16 @@ function loadLakeFromFiles(): DILRecord[] {
 }
 
 function appendToLakeFile(record: DILRecord) {
-  ensureLakeDir();
-  const filePath = path.join(LAKE_DIR, `${record.domain}.json`);
-  const existing = readJsonFile(filePath);
-  existing.push(record);
-  writeFileSync(filePath, JSON.stringify(existing, null, 2), "utf-8");
+  try {
+    ensureLakeDir();
+    const filePath = path.join(LAKE_DIR, `${record.domain}.json`);
+    const existing = readJsonFile(filePath);
+    existing.push(record);
+    writeFileSync(filePath, JSON.stringify(existing, null, 2), "utf-8");
+  } catch {
+    // In read-only serverless environment without KV, store in memory
+    _inMemoryLakeRecords.push(record);
+  }
 }
 
 // ── Upstash Redis / Vercel KV helpers (Production) ───────────────────────────
@@ -125,7 +135,7 @@ async function setKVDedupMap(map: Record<string, string>): Promise<void> {
 async function loadAllRecords(): Promise<DILRecord[]> {
   const seed = loadSeedRecords();
   const lake = USE_KV ? await loadLakeFromKV() : loadLakeFromFiles();
-  return [...seed, ...lake];
+  return [...seed, ...lake, ..._inMemoryLakeRecords];
 }
 
 async function getAllRecords(): Promise<DILRecord[]> {

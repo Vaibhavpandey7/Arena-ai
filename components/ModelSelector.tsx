@@ -176,6 +176,8 @@ function ModelSelectorComponent({ mode, selected, onChange }: Props) {
           <div className="deck-search">
             <span style={{ fontSize: 12, opacity: 0.6 }}>🔍</span>
             <input
+              id="model-search-input"
+              name="modelSearch"
               type="search"
               placeholder="Search 400+ models…"
               value={search}

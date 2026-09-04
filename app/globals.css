@@ -3,8 +3,6 @@
    Obsidian Glass · Cyber Radiance · Bento Architecture · Instrument Precision
    ═══════════════════════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700;800&display=swap');
-
 :root {
   /* Fonts */
   --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -14,10 +12,10 @@
   /* Obsidian Dark Theme (Default) */
   --bg-canvas:        #07090e;
   --bg-canvas-subtle: #0c1017;
-  --bg-surface:       rgba(15, 20, 31, 0.72);
-  --bg-surface-elevated: rgba(22, 30, 46, 0.85);
-  --bg-surface-hover: rgba(30, 41, 64, 0.9);
-  --bg-glass-card:    rgba(18, 24, 38, 0.55);
+  --bg-surface:       #0f1420;
+  --bg-surface-elevated: #151b2a;
+  --bg-surface-hover: #1c2438;
+  --bg-glass-card:    #121826;
 
   --border-subtle:    rgba(255, 255, 255, 0.05);
   --border-default:   rgba(255, 255, 255, 0.09);
@@ -57,10 +55,10 @@
   --violet-dim:       rgba(139, 92, 246, 0.12);
 
   /* Shadows */
-  --shadow-sm:        0 2px 8px rgba(0, 0, 0, 0.4);
-  --shadow-md:        0 8px 24px rgba(0, 0, 0, 0.5);
-  --shadow-lg:        0 16px 48px rgba(0, 0, 0, 0.65);
-  --shadow-glow:      0 0 25px rgba(245, 158, 11, 0.15);
+  --shadow-sm:        0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md:        0 6px 18px rgba(0, 0, 0, 0.4);
+  --shadow-lg:        0 12px 36px rgba(0, 0, 0, 0.5);
+  --shadow-glow:      0 0 20px rgba(245, 158, 11, 0.15);
 
   /* Transitions & Radii */
   --radius-sm:        6px;
@@ -68,17 +66,17 @@
   --radius-lg:        16px;
   --radius-xl:        24px;
   --radius-full:      9999px;
-  --transition-fast:  150ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-norm:  250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-fast:  120ms ease;
+  --transition-norm:  200ms ease;
 }
 
 [data-theme="light"] {
   --bg-canvas:        #f8fafc;
   --bg-canvas-subtle: #f1f5f9;
-  --bg-surface:       rgba(255, 255, 255, 0.85);
-  --bg-surface-elevated: #ffffff;
+  --bg-surface:       #ffffff;
+  --bg-surface-elevated: #f8fafc;
   --bg-surface-hover: #f1f5f9;
-  --bg-glass-card:    rgba(255, 255, 255, 0.7);
+  --bg-glass-card:    #ffffff;
 
   --border-subtle:    rgba(0, 0, 0, 0.05);
   --border-default:   rgba(0, 0, 0, 0.09);
@@ -108,10 +106,10 @@
   --rose:             #e11d48;
   --rose-dim:         rgba(225, 29, 72, 0.08);
 
-  --shadow-sm:        0 2px 8px rgba(0, 0, 0, 0.06);
-  --shadow-md:        0 8px 24px rgba(0, 0, 0, 0.08);
-  --shadow-lg:        0 16px 48px rgba(0, 0, 0, 0.12);
-  --shadow-glow:      0 0 25px rgba(217, 119, 6, 0.08);
+  --shadow-sm:        0 2px 6px rgba(0, 0, 0, 0.05);
+  --shadow-md:        0 4px 14px rgba(0, 0, 0, 0.07);
+  --shadow-lg:        0 10px 28px rgba(0, 0, 0, 0.1);
+  --shadow-glow:      0 0 20px rgba(217, 119, 6, 0.08);
 }
 
 /* ── Reset & Foundation ─────────────────────────────────────────────────── */
@@ -129,6 +127,11 @@ html {
 body {
   font-family: var(--font-ui);
   background-color: var(--bg-canvas);
+  background-image: 
+    radial-gradient(ellipse at 50% -10%, rgba(245, 158, 11, 0.08) 0%, transparent 60%),
+    radial-gradient(ellipse at 90% 30%, rgba(14, 165, 233, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 10% 70%, rgba(139, 92, 246, 0.05) 0%, transparent 50%);
+  background-attachment: fixed;
   color: var(--text-main);
   min-height: 100vh;
   line-height: 1.6;
@@ -137,71 +140,14 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ── Ambient Background Mesh ────────────────────────────────────────────── */
+[data-theme="light"] body {
+  background-image: 
+    radial-gradient(ellipse at 50% -10%, rgba(217, 119, 6, 0.05) 0%, transparent 60%),
+    radial-gradient(ellipse at 90% 30%, rgba(2, 132, 199, 0.04) 0%, transparent 50%);
+}
+
 .ambient-mesh {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  overflow: hidden;
-}
-
-.mesh-orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(120px);
-  opacity: 0.15;
-  will-change: transform;
-  animation: floatOrb 18s ease-in-out infinite alternate;
-}
-
-[data-theme="light"] .mesh-orb {
-  opacity: 0.08;
-}
-
-.mesh-orb-1 {
-  top: -10%;
-  left: 20%;
-  width: 650px;
-  height: 650px;
-  background: radial-gradient(circle, var(--accent) 0%, transparent 70%);
-  animation-duration: 20s;
-}
-
-.mesh-orb-2 {
-  top: 40%;
-  right: -5%;
-  width: 550px;
-  height: 550px;
-  background: radial-gradient(circle, var(--cyan) 0%, transparent 70%);
-  animation-duration: 24s;
-  animation-delay: -5s;
-}
-
-.mesh-orb-3 {
-  bottom: -15%;
-  left: 10%;
-  width: 600px;
-  height: 600px;
-  background: radial-gradient(circle, var(--violet) 0%, transparent 70%);
-  animation-duration: 28s;
-  animation-delay: -10s;
-}
-
-@keyframes floatOrb {
-  0%   { transform: translate(0, 0) scale(1); }
-  50%  { transform: translate(40px, -30px) scale(1.08); }
-  100% { transform: translate(-30px, 40px) scale(0.95); }
-}
-
-/* Subtle Grid Texture */
-.ambient-mesh::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(var(--border-subtle) 1px, transparent 1px);
-  background-size: 32px 32px;
-  opacity: 0.6;
+  display: none;
 }
 
 /* ── Top Floating Navbar ────────────────────────────────────────────────── */
@@ -221,8 +167,8 @@ body {
   gap: 16px;
   padding: 10px 18px;
   background: var(--bg-surface);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-full);
   box-shadow: var(--shadow-md);
@@ -397,9 +343,7 @@ body {
 
 /* ── Hero / AI Command Deck ─────────────────────────────────────────────── */
 .command-deck {
-  background: var(--bg-surface);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  background: var(--bg-surface-elevated);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-lg);
@@ -739,7 +683,6 @@ body {
 /* ── Interactive Model Picker Bar ────────────────────────────────────────── */
 .model-deck-card {
   background: var(--bg-surface);
-  backdrop-filter: blur(20px);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-xl);
   padding: 20px;
@@ -921,7 +864,6 @@ body {
 /* Empty Hero Banner */
 .empty-hero-card {
   background: var(--bg-surface);
-  backdrop-filter: blur(20px);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-xl);
   padding: 60px 24px;
@@ -989,7 +931,6 @@ body {
   align-items: center;
   justify-content: space-between;
   background: var(--bg-surface-elevated);
-  backdrop-filter: blur(16px);
   border: 1px solid var(--accent-border);
   border-radius: var(--radius-lg);
   padding: 14px 20px;
@@ -1081,7 +1022,6 @@ body {
 /* ── Tool Timeline Chronometer ───────────────────────────────────────────── */
 .tool-chronometer {
   background: var(--bg-surface);
-  backdrop-filter: blur(20px);
   border: 1px solid var(--cyan-border);
   border-radius: var(--radius-lg);
   overflow: hidden;
@@ -1167,7 +1107,6 @@ body {
 /* ── Final Answer Presentation Card ─────────────────────────────────────── */
 .answer-panel {
   background: var(--bg-surface);
-  backdrop-filter: blur(24px);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-xl);
   overflow: hidden;
@@ -1348,7 +1287,6 @@ body {
 
 .leader-card {
   background: var(--bg-surface);
-  backdrop-filter: blur(20px);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   padding: 16px 20px;
@@ -1410,7 +1348,6 @@ body {
 /* Compare Matrix Table */
 .matrix-table-card {
   background: var(--bg-surface);
-  backdrop-filter: blur(20px);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-xl);
   overflow: hidden;
@@ -1517,7 +1454,6 @@ body {
 
 .studio-hero {
   background: var(--bg-surface);
-  backdrop-filter: blur(20px);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-xl);
   padding: 24px;
@@ -1577,7 +1513,6 @@ body {
 
 .dil-record-card {
   background: var(--bg-surface);
-  backdrop-filter: blur(16px);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   padding: 16px 18px;
@@ -1636,7 +1571,6 @@ body {
 /* Gold Evaluation Comparison Card */
 .gold-eval-deck {
   background: var(--bg-surface);
-  backdrop-filter: blur(24px);
   border: 1px solid var(--accent-border);
   border-radius: var(--radius-xl);
   padding: 22px;
@@ -1692,8 +1626,7 @@ body {
 .history-drawer-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.7);
   z-index: 200;
   display: flex;
   justify-content: flex-end;
