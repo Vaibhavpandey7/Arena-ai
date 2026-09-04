@@ -23,12 +23,18 @@ export interface ToolCall {
   function: { name: string; arguments: string };
 }
 
+export interface CustomEndpointConfig {
+  baseUrl?: string;
+  apiKey?: string;
+}
+
 export interface ChatParams {
   model: string;
   messages: ChatMessage[];
   tools?: unknown[];
   temperature?: number;
   systemPrompt?: string;
+  customEndpoint?: CustomEndpointConfig;
 }
 
 export interface ChatResponse {
@@ -75,6 +81,30 @@ const MOCK_MODELS: NormalizedModel[] = [
     name: "DeepSeek R1",
     context_length: 65536,
     pricing: { prompt: 0.0000008, completion: 0.0000028 },
+    supportsTools: true,
+    supportsReasoning: true,
+  },
+  {
+    id: "google/gemini-2.0-flash-exp:free",
+    name: "Gemini 2.0 Flash Exp (Free)",
+    context_length: 1048576,
+    pricing: { prompt: 0, completion: 0 },
+    supportsTools: true,
+    supportsReasoning: false,
+  },
+  {
+    id: "meta-llama/llama-3.3-70b-instruct:free",
+    name: "Llama 3.3 70B Instruct (Free)",
+    context_length: 131072,
+    pricing: { prompt: 0, completion: 0 },
+    supportsTools: true,
+    supportsReasoning: false,
+  },
+  {
+    id: "deepseek/deepseek-r1:free",
+    name: "DeepSeek R1 (Free)",
+    context_length: 65536,
+    pricing: { prompt: 0, completion: 0 },
     supportsTools: true,
     supportsReasoning: true,
   },
@@ -151,7 +181,7 @@ export async function listModels(): Promise<NormalizedModel[]> {
 // ── Non-streaming chat (used by /api/compare) ─────────────────────────────────
 
 export async function chatCompletion(params: ChatParams): Promise<ChatResponse> {
-  if (isMock) return mockChatCompletion(params);
+  if (isMock && !params.customEndpoint) return mockChatCompletion(params);
 
   const messages: ChatMessage[] = params.systemPrompt
     ? [{ role: "system", content: params.systemPrompt }, ...params.messages]
@@ -165,15 +195,28 @@ export async function chatCompletion(params: ChatParams): Promise<ChatResponse> 
     usage: { include: true },
   };
 
-  const res = await fetch(`${OR_BASE}/chat/completions`, {
+  let endpointUrl = `${OR_BASE}/chat/completions`;
+  if (params.customEndpoint?.baseUrl) {
+    const trimmed = params.customEndpoint.baseUrl.trim().replace(/\/$/, "");
+    endpointUrl = trimmed.endsWith("/chat/completions") ? trimmed : `${trimmed}/chat/completions`;
+  }
+
+  const headers: Record<string, string> = params.customEndpoint?.baseUrl
+    ? {
+        "Content-Type": "application/json",
+        ...(params.customEndpoint.apiKey ? { Authorization: `Bearer ${params.customEndpoint.apiKey}` } : {}),
+      }
+    : orHeaders();
+
+  const res = await fetch(endpointUrl, {
     method: "POST",
-    headers: orHeaders(),
+    headers,
     body: JSON.stringify(body),
   });
 
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`OpenRouter chat failed: ${res.status} — ${err}`);
+    throw new Error(`Model inference failed: ${res.status} — ${err}`);
   }
 
   const json = await res.json();
@@ -197,7 +240,7 @@ export async function chatCompletion(params: ChatParams): Promise<ChatResponse> 
 // ── Streaming chat (used by /api/chat) ────────────────────────────────────────
 
 export async function chatCompletionStream(params: ChatParams): Promise<Response> {
-  if (isMock) return mockChatCompletionStream(params);
+  if (isMock && !params.customEndpoint) return mockChatCompletionStream(params);
 
   const messages: ChatMessage[] = params.systemPrompt
     ? [{ role: "system", content: params.systemPrompt }, ...params.messages]
@@ -212,9 +255,22 @@ export async function chatCompletionStream(params: ChatParams): Promise<Response
     usage: { include: true },
   };
 
-  return fetch(`${OR_BASE}/chat/completions`, {
+  let endpointUrl = `${OR_BASE}/chat/completions`;
+  if (params.customEndpoint?.baseUrl) {
+    const trimmed = params.customEndpoint.baseUrl.trim().replace(/\/$/, "");
+    endpointUrl = trimmed.endsWith("/chat/completions") ? trimmed : `${trimmed}/chat/completions`;
+  }
+
+  const headers: Record<string, string> = params.customEndpoint?.baseUrl
+    ? {
+        "Content-Type": "application/json",
+        ...(params.customEndpoint.apiKey ? { Authorization: `Bearer ${params.customEndpoint.apiKey}` } : {}),
+      }
+    : orHeaders();
+
+  return fetch(endpointUrl, {
     method: "POST",
-    headers: orHeaders(),
+    headers,
     body: JSON.stringify(body),
   });
 }

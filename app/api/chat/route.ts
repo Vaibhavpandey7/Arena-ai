@@ -14,7 +14,13 @@ function sseEvent(obj: unknown): string {
 
 export async function POST(req: NextRequest) {
   const encoder = new TextEncoder();
-  let body: { model: string; prompt: string; systemPrompt?: string; useTools?: boolean };
+  let body: {
+    model: string;
+    prompt: string;
+    systemPrompt?: string;
+    useTools?: boolean;
+    customEndpoint?: { baseUrl?: string; apiKey?: string };
+  };
 
   try {
     body = await req.json();
@@ -25,7 +31,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { model, prompt, systemPrompt, useTools } = body;
+  const { model, prompt, systemPrompt, useTools, customEndpoint } = body;
 
   if (!model || !prompt) {
     return new Response(
@@ -50,6 +56,7 @@ export async function POST(req: NextRequest) {
             messages,
             tools,
             systemPrompt,
+            customEndpoint,
           });
 
           if (!orResponse.ok && !orResponse.body) {

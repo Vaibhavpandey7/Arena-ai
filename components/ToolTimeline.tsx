@@ -21,7 +21,6 @@ export default function ToolTimeline({ events }: Props) {
     <div className="tool-chronometer">
       <div className="tool-header" onClick={() => setOpen((o) => !o)}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 16 }}>🛠</span>
           <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "14px", color: "var(--cyan-light)" }}>
             Tool Execution Chronometer
           </span>

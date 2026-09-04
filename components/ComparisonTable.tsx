@@ -116,7 +116,6 @@ function ComparisonTable({ results, modelSystemPrompts, onSystemPromptChange }: 
       <div className="matrix-table-card">
         <div className="matrix-table-header">
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 18 }}>⚔️</span>
             <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "16px", color: "var(--text-main)" }}>
               Head-to-Head Comparison Matrix
             </span>
@@ -125,10 +124,10 @@ function ComparisonTable({ results, modelSystemPrompts, onSystemPromptChange }: 
 
           <div className="export-actions">
             <button className="btn-secondary" onClick={exportCSV}>
-              <span>📥</span> Export CSV
+              Export CSV
             </button>
             <button className="btn-secondary" onClick={exportJSON}>
-              <span>📄</span> Export JSON
+              Export JSON
             </button>
           </div>
         </div>
@@ -166,8 +165,8 @@ function ComparisonTable({ results, modelSystemPrompts, onSystemPromptChange }: 
 
                         <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>
                           {!row.ok && <span style={{ color: "var(--rose)", fontSize: "11px", fontWeight: 600 }}>Failed</span>}
-                          {isFastest && <span className="tag-fastest">⚡ fastest</span>}
-                          {isCheapest && <span className="tag-cheapest">▼ cheapest</span>}
+                          {isFastest && <span className="tag-fastest">Fastest</span>}
+                          {isCheapest && <span className="tag-cheapest">Cheapest</span>}
                         </div>
 
                         {/* System prompt override */}

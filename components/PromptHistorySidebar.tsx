@@ -65,7 +65,6 @@ export default function PromptHistorySidebar({ open, onClose, onRestore }: Props
       <div className="history-drawer" onClick={(e) => e.stopPropagation()}>
         <div className="drawer-header">
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 18 }}>📜</span>
             <div className="drawer-title">Prompt History</div>
             <span className="brand-tag">{history.length}</span>
           </div>

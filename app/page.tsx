@@ -43,12 +43,14 @@ export default function Page() {
   const [compareResults, setCompareResults] = useState<CompareRow[]>([]);
   const [isComparing, setIsComparing] = useState(false);
   const [compareError, setCompareError] = useState("");
+  const [customEndpoints, setCustomEndpoints] = useState<Record<string, { baseUrl: string; apiKey?: string }>>({});
 
   const abortRef = useRef<AbortController | null>(null);
 
   const runSingle = useCallback(async () => {
     if (!prompt.trim() || selectedModels.length === 0) return;
     const model = selectedModels[0];
+    const customEndpoint = customEndpoints[model];
     saveToHistory(prompt, systemPrompt);
     setIsRunning(true);
     setReasoning("");
@@ -62,7 +64,7 @@ export default function Page() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model, prompt, systemPrompt, useTools }),
+        body: JSON.stringify({ model, prompt, systemPrompt, useTools, customEndpoint }),
         signal: abortRef.current.signal,
       });
 
@@ -139,7 +141,7 @@ export default function Page() {
     } finally {
       setIsRunning(false);
     }
-  }, [prompt, systemPrompt, useTools, selectedModels]);
+  }, [prompt, systemPrompt, useTools, selectedModels, customEndpoints]);
 
   const stopRun = useCallback(() => {
     abortRef.current?.abort();
@@ -163,6 +165,7 @@ export default function Page() {
           systemPrompt,
           useTools,
           modelSystemPrompts,
+          modelCustomEndpoints: customEndpoints,
         }),
       });
 
@@ -177,7 +180,7 @@ export default function Page() {
     } finally {
       setIsComparing(false);
     }
-  }, [prompt, systemPrompt, useTools, selectedModels, modelSystemPrompts]);
+  }, [prompt, systemPrompt, useTools, selectedModels, modelSystemPrompts, customEndpoints]);
 
   const handleRun = mode === "single" ? (isRunning ? stopRun : runSingle) : runCompare;
   const isExecuting = isRunning || isComparing;
@@ -193,7 +196,7 @@ export default function Page() {
         <div className="navbar-inner">
           {/* Brand */}
           <div className="brand-section" onClick={() => setMode("single")}>
-            <div className="brand-badge">⚡</div>
+            <div className="brand-badge">AI</div>
             <div>
               <div className="brand-name">AI Arena</div>
             </div>
@@ -206,21 +209,18 @@ export default function Page() {
               className={`nav-tab${mode === "single" ? " active" : ""}`}
               onClick={() => setMode("single")}
             >
-              <span className="tab-icon">🎯</span>
               <span>Single Arena</span>
             </button>
             <button
               className={`nav-tab${mode === "compare" ? " active" : ""}`}
               onClick={() => setMode("compare")}
             >
-              <span className="tab-icon">⚔️</span>
               <span>Head-to-Head</span>
             </button>
             <button
               className={`nav-tab${mode === "dataset" ? " active" : ""}`}
               onClick={() => setMode("dataset")}
             >
-              <span className="tab-icon">🏛️</span>
               <span>Data Lake</span>
             </button>
           </nav>
@@ -237,7 +237,10 @@ export default function Page() {
               onClick={() => setHistoryOpen(true)}
               title="View prompt history"
             >
-              📜
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
             </button>
 
             <ThemeToggle />
@@ -252,7 +255,6 @@ export default function Page() {
           <section className="command-deck">
             <div className="command-header">
               <div className="command-title-group">
-                <span style={{ fontSize: 20 }}>⚡</span>
                 <span className="command-title">
                   {mode === "single" ? "Prompt Execution Console" : "Benchmark Prompt Console"}
                 </span>
@@ -375,7 +377,6 @@ export default function Page() {
                   ) : (
                     <>
                       <span>Compare {selectedModels.length} Models</span>
-                      <span>⚔️</span>
                     </>
                   )}
                 </button>
@@ -390,6 +391,7 @@ export default function Page() {
             mode={mode}
             selected={selectedModels}
             onChange={handleModelChange}
+            onCustomEndpointsChange={setCustomEndpoints}
           />
         )}
 
@@ -399,16 +401,15 @@ export default function Page() {
             {/* Empty Hero Card when no results yet */}
             {!hasResults && (
               <div className="empty-hero-card">
-                <div className="empty-spark">⚡</div>
                 <h1 className="empty-title">AI Arena Intelligence Studio</h1>
                 <p className="empty-desc">
                   Select a state-of-the-art model above and run complex insurance inquiries. Inspect reasoning traces in real time, observe autonomous tool invocations, and benchmark performance.
                 </p>
                 <div className="empty-feature-grid">
-                  <span className="feature-pill">🧠 DeepSeek R1 Reasoning</span>
-                  <span className="feature-pill">🛠 Live Tool Call Chronometer</span>
-                  <span className="feature-pill">🏛 38 DIL Insurance Records</span>
-                  <span className="feature-pill">⚡ Real-time SSE Streaming</span>
+                  <span className="feature-pill">DeepSeek R1 Reasoning</span>
+                  <span className="feature-pill">Live Tool Call Chronometer</span>
+                  <span className="feature-pill">38 DIL Insurance Records</span>
+                  <span className="feature-pill">Real-time SSE Streaming</span>
                 </div>
               </div>
             )}
@@ -444,7 +445,6 @@ export default function Page() {
               <div className="answer-panel">
                 <div className="answer-header">
                   <div className="answer-title-group">
-                    <span style={{ fontSize: 18 }}>✨</span>
                     <span className="answer-badge">Inference Output</span>
                     {isRunning && <span className="live-dot" />}
                     {!isRunning && answer && (

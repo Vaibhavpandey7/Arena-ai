@@ -30,7 +30,6 @@ export default function ThinkingStream({ text, isRunning }: Props) {
     <div className={`neural-terminal${isRunning ? " active" : ""}`}>
       <div className="terminal-header" onClick={() => setOpen((o) => !o)}>
         <div className="terminal-title-group">
-          <span style={{ fontSize: 16 }}>🧠</span>
           <span className="neural-badge">Neural Reasoning Trace</span>
           {isRunning && <span className="live-dot" />}
           {text && (

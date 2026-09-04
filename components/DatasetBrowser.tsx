@@ -14,15 +14,15 @@ export interface DILRecord {
   difficulty: string;
 }
 
-const DOMAINS: { id: string; label: string; icon: string }[] = [
-  { id: "", label: "All Domains", icon: "🌐" },
-  { id: "insurance_knowledge", label: "Insurance Knowledge", icon: "🛡️" },
-  { id: "eu_regulatory_compliance", label: "EU Solvency II & Regulations", icon: "⚖️" },
-  { id: "insurance_documents", label: "Policy Documents & Claims", icon: "📄" },
-  { id: "actuarial_numerical_data", label: "Actuarial & Numerical", icon: "🔢" },
-  { id: "tool_api_data", label: "Tool & API Calling", icon: "🛠️" },
-  { id: "agentic_trajectory_data", label: "Agentic Trajectories", icon: "🧭" },
-  { id: "human_feedback_preferences", label: "Human Feedback / RLHF", icon: "👤" },
+const DOMAINS: { id: string; label: string }[] = [
+  { id: "", label: "All Domains" },
+  { id: "insurance_knowledge", label: "Insurance Knowledge" },
+  { id: "eu_regulatory_compliance", label: "EU Solvency II & Regulations" },
+  { id: "insurance_documents", label: "Policy Documents & Claims" },
+  { id: "actuarial_numerical_data", label: "Actuarial & Numerical" },
+  { id: "tool_api_data", label: "Tool & API Calling" },
+  { id: "agentic_trajectory_data", label: "Agentic Trajectories" },
+  { id: "human_feedback_preferences", label: "Human Feedback / RLHF" },
 ];
 
 const SPLITS = ["", "train", "validation", "test"];
@@ -83,7 +83,6 @@ function DatasetBrowser({ onLoadRecord, modelAnswer }: Props) {
       <div className="studio-hero">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 22 }}>🏛️</span>
             <div>
               <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "18px", color: "var(--text-main)" }}>
                 Insurance Domain Intelligence Lake
@@ -96,7 +95,10 @@ function DatasetBrowser({ onLoadRecord, modelAnswer }: Props) {
 
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div className="deck-search" style={{ width: 220 }}>
-              <span>🔍</span>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}>
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
               <input
                 id="dataset-search-input"
                 name="datasetSearch"
@@ -139,7 +141,6 @@ function DatasetBrowser({ onLoadRecord, modelAnswer }: Props) {
               className={`domain-chip${domain === d.id ? " active" : ""}`}
               onClick={() => setDomain(d.id)}
             >
-              <span>{d.icon}</span>
               <span>{d.label}</span>
               {domain === d.id && <span className="chip-count">{filtered.length}</span>}
             </button>
@@ -152,7 +153,6 @@ function DatasetBrowser({ onLoadRecord, modelAnswer }: Props) {
         <div className="gold-eval-deck">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 20 }}>⚖️</span>
               <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "16px", color: "var(--text-main)" }}>
                 Ground Truth Evaluation Benchmark
               </div>
@@ -177,7 +177,7 @@ function DatasetBrowser({ onLoadRecord, modelAnswer }: Props) {
               <div className="eval-col-header">
                 <span>Verified Gold Response</span>
                 <span className="quality-badge">
-                  ★ Score {(activeRecord.quality_score * 100).toFixed(0)}%
+                  Score {(activeRecord.quality_score * 100).toFixed(0)}%
                 </span>
               </div>
               <div className="eval-col-content">

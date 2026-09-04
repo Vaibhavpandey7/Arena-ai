@@ -13,6 +13,7 @@ interface CompareRequestBody {
   systemPrompt?: string;
   useTools?: boolean;
   modelSystemPrompts?: Record<string, string>;
+  modelCustomEndpoints?: Record<string, { baseUrl?: string; apiKey?: string }>;
 }
 
 interface CompareResult {
@@ -32,7 +33,8 @@ async function runOneModel(
   prompt: string,
   systemPrompt: string | undefined,
   useTools: boolean,
-  modelList: Awaited<ReturnType<typeof listModels>>
+  modelList: Awaited<ReturnType<typeof listModels>>,
+  customEndpoint?: { baseUrl?: string; apiKey?: string }
 ): Promise<CompareResult> {
   const start = Date.now();
   const messages: ChatMessage[] = [{ role: "user", content: prompt }];
@@ -50,6 +52,7 @@ async function runOneModel(
         messages,
         tools,
         systemPrompt,
+        customEndpoint,
       });
 
       if (res.usage) {
@@ -122,7 +125,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { models, prompt, systemPrompt, useTools, modelSystemPrompts } = body;
+  const { models, prompt, systemPrompt, useTools, modelSystemPrompts, modelCustomEndpoints } = body;
 
   if (!models || models.length === 0 || !prompt) {
     return NextResponse.json(
@@ -149,7 +152,8 @@ export async function POST(req: NextRequest) {
         prompt,
         modelSystemPrompts?.[modelId] ?? systemPrompt,
         useTools ?? false,
-        modelList
+        modelList,
+        modelCustomEndpoints?.[modelId]
       )
     )
   );
