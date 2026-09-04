@@ -34,3 +34,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# AI Arena — runtime data lake (gitignored; seed data in data/seed/ is committed)
+/data/lake/
