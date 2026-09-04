@@ -25,9 +25,9 @@ import {
 } from "./dil-schema";
 
 // ── Environment detection ─────────────────────────────────────────────────────
-const USE_KV = !!(
-  process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN
-);
+const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
+const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
+const USE_KV = !!(REDIS_URL && REDIS_TOKEN);
 
 const KV_LAKE_KEY = "ai-arena:lake:records";
 const KV_DEDUP_KEY = "ai-arena:lake:dedup"; // hash → id map
@@ -85,27 +85,40 @@ function appendToLakeFile(record: DILRecord) {
   writeFileSync(filePath, JSON.stringify(existing, null, 2), "utf-8");
 }
 
-// ── KV helpers (Vercel production) ───────────────────────────────────────────
+// ── Upstash Redis / Vercel KV helpers (Production) ───────────────────────────
+let _redis: import("@upstash/redis").Redis | null = null;
+
+async function getRedis() {
+  if (!_redis) {
+    const { Redis } = await import("@upstash/redis");
+    _redis = new Redis({
+      url: REDIS_URL!,
+      token: REDIS_TOKEN!,
+    });
+  }
+  return _redis;
+}
+
 async function loadLakeFromKV(): Promise<DILRecord[]> {
-  const { kv } = await import("@vercel/kv");
-  return (await kv.get<DILRecord[]>(KV_LAKE_KEY)) ?? [];
+  const redis = await getRedis();
+  return (await redis.get<DILRecord[]>(KV_LAKE_KEY)) ?? [];
 }
 
 async function appendToKV(record: DILRecord): Promise<void> {
-  const { kv } = await import("@vercel/kv");
-  const existing = (await kv.get<DILRecord[]>(KV_LAKE_KEY)) ?? [];
+  const redis = await getRedis();
+  const existing = (await redis.get<DILRecord[]>(KV_LAKE_KEY)) ?? [];
   existing.push(record);
-  await kv.set(KV_LAKE_KEY, existing);
+  await redis.set(KV_LAKE_KEY, existing);
 }
 
 async function getKVDedupMap(): Promise<Record<string, string>> {
-  const { kv } = await import("@vercel/kv");
-  return (await kv.get<Record<string, string>>(KV_DEDUP_KEY)) ?? {};
+  const redis = await getRedis();
+  return (await redis.get<Record<string, string>>(KV_DEDUP_KEY)) ?? {};
 }
 
 async function setKVDedupMap(map: Record<string, string>): Promise<void> {
-  const { kv } = await import("@vercel/kv");
-  await kv.set(KV_DEDUP_KEY, map);
+  const redis = await getRedis();
+  await redis.set(KV_DEDUP_KEY, map);
 }
 
 // ── Unified record loader ─────────────────────────────────────────────────────
