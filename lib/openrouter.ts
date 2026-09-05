@@ -208,6 +208,22 @@ export async function listModels(): Promise<NormalizedModel[]> {
   }
 }
 
+function formatEndpointUrl(rawUrl: string): string {
+  let trimmed = rawUrl.trim().replace(/\/$/, "");
+  // Replace localhost with 127.0.0.1 to avoid IPv6 resolution issues (ECONNREFUSED) on local services
+  trimmed = trimmed.replace(/^http:\/\/localhost(?=[:/]|$)/i, "http://127.0.0.1");
+
+  // If already ends with /chat/completions, return as is
+  if (trimmed.endsWith("/chat/completions")) return trimmed;
+
+  // Ollama default port 11434 requires /v1
+  if (trimmed.includes(":11434") && !trimmed.endsWith("/v1")) {
+    trimmed = `${trimmed}/v1`;
+  }
+
+  return `${trimmed}/chat/completions`;
+}
+
 // ── Non-streaming chat (used by /api/compare) ─────────────────────────────────
 
 export async function chatCompletion(params: ChatParams): Promise<ChatResponse> {
@@ -227,8 +243,7 @@ export async function chatCompletion(params: ChatParams): Promise<ChatResponse> 
 
   let endpointUrl = `${OR_BASE}/chat/completions`;
   if (params.customEndpoint?.baseUrl) {
-    const trimmed = params.customEndpoint.baseUrl.trim().replace(/\/$/, "");
-    endpointUrl = trimmed.endsWith("/chat/completions") ? trimmed : `${trimmed}/chat/completions`;
+    endpointUrl = formatEndpointUrl(params.customEndpoint.baseUrl);
   }
 
   const headers: Record<string, string> = params.customEndpoint?.baseUrl
@@ -238,11 +253,16 @@ export async function chatCompletion(params: ChatParams): Promise<ChatResponse> 
       }
     : orHeaders();
 
-  const res = await fetch(endpointUrl, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-  });
+  let res: Response;
+  try {
+    res = await fetch(endpointUrl, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+    });
+  } catch (err) {
+    throw new Error(`Unable to connect to model endpoint at ${endpointUrl}. Make sure your local server (e.g. Ollama) is running: ${(err as Error).message}`);
+  }
 
   if (!res.ok) {
     const err = await res.text();
@@ -287,8 +307,7 @@ export async function chatCompletionStream(params: ChatParams): Promise<Response
 
   let endpointUrl = `${OR_BASE}/chat/completions`;
   if (params.customEndpoint?.baseUrl) {
-    const trimmed = params.customEndpoint.baseUrl.trim().replace(/\/$/, "");
-    endpointUrl = trimmed.endsWith("/chat/completions") ? trimmed : `${trimmed}/chat/completions`;
+    endpointUrl = formatEndpointUrl(params.customEndpoint.baseUrl);
   }
 
   const headers: Record<string, string> = params.customEndpoint?.baseUrl
@@ -298,11 +317,15 @@ export async function chatCompletionStream(params: ChatParams): Promise<Response
       }
     : orHeaders();
 
-  return fetch(endpointUrl, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-  });
+  try {
+    return await fetch(endpointUrl, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+    });
+  } catch (err) {
+    throw new Error(`Unable to connect to model endpoint at ${endpointUrl}. Make sure your local server (e.g. Ollama) is running: ${(err as Error).message}`);
+  }
 }
 
 // ── Mock implementations ──────────────────────────────────────────────────────
