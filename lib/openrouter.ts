@@ -154,16 +154,22 @@ export async function listModels(): Promise<NormalizedModel[]> {
     });
     if (localRes.ok) {
       const localData = await localRes.json();
-      localModels = (localData.models ?? []).map((m: { name: string; details?: { context_length?: number } }) => ({
-        id: m.name,
-        name: `${m.name} (Local)`,
-        context_length: m.details?.context_length ?? 32768,
-        pricing: { prompt: 0, completion: 0 },
-        supportsTools: true,
-        supportsReasoning: /deepseek|r1|qwq|nemotron|qwen3/.test(m.name.toLowerCase()),
-        isCustom: true,
-        baseUrl: "http://127.0.0.1:11434/v1",
-      }));
+      localModels = (localData.models ?? []).map((m: { name: string; details?: { context_length?: number; family?: string; families?: string[] }; capabilities?: string[] }) => {
+        const family = m.details?.family || "";
+        const families = m.details?.families || [];
+        const isGemma = family.includes("gemma") || families.some(f => f.includes("gemma")) || m.name.toLowerCase().includes("gemma");
+        const hasTools = !isGemma && (Array.isArray(m.capabilities) ? m.capabilities.includes("tools") : true);
+        return {
+          id: m.name,
+          name: `${m.name} (Local)`,
+          context_length: m.details?.context_length ?? 32768,
+          pricing: { prompt: 0, completion: 0 },
+          supportsTools: hasTools,
+          supportsReasoning: /deepseek|r1|qwq|nemotron|qwen3/.test(m.name.toLowerCase()) || (Array.isArray(m.capabilities) && m.capabilities.includes("thinking")),
+          isCustom: true,
+          baseUrl: "http://127.0.0.1:11434/v1",
+        };
+      });
     }
   } catch {
     // Ignore if Ollama is not active
@@ -233,10 +239,13 @@ export async function chatCompletion(params: ChatParams): Promise<ChatResponse> 
     ? [{ role: "system", content: params.systemPrompt }, ...params.messages]
     : params.messages;
 
+  const isGemmaOrNoTools = params.model.toLowerCase().includes("gemma");
+  const effectiveTools = isGemmaOrNoTools ? undefined : (params.tools ?? undefined);
+
   const body = {
     model: params.model,
     messages,
-    tools: params.tools ?? undefined,
+    tools: effectiveTools,
     temperature: params.temperature ?? 0.7,
     usage: { include: true },
   };
@@ -260,8 +269,34 @@ export async function chatCompletion(params: ChatParams): Promise<ChatResponse> 
       headers,
       body: JSON.stringify(body),
     });
+
+    if (!res.ok && body.tools && (res.status === 400 || res.status === 404)) {
+      const errClone = res.clone();
+      const errText = await errClone.text().catch(() => "");
+      if (errText.toLowerCase().includes("support tools") || errText.toLowerCase().includes("tools")) {
+        const bodyNoTools = { ...body, tools: undefined };
+        res = await fetch(endpointUrl, {
+          method: "POST",
+          headers,
+          body: JSON.stringify(bodyNoTools),
+        });
+      }
+    }
   } catch (err) {
-    throw new Error(`Unable to connect to model endpoint at ${endpointUrl}. Make sure your local server (e.g. Ollama) is running: ${(err as Error).message}`);
+    if (body.tools) {
+      try {
+        const bodyNoTools = { ...body, tools: undefined };
+        res = await fetch(endpointUrl, {
+          method: "POST",
+          headers,
+          body: JSON.stringify(bodyNoTools),
+        });
+      } catch {
+        throw new Error(`Unable to connect to model endpoint at ${endpointUrl}. Make sure your local server (e.g. Ollama) is running: ${(err as Error).message}`);
+      }
+    } else {
+      throw new Error(`Unable to connect to model endpoint at ${endpointUrl}. Make sure your local server (e.g. Ollama) is running: ${(err as Error).message}`);
+    }
   }
 
   if (!res.ok) {
@@ -296,10 +331,13 @@ export async function chatCompletionStream(params: ChatParams): Promise<Response
     ? [{ role: "system", content: params.systemPrompt }, ...params.messages]
     : params.messages;
 
+  const isGemmaOrNoTools = params.model.toLowerCase().includes("gemma");
+  const effectiveTools = isGemmaOrNoTools ? undefined : (params.tools ?? undefined);
+
   const body = {
     model: params.model,
     messages,
-    tools: params.tools ?? undefined,
+    tools: effectiveTools,
     temperature: params.temperature ?? 0.7,
     stream: true,
     usage: { include: true },
@@ -318,12 +356,38 @@ export async function chatCompletionStream(params: ChatParams): Promise<Response
     : orHeaders();
 
   try {
-    return await fetch(endpointUrl, {
+    const res = await fetch(endpointUrl, {
       method: "POST",
       headers,
       body: JSON.stringify(body),
     });
+
+    if (!res.ok && body.tools && (res.status === 400 || res.status === 404)) {
+      const errClone = res.clone();
+      const errText = await errClone.text().catch(() => "");
+      if (errText.toLowerCase().includes("support tools") || errText.toLowerCase().includes("tools")) {
+        const bodyNoTools = { ...body, tools: undefined };
+        return await fetch(endpointUrl, {
+          method: "POST",
+          headers,
+          body: JSON.stringify(bodyNoTools),
+        });
+      }
+    }
+    return res;
   } catch (err) {
+    if (body.tools) {
+      try {
+        const bodyNoTools = { ...body, tools: undefined };
+        return await fetch(endpointUrl, {
+          method: "POST",
+          headers,
+          body: JSON.stringify(bodyNoTools),
+        });
+      } catch {
+        // Fall through to throw
+      }
+    }
     throw new Error(`Unable to connect to model endpoint at ${endpointUrl}. Make sure your local server (e.g. Ollama) is running: ${(err as Error).message}`);
   }
 }
