@@ -222,8 +222,8 @@ function formatEndpointUrl(rawUrl: string): string {
   // If already ends with /chat/completions, return as is
   if (trimmed.endsWith("/chat/completions")) return trimmed;
 
-  // Ollama default port 11434 requires /v1
-  if (trimmed.includes(":11434") && !trimmed.endsWith("/v1")) {
+  // Standardize OpenAI-compatible base URLs to include /v1
+  if (!trimmed.endsWith("/v1")) {
     trimmed = `${trimmed}/v1`;
   }
 
@@ -258,6 +258,7 @@ export async function chatCompletion(params: ChatParams): Promise<ChatResponse> 
   const headers: Record<string, string> = params.customEndpoint?.baseUrl
     ? {
         "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "1",
         ...(params.customEndpoint.apiKey ? { Authorization: `Bearer ${params.customEndpoint.apiKey}` } : {}),
       }
     : orHeaders();
@@ -351,6 +352,7 @@ export async function chatCompletionStream(params: ChatParams): Promise<Response
   const headers: Record<string, string> = params.customEndpoint?.baseUrl
     ? {
         "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "1",
         ...(params.customEndpoint.apiKey ? { Authorization: `Bearer ${params.customEndpoint.apiKey}` } : {}),
       }
     : orHeaders();
