@@ -6,7 +6,7 @@ import ModelSelector from "@/components/ModelSelector";
 import ThinkingStream from "@/components/ThinkingStream";
 import ToolTimeline, { ToolEvent } from "@/components/ToolTimeline";
 import ComparisonTable, { CompareRow } from "@/components/ComparisonTable";
-import DatasetBrowser from "@/components/DatasetBrowser";
+import DatasetBrowser, { DILRecord } from "@/components/DatasetBrowser";
 import PromptHistorySidebar, { saveToHistory } from "@/components/PromptHistorySidebar";
 
 type ViewMode = "single" | "compare" | "dataset";
@@ -45,7 +45,11 @@ export default function Page() {
   const [compareError, setCompareError] = useState("");
   const [customEndpoints, setCustomEndpoints] = useState<Record<string, { baseUrl: string; apiKey?: string }>>({});
 
+  const [activeRecord, setActiveRecord] = useState<DILRecord | null>(null);
+
   const abortRef = useRef<AbortController | null>(null);
+  const answerPanelRef = useRef<HTMLDivElement | null>(null);
+  const hasScrolledRef = useRef(false);
 
   const runSingle = useCallback(async () => {
     if (!prompt.trim() || selectedModels.length === 0) return;
@@ -58,6 +62,7 @@ export default function Page() {
     setToolEvents([]);
     setUsage(null);
     setError("");
+    hasScrolledRef.current = false;
     abortRef.current = new AbortController();
 
     try {
@@ -102,6 +107,12 @@ export default function Page() {
               break;
             case "content":
               setAnswer((prev) => prev + (event.delta as string));
+              if (!hasScrolledRef.current) {
+                hasScrolledRef.current = true;
+                setTimeout(() => {
+                  answerPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }, 40);
+              }
               break;
             case "tool_call":
               setToolEvents((prev) => [
@@ -181,6 +192,78 @@ export default function Page() {
       setIsComparing(false);
     }
   }, [prompt, systemPrompt, useTools, selectedModels, modelSystemPrompts, customEndpoints]);
+
+  const exportSingleBenchmark = useCallback((format: "csv" | "json") => {
+    if (!answer) return;
+    const download = (content: string, filename: string, mime: string) => {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([content], { type: mime }));
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    };
+
+    const model = selectedModels[0] ?? "unknown-model";
+    const ts = new Date().toISOString();
+
+    if (format === "json") {
+      const payload = {
+        exportedAt: ts,
+        model,
+        prompt,
+        systemPrompt: systemPrompt || undefined,
+        answer,
+        usage: usage || null,
+        groundTruth: activeRecord ? {
+          id: activeRecord.id,
+          domain: activeRecord.domain,
+          split: activeRecord.split,
+          difficulty: activeRecord.difficulty,
+          quality_score: activeRecord.quality_score,
+          question: activeRecord.question,
+          context: activeRecord.context,
+          gold_response: activeRecord.response,
+          evidence: activeRecord.evidence,
+        } : null,
+      };
+      const filename = activeRecord ? `benchmark-${activeRecord.id}-${model.split("/").pop()}.json` : `evaluation-${model.split("/").pop()}.json`;
+      download(JSON.stringify(payload, null, 2), filename, "application/json");
+    } else {
+      const headers = [
+        "record_id",
+        "domain",
+        "split",
+        "model",
+        "question",
+        "model_answer",
+        "gold_response",
+        "gold_quality_score",
+        "evidence",
+        "prompt_tokens",
+        "completion_tokens",
+        "est_cost_usd",
+        "timestamp"
+      ];
+      const row = [
+        activeRecord?.id ?? "N/A",
+        activeRecord?.domain ?? "custom",
+        activeRecord?.split ?? "N/A",
+        model,
+        activeRecord?.question ?? prompt,
+        answer,
+        activeRecord?.response ?? "N/A",
+        activeRecord?.quality_score !== undefined ? (activeRecord.quality_score * 100).toFixed(0) + "%" : "N/A",
+        activeRecord?.evidence ?? "N/A",
+        usage?.prompt_tokens ?? "",
+        usage?.completion_tokens ?? "",
+        usage?.total_cost_usd ?? "",
+        ts
+      ].map((val) => `"${String(val).replace(/"/g, '""')}"`).join(",");
+
+      const filename = activeRecord ? `benchmark-${activeRecord.id}-${model.split("/").pop()}.csv` : `evaluation-${model.split("/").pop()}.csv`;
+      download([headers.join(","), row].join("\n"), filename, "text/csv");
+    }
+  }, [answer, selectedModels, prompt, systemPrompt, usage, activeRecord]);
 
   const handleRun = mode === "single" ? (isRunning ? stopRun : runSingle) : runCompare;
   const isExecuting = isRunning || isComparing;
@@ -441,8 +524,8 @@ export default function Page() {
             )}
 
             {/* Answer Card */}
-            {(answer || (isRunning && reasoning)) && (
-              <div className="answer-panel">
+            {(answer || isRunning) && (
+              <div className="answer-panel" ref={answerPanelRef}>
                 <div className="answer-header">
                   <div className="answer-title-group">
                     <span className="answer-badge">Inference Output</span>
@@ -463,40 +546,147 @@ export default function Page() {
                     </div>
                   )}
                   <div className={isRunning && !answer.endsWith(" ") ? "streaming-active" : ""}>
-                    <ReactMarkdown>{answer}</ReactMarkdown>
+                    {answer ? (
+                      <ReactMarkdown>{answer}</ReactMarkdown>
+                    ) : isRunning ? (
+                      <div style={{ color: "var(--text-subtle)", fontStyle: "italic", display: "flex", alignItems: "center", gap: 8, fontSize: "13px", padding: "8px 0" }}>
+                        <span className="live-dot" /> Generating output…
+                      </div>
+                    ) : null}
                   </div>
                 </div>
 
-                {usage && (
-                  <div className="answer-telemetry-bar">
-                    <div className="telemetry-metrics">
-                      <div className="metric-pill">
-                        <span>Prompt:</span>
-                        <span className="metric-val">{usage.prompt_tokens.toLocaleString()} tok</span>
-                      </div>
-                      <div className="metric-pill">
-                        <span>Completion:</span>
-                        <span className="metric-val">{usage.completion_tokens.toLocaleString()} tok</span>
-                      </div>
-                      {usage.total_cost_usd > 0 && (
+                <div className="answer-telemetry-bar">
+                  <div className="telemetry-metrics">
+                    {usage ? (
+                      <>
                         <div className="metric-pill">
-                          <span>Est. Cost:</span>
-                          <span className="metric-val" style={{ color: "var(--emerald)" }}>
-                            ${usage.total_cost_usd < 0.0001
-                              ? usage.total_cost_usd.toExponential(2)
-                              : usage.total_cost_usd.toFixed(4)}
-                          </span>
+                          <span>Prompt:</span>
+                          <span className="metric-val">{usage.prompt_tokens.toLocaleString()} tok</span>
                         </div>
-                      )}
-                    </div>
+                        <div className="metric-pill">
+                          <span>Completion:</span>
+                          <span className="metric-val">{usage.completion_tokens.toLocaleString()} tok</span>
+                        </div>
+                        {usage.total_cost_usd > 0 && (
+                          <div className="metric-pill">
+                            <span>Est. Cost:</span>
+                            <span className="metric-val" style={{ color: "var(--emerald)" }}>
+                              ${usage.total_cost_usd < 0.0001
+                                ? usage.total_cost_usd.toExponential(2)
+                                : usage.total_cost_usd.toFixed(4)}
+                            </span>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="metric-pill">
+                        <span>Status:</span>
+                        <span className="metric-val">{isRunning ? "Generating…" : "Complete"}</span>
+                      </div>
+                    )}
+                  </div>
 
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <button
+                      className="btn-secondary"
+                      onClick={() => exportSingleBenchmark("csv")}
+                      style={{ fontSize: 11, padding: "4px 10px" }}
+                      disabled={!answer}
+                      title="Export evaluation results to CSV with ground truth"
+                    >
+                      Export CSV
+                    </button>
+                    <button
+                      className="btn-secondary"
+                      onClick={() => exportSingleBenchmark("json")}
+                      style={{ fontSize: 11, padding: "4px 10px" }}
+                      disabled={!answer}
+                      title="Export evaluation results to JSON with ground truth"
+                    >
+                      Export JSON
+                    </button>
                     <button
                       className="btn-secondary"
                       onClick={() => navigator.clipboard.writeText(answer)}
-                      style={{ fontSize: 11 }}
+                      style={{ fontSize: 11, padding: "4px 10px" }}
+                      disabled={!answer}
                     >
                       Copy Output
                     </button>
+                  </div>
+                </div>
+
+                {/* Ground Truth Evaluation Deck when Data Lake record is active */}
+                {activeRecord && (
+                  <div className="ground-truth-panel">
+                    <div className="gt-panel-header">
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                        <span className="brand-tag" style={{ background: "var(--accent-dim)", color: "var(--accent)", borderColor: "var(--accent-border)", fontWeight: 700 }}>
+                          Data Lake Ground Truth
+                        </span>
+                        <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "14px", color: "var(--text-main)" }}>
+                          {activeRecord.id}
+                        </span>
+                        <span className="brand-tag">{activeRecord.domain.replace(/_/g, " ")}</span>
+                        <span className="quality-badge">{(activeRecord.quality_score * 100).toFixed(0)}% Gold Quality</span>
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <button
+                          className="btn-secondary"
+                          onClick={() => setMode("dataset")}
+                          style={{ fontSize: 11, padding: "4px 10px" }}
+                        >
+                          View in Data Lake
+                        </button>
+                        <button
+                          className="btn-secondary"
+                          onClick={() => setActiveRecord(null)}
+                          style={{ fontSize: 11, padding: "4px 8px" }}
+                          title="Unlink ground truth record"
+                        >
+                          ✕ Unlink
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="gt-panel-body">
+                      <div className="gt-side-by-side">
+                        <div className="gt-col">
+                          <div className="gt-col-title">
+                            <span>Verified Gold Standard Response</span>
+                            <span className="quality-badge">Verified Expert</span>
+                          </div>
+                          <div className="gt-col-text">
+                            {activeRecord.response}
+                          </div>
+                          {activeRecord.evidence && (
+                            <div className="gt-evidence-box">
+                              <span style={{ fontWeight: 700, color: "var(--text-subtle)", fontSize: 11, textTransform: "uppercase" }}>Regulatory Evidence:</span>{" "}
+                              <span style={{ fontStyle: "italic" }}>"{activeRecord.evidence}"</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Optional quick link if no ground truth is active */}
+                {!activeRecord && answer && !isRunning && (
+                  <div className="gt-link-prompt" onClick={() => setMode("dataset")}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span className="brand-tag" style={{ background: "var(--cyan-dim)", color: "var(--cyan-light)", borderColor: "var(--cyan-border)" }}>
+                        Data Lake Benchmark
+                      </span>
+                      <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                        Compare this model output against 38 verified gold standard records in the Data Lake.
+                      </span>
+                    </div>
+                    <span style={{ fontSize: 12, color: "var(--accent)", fontWeight: 600 }}>
+                      Open Data Lake ↵
+                    </span>
                   </div>
                 )}
               </div>
@@ -541,6 +731,7 @@ export default function Page() {
                 onSystemPromptChange={(model, value) =>
                   setModelSystemPrompts((prev) => ({ ...prev, [model]: value }))
                 }
+                activeRecord={activeRecord}
               />
             )}
           </div>
@@ -549,11 +740,14 @@ export default function Page() {
         {/* ── Insurance Data Lake Studio Workspace ─────────────────────── */}
         {mode === "dataset" && (
           <DatasetBrowser
-            onLoadRecord={(p) => {
+            onLoadRecord={(p, record) => {
               setPrompt(p);
+              if (record) setActiveRecord(record);
               setMode("single");
             }}
             modelAnswer={latestModelAnswer}
+            activeRecord={activeRecord}
+            onSelectRecord={(rec) => setActiveRecord(rec)}
           />
         )}
       </main>

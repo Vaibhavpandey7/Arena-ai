@@ -112,17 +112,6 @@ function ModelSelectorComponent({ mode, selected, onChange, onCustomEndpointsCha
       });
   }, []);
 
-  // Notify parent whenever customModels change
-  useEffect(() => {
-    if (onCustomEndpointsChange) {
-      const endpoints: Record<string, { baseUrl: string; apiKey?: string }> = {};
-      customModels.forEach((cm) => {
-        endpoints[cm.id] = { baseUrl: cm.baseUrl, apiKey: cm.apiKey || undefined };
-      });
-      onCustomEndpointsChange(endpoints);
-    }
-  }, [customModels, onCustomEndpointsChange]);
-
   // Combine custom models with API models
   const allModels = useMemo<NormalizedModel[]>(() => {
     const customNormalized: NormalizedModel[] = customModels.map((cm) => ({
@@ -139,6 +128,19 @@ function ModelSelectorComponent({ mode, selected, onChange, onCustomEndpointsCha
 
     return [...customNormalized, ...apiModels];
   }, [customModels, apiModels]);
+
+  // Notify parent whenever customModels or local models with endpoints change
+  useEffect(() => {
+    if (onCustomEndpointsChange) {
+      const endpoints: Record<string, { baseUrl: string; apiKey?: string }> = {};
+      allModels.forEach((m) => {
+        if (m.baseUrl) {
+          endpoints[m.id] = { baseUrl: m.baseUrl, apiKey: m.apiKey || undefined };
+        }
+      });
+      onCustomEndpointsChange(endpoints);
+    }
+  }, [allModels, onCustomEndpointsChange]);
 
   // Reset display limit when filter or search changes
   useEffect(() => {
@@ -375,13 +377,13 @@ function ModelSelectorComponent({ mode, selected, onChange, onCustomEndpointsCha
             >
               Tools
             </button>
-            {customModels.length > 0 && (
+            {allModels.some((m) => m.isCustom) && (
               <button
                 className={`domain-chip${activeFilter === "custom" ? " active" : ""}`}
                 onClick={() => setActiveFilter("custom")}
                 style={{ padding: "4px 10px", fontSize: "11px", color: activeFilter === "custom" ? "#fff" : "#fbbf24" }}
               >
-                Custom ({customModels.length})
+                Your Models ({allModels.filter((m) => m.isCustom).length})
               </button>
             )}
             <button

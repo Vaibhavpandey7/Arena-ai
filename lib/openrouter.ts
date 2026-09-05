@@ -8,6 +8,9 @@ export interface NormalizedModel {
   pricing: { prompt: number; completion: number };
   supportsTools: boolean;
   supportsReasoning: boolean;
+  isCustom?: boolean;
+  baseUrl?: string;
+  apiKey?: string;
 }
 
 export interface ChatMessage {
@@ -143,39 +146,66 @@ const MOCK_MODELS: NormalizedModel[] = [
 ];
 
 export async function listModels(): Promise<NormalizedModel[]> {
-  if (isMock) return MOCK_MODELS;
-
-  if (_modelCache && Date.now() - _modelCacheAt < MODEL_CACHE_TTL) {
-    return _modelCache;
+  // Auto-detect local Ollama models if running locally
+  let localModels: NormalizedModel[] = [];
+  try {
+    const localRes = await fetch("http://127.0.0.1:11434/api/tags", {
+      signal: AbortSignal.timeout(1200),
+    });
+    if (localRes.ok) {
+      const localData = await localRes.json();
+      localModels = (localData.models ?? []).map((m: { name: string; details?: { context_length?: number } }) => ({
+        id: m.name,
+        name: `${m.name} (Local)`,
+        context_length: m.details?.context_length ?? 32768,
+        pricing: { prompt: 0, completion: 0 },
+        supportsTools: true,
+        supportsReasoning: /deepseek|r1|qwq|nemotron|qwen3/.test(m.name.toLowerCase()),
+        isCustom: true,
+        baseUrl: "http://127.0.0.1:11434/v1",
+      }));
+    }
+  } catch {
+    // Ignore if Ollama is not active
   }
 
-  const res = await fetch(`${OR_BASE}/models`, { headers: orHeaders() });
-  if (!res.ok) throw new Error(`OpenRouter models fetch failed: ${res.status}`);
-  const json = await res.json();
+  if (isMock) return [...localModels, ...MOCK_MODELS];
 
-  const models: NormalizedModel[] = (json.data ?? []).map((m: Record<string, unknown>) => {
-    const params: string[] = (m.supported_parameters as string[]) ?? [];
-    const id = String(m.id ?? "");
-    const supportsReasoning =
-      params.includes("reasoning") ||
-      /r1|qwq|thinking/.test(id.toLowerCase());
-    return {
-      id,
-      name: String(m.name ?? id),
-      context_length: Number(m.context_length ?? 4096),
-      pricing: {
-        prompt: Number((m.pricing as Record<string, unknown>)?.prompt ?? 0),
-        completion: Number((m.pricing as Record<string, unknown>)?.completion ?? 0),
-      },
-      supportsTools:
-        params.includes("tools") || params.includes("tool_choice"),
-      supportsReasoning,
-    };
-  });
+  if (_modelCache && Date.now() - _modelCacheAt < MODEL_CACHE_TTL) {
+    return [...localModels, ..._modelCache];
+  }
 
-  _modelCache = models;
-  _modelCacheAt = Date.now();
-  return models;
+  try {
+    const res = await fetch(`${OR_BASE}/models`, { headers: orHeaders() });
+    if (!res.ok) throw new Error(`OpenRouter models fetch failed: ${res.status}`);
+    const json = await res.json();
+
+    const models: NormalizedModel[] = (json.data ?? []).map((m: Record<string, unknown>) => {
+      const params: string[] = (m.supported_parameters as string[]) ?? [];
+      const id = String(m.id ?? "");
+      const supportsReasoning =
+        params.includes("reasoning") ||
+        /r1|qwq|thinking/.test(id.toLowerCase());
+      return {
+        id,
+        name: String(m.name ?? id),
+        context_length: Number(m.context_length ?? 4096),
+        pricing: {
+          prompt: Number((m.pricing as Record<string, unknown>)?.prompt ?? 0),
+          completion: Number((m.pricing as Record<string, unknown>)?.completion ?? 0),
+        },
+        supportsTools:
+          params.includes("tools") || params.includes("tool_choice"),
+        supportsReasoning,
+      };
+    });
+
+    _modelCache = models;
+    _modelCacheAt = Date.now();
+    return [...localModels, ...models];
+  } catch {
+    return [...localModels, ...MOCK_MODELS];
+  }
 }
 
 // ── Non-streaming chat (used by /api/compare) ─────────────────────────────────

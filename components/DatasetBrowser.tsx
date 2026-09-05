@@ -28,18 +28,21 @@ const DOMAINS: { id: string; label: string }[] = [
 const SPLITS = ["", "train", "validation", "test"];
 
 interface Props {
-  onLoadRecord: (prompt: string) => void;
+  onLoadRecord: (prompt: string, record?: DILRecord) => void;
   modelAnswer?: string;
-  activeRecordId?: string;
+  activeRecord?: DILRecord | null;
+  onSelectRecord?: (record: DILRecord) => void;
 }
 
-function DatasetBrowser({ onLoadRecord, modelAnswer }: Props) {
+function DatasetBrowser({ onLoadRecord, modelAnswer, activeRecord: externalActiveRecord, onSelectRecord }: Props) {
   const [records, setRecords] = useState<DILRecord[]>([]);
   const [domain, setDomain] = useState("");
   const [split, setSplit] = useState("");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
-  const [activeRecord, setActiveRecord] = useState<DILRecord | null>(null);
+  const [internalActiveRecord, setInternalActiveRecord] = useState<DILRecord | null>(null);
+
+  const activeRecord = externalActiveRecord !== undefined ? externalActiveRecord : internalActiveRecord;
 
   useEffect(() => {
     loadRecords();
@@ -63,11 +66,62 @@ function DatasetBrowser({ onLoadRecord, modelAnswer }: Props) {
   }
 
   function handleSelect(record: DILRecord) {
-    setActiveRecord(record);
+    setInternalActiveRecord(record);
+    onSelectRecord?.(record);
     const prompt = record.context
       ? `Context:\n${record.context}\n\nQuestion: ${record.question}`
       : record.question;
-    onLoadRecord(prompt);
+    onLoadRecord(prompt, record);
+  }
+
+  function download(content: string, filename: string, mime: string) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([content], { type: mime }));
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function exportBenchmarkCSV() {
+    if (!activeRecord) return;
+    const headers = [
+      "record_id",
+      "domain",
+      "split",
+      "difficulty",
+      "gold_quality_score",
+      "question",
+      "context",
+      "model_answer",
+      "gold_response",
+      "evidence",
+      "exported_at"
+    ];
+    const row = [
+      activeRecord.id,
+      activeRecord.domain,
+      activeRecord.split,
+      activeRecord.difficulty,
+      (activeRecord.quality_score * 100).toFixed(0) + "%",
+      activeRecord.question,
+      activeRecord.context ?? "",
+      modelAnswer ?? "",
+      activeRecord.response,
+      activeRecord.evidence ?? "",
+      new Date().toISOString()
+    ].map((val) => `"${String(val).replace(/"/g, '""')}"`).join(",");
+
+    download([headers.join(","), row].join("\n"), `benchmark-${activeRecord.id}-eval.csv`, "text/csv");
+  }
+
+  function exportBenchmarkJSON() {
+    if (!activeRecord) return;
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      record: activeRecord,
+      modelAnswer: modelAnswer || null,
+    };
+    download(JSON.stringify(payload, null, 2), `benchmark-${activeRecord.id}-eval.json`, "application/json");
   }
 
   const filtered = records.filter((r) =>
@@ -138,17 +192,42 @@ function DatasetBrowser({ onLoadRecord, modelAnswer }: Props) {
       </div>
 
       {/* Gold Evaluation Side-by-Side Comparator */}
-      {activeRecord && modelAnswer && (
+      {activeRecord && (
         <div className="gold-eval-deck">
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "16px", color: "var(--text-main)" }}>
                 Ground Truth Evaluation Benchmark
               </div>
+              <span className="brand-tag" style={{ background: "var(--accent-dim)", color: "var(--accent)", borderColor: "var(--accent-border)", fontWeight: 700 }}>
+                Active Record: {activeRecord.id}
+              </span>
+              <span className="brand-tag">{activeRecord.domain.replace(/_/g, " ")}</span>
             </div>
-            <span className="brand-tag" style={{ background: "var(--accent-dim)", color: "var(--accent)", borderColor: "var(--accent-border)" }}>
-              Active Record: {activeRecord.id}
-            </span>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <button
+                className="btn-secondary"
+                onClick={exportBenchmarkCSV}
+                style={{ fontSize: "11px", padding: "5px 12px" }}
+              >
+                Export CSV
+              </button>
+              <button
+                className="btn-secondary"
+                onClick={exportBenchmarkJSON}
+                style={{ fontSize: "11px", padding: "5px 12px" }}
+              >
+                Export JSON
+              </button>
+              <button
+                className="btn-primary"
+                onClick={() => handleSelect(activeRecord)}
+                style={{ fontSize: "11px", padding: "5px 14px" }}
+              >
+                {modelAnswer ? "Re-evaluate in Arena" : "Run in Single Arena"}
+              </button>
+            </div>
           </div>
 
           <div className="gold-eval-grid">
@@ -158,7 +237,13 @@ function DatasetBrowser({ onLoadRecord, modelAnswer }: Props) {
                 <span className="brand-tag">Evaluated Model</span>
               </div>
               <div className="eval-col-content">
-                {modelAnswer}
+                {modelAnswer ? (
+                  <div style={{ whiteSpace: "pre-wrap" }}>{modelAnswer}</div>
+                ) : (
+                  <div style={{ color: "var(--text-subtle)", fontStyle: "italic", fontSize: "13px", padding: "12px 0" }}>
+                    Inference not yet run for this record. Click "Run Evaluation" in the Single Arena to stream model output here.
+                  </div>
+                )}
               </div>
             </div>
 

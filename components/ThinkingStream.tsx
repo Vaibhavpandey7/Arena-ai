@@ -7,7 +7,7 @@ interface Props {
 }
 
 export default function ThinkingStream({ text, isRunning }: Props) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
 
@@ -27,7 +27,7 @@ export default function ThinkingStream({ text, isRunning }: Props) {
   }
 
   return (
-    <div className={`neural-terminal${isRunning ? " active" : ""}`}>
+    <div className={`neural-terminal${isRunning ? " active" : ""}${open ? " is-open" : ""}`}>
       <div className="terminal-header" onClick={() => setOpen((o) => !o)}>
         <div className="terminal-title-group">
           <span className="neural-badge">Neural Reasoning Trace</span>

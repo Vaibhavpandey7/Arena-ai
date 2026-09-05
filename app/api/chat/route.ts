@@ -59,8 +59,16 @@ export async function POST(req: NextRequest) {
             customEndpoint,
           });
 
-          if (!orResponse.ok && !orResponse.body) {
-            send({ type: "error", error: `OpenRouter returned ${orResponse.status}` });
+          if (!orResponse.ok) {
+            const errText = await orResponse.text();
+            let errMsg = `Inference failed (${orResponse.status})`;
+            try {
+              const errJson = JSON.parse(errText);
+              errMsg = errJson.error?.message || errJson.message || errMsg;
+            } catch {
+              if (errText) errMsg = errText;
+            }
+            send({ type: "error", error: errMsg });
             break;
           }
 

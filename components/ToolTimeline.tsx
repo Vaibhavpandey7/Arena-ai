@@ -13,12 +13,12 @@ interface Props {
 }
 
 export default function ToolTimeline({ events }: Props) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
 
   if (events.length === 0) return null;
 
   return (
-    <div className="tool-chronometer">
+    <div className={`tool-chronometer${open ? " is-open" : ""}`}>
       <div className="tool-header" onClick={() => setOpen((o) => !o)}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "14px", color: "var(--cyan-light)" }}>

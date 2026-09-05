@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
+import { DILRecord } from "./DatasetBrowser";
 
 export interface CompareRow {
   model: string;
@@ -18,9 +19,10 @@ interface Props {
   results: CompareRow[];
   modelSystemPrompts: Record<string, string>;
   onSystemPromptChange: (model: string, value: string) => void;
+  activeRecord?: DILRecord | null;
 }
 
-function ComparisonTable({ results, modelSystemPrompts, onSystemPromptChange }: Props) {
+function ComparisonTable({ results, modelSystemPrompts, onSystemPromptChange, activeRecord }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [copiedIndex, setCopiedIndex] = useState<string | null>(null);
 
@@ -39,20 +41,82 @@ function ComparisonTable({ results, modelSystemPrompts, onSystemPromptChange }: 
   }
 
   function exportCSV() {
-    const headers = ["model", "ok", "latencyMs", "promptTokens", "completionTokens", "estCostUsd", "toolCallCount", "answer", "error"];
-    const rows = results.map((r) =>
-      headers.map((h) => {
-        const val = (r as unknown as Record<string, unknown>)[h] ?? "";
-        const s = String(val).replace(/"/g, '""');
-        return `"${s}"`;
-      }).join(",")
-    );
+    let headers: string[];
+    let rows: string[];
+
+    if (activeRecord) {
+      headers = [
+        "record_id",
+        "domain",
+        "split",
+        "gold_quality_score",
+        "evidence",
+        "question",
+        "gold_response",
+        "model",
+        "ok",
+        "latency_ms",
+        "prompt_tokens",
+        "completion_tokens",
+        "est_cost_usd",
+        "tool_calls",
+        "model_answer",
+        "error"
+      ];
+      rows = results.map((r) => {
+        const vals = [
+          activeRecord.id,
+          activeRecord.domain,
+          activeRecord.split,
+          (activeRecord.quality_score * 100).toFixed(0) + "%",
+          activeRecord.evidence ?? "",
+          activeRecord.question,
+          activeRecord.response,
+          r.model,
+          r.ok ? "true" : "false",
+          r.latencyMs,
+          r.promptTokens,
+          r.completionTokens,
+          r.estCostUsd,
+          r.toolCallCount,
+          r.answer ?? "",
+          r.error ?? ""
+        ];
+        return vals.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",");
+      });
+    } else {
+      headers = ["model", "ok", "latencyMs", "promptTokens", "completionTokens", "estCostUsd", "toolCallCount", "answer", "error"];
+      rows = results.map((r) =>
+        headers.map((h) => {
+          const val = (r as unknown as Record<string, unknown>)[h] ?? "";
+          const s = String(val).replace(/"/g, '""');
+          return `"${s}"`;
+        }).join(",")
+      );
+    }
     const csv = [headers.join(","), ...rows].join("\n");
-    download(csv, "ai-arena-comparison.csv", "text/csv");
+    const filename = activeRecord ? `benchmark-${activeRecord.id}-comparison.csv` : "ai-arena-comparison.csv";
+    download(csv, filename, "text/csv");
   }
 
   function exportJSON() {
-    download(JSON.stringify(results, null, 2), "ai-arena-comparison.json", "application/json");
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      activeRecord: activeRecord ? {
+        id: activeRecord.id,
+        domain: activeRecord.domain,
+        split: activeRecord.split,
+        difficulty: activeRecord.difficulty,
+        quality_score: activeRecord.quality_score,
+        question: activeRecord.question,
+        context: activeRecord.context,
+        response: activeRecord.response,
+        evidence: activeRecord.evidence,
+      } : null,
+      results,
+    };
+    const filename = activeRecord ? `benchmark-${activeRecord.id}-comparison.json` : "ai-arena-comparison.json";
+    download(JSON.stringify(payload, null, 2), filename, "application/json");
   }
 
   function download(content: string, filename: string, mime: string) {
@@ -72,12 +136,55 @@ function ComparisonTable({ results, modelSystemPrompts, onSystemPromptChange }: 
 
   return (
     <div className="compare-container">
+      {/* Ground Truth Reference Banner if evaluating against Data Lake */}
+      {activeRecord && (
+        <div className="compare-ground-truth-card">
+          <div className="gt-header">
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <span className="brand-tag" style={{ background: "var(--accent-dim)", color: "var(--accent)", borderColor: "var(--accent-border)", fontWeight: 700 }}>
+                Data Lake Ground Truth
+              </span>
+              <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "15px", color: "var(--text-main)" }}>
+                {activeRecord.id}
+              </span>
+              <span className="brand-tag">{activeRecord.domain.replace(/_/g, " ")}</span>
+              <span className="quality-badge">{(activeRecord.quality_score * 100).toFixed(0)}% Quality</span>
+            </div>
+            <div className="export-actions">
+              <button className="btn-secondary" onClick={exportCSV} style={{ fontSize: 11, padding: "5px 12px" }}>
+                Export Benchmark CSV
+              </button>
+              <button className="btn-secondary" onClick={exportJSON} style={{ fontSize: 11, padding: "5px 12px" }}>
+                Export Benchmark JSON
+              </button>
+            </div>
+          </div>
+
+          <div className="gt-body">
+            <div className="gt-question-box">
+              <span className="gt-label">Benchmark Question</span>
+              <div style={{ fontSize: "13px", color: "var(--text-main)", fontWeight: 500 }}>{activeRecord.question}</div>
+            </div>
+
+            <div className="gt-response-box">
+              <span className="gt-label">Verified Gold Standard Response</span>
+              <div style={{ fontSize: "13px", color: "var(--text-muted)", whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{activeRecord.response}</div>
+              {activeRecord.evidence && (
+                <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--border-subtle)", fontSize: "12px", color: "var(--cyan-light)" }}>
+                  <b>Regulatory Evidence:</b> {activeRecord.evidence}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Top Leaderboard Benchmark Cards */}
       {successRows.length > 1 && (
         <div className="compare-leaderboard">
           {fastestRow && (
             <div className="leader-card">
-              <div className="leader-icon fastest">⚡</div>
+              <div className="leader-icon fastest" style={{ fontWeight: 800, fontSize: 11, letterSpacing: '0.05em' }}>SPD</div>
               <div className="leader-meta">
                 <span className="leader-label">Speed Champion</span>
                 <span className="leader-value">{fastestRow.model.split("/").pop()}</span>
@@ -88,7 +195,7 @@ function ComparisonTable({ results, modelSystemPrompts, onSystemPromptChange }: 
 
           {cheapestRow && (
             <div className="leader-card">
-              <div className="leader-icon cheapest">💎</div>
+              <div className="leader-icon cheapest" style={{ fontWeight: 800, fontSize: 11, letterSpacing: '0.05em' }}>VAL</div>
               <div className="leader-meta">
                 <span className="leader-label">Value Leader</span>
                 <span className="leader-value">{cheapestRow.model.split("/").pop()}</span>
@@ -100,8 +207,8 @@ function ComparisonTable({ results, modelSystemPrompts, onSystemPromptChange }: 
           )}
 
           <div className="leader-card">
-            <div className="leader-icon" style={{ background: "var(--violet-dim)", color: "var(--violet)" }}>
-              📊
+            <div className="leader-icon" style={{ background: "var(--violet-dim)", color: "var(--violet)", fontWeight: 800, fontSize: 11, letterSpacing: '0.05em' }}>
+              ALL
             </div>
             <div className="leader-meta">
               <span className="leader-label">Benchmark Depth</span>
