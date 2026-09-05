@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 
 export interface NormalizedModel {
   id: string;
@@ -43,7 +43,6 @@ const FEATURED_IDS = [
   "mistralai/mistral-large-2407",
 ];
 
-const INITIAL_LIMIT = 8;
 const CUSTOM_STORAGE_KEY = "ai-arena-custom-models";
 
 const PRESETS = [
@@ -54,6 +53,24 @@ const PRESETS = [
   { label: "vLLM / TGI", baseUrl: "http://localhost:8000/v1", sampleId: "meta-llama/Meta-Llama-3-8B-Instruct", needsKey: false },
 ];
 
+const COMPARE_PRESETS = [
+  {
+    label: "⚡ Frontier Trio",
+    models: ["deepseek/deepseek-r1", "openai/gpt-4o", "anthropic/claude-3.5-sonnet"],
+    desc: "Top frontier reasoning & tool models",
+  },
+  {
+    label: "💸 Free Models",
+    models: ["google/gemini-2.0-flash-exp:free", "meta-llama/llama-3.3-70b-instruct:free", "deepseek/deepseek-r1:free"],
+    desc: "Zero-cost high capability models",
+  },
+  {
+    label: "🧮 Tool Masters",
+    models: ["openai/gpt-4o", "anthropic/claude-3-haiku", "google/gemini-2.0-flash-001"],
+    desc: "Fast & reliable tool executors",
+  },
+];
+
 function isModelFree(m: NormalizedModel) {
   if (m.isCustom) return false;
   return (
@@ -62,16 +79,22 @@ function isModelFree(m: NormalizedModel) {
   );
 }
 
+function formatCtx(n: number) {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1000) return `${Math.round(n / 1000)}k`;
+  return String(n);
+}
+
 function ModelSelectorComponent({ mode, selected, onChange, onCustomEndpointsChange }: Props) {
   const [apiModels, setApiModels] = useState<NormalizedModel[]>([]);
   const [customModels, setCustomModels] = useState<CustomModelConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<"featured" | "free" | "reasoning" | "tools" | "custom" | "all">("featured");
-  const [displayLimit, setDisplayLimit] = useState(INITIAL_LIMIT);
+  const [popoverOpen, setPopoverOpen] = useState(false);
   const [error, setError] = useState("");
 
-  // Modal state
+  // Modal state for custom model
   const [showModal, setShowModal] = useState(false);
   const [customName, setCustomName] = useState("");
   const [customId, setCustomId] = useState("");
@@ -82,6 +105,9 @@ function ModelSelectorComponent({ mode, selected, onChange, onCustomEndpointsCha
   const [customReasoning, setCustomReasoning] = useState(false);
   const [showKeyText, setShowKeyText] = useState(false);
   const [formError, setFormError] = useState("");
+
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Load custom models from localStorage on mount
   useEffect(() => {
@@ -112,6 +138,22 @@ function ModelSelectorComponent({ mode, selected, onChange, onCustomEndpointsCha
       });
   }, []);
 
+  // Close popover on click outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        setPopoverOpen(false);
+      }
+    }
+    if (popoverOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      setTimeout(() => searchInputRef.current?.focus(), 50);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [popoverOpen]);
+
   // Combine custom models with API models
   const allModels = useMemo<NormalizedModel[]>(() => {
     const customNormalized: NormalizedModel[] = customModels.map((cm) => ({
@@ -129,7 +171,7 @@ function ModelSelectorComponent({ mode, selected, onChange, onCustomEndpointsCha
     return [...customNormalized, ...apiModels];
   }, [customModels, apiModels]);
 
-  // Notify parent whenever customModels or local models with endpoints change
+  // Notify parent whenever custom endpoints change
   useEffect(() => {
     if (onCustomEndpointsChange) {
       const endpoints: Record<string, { baseUrl: string; apiKey?: string }> = {};
@@ -142,55 +184,37 @@ function ModelSelectorComponent({ mode, selected, onChange, onCustomEndpointsCha
     }
   }, [allModels, onCustomEndpointsChange]);
 
-  // Reset display limit when filter or search changes
-  useEffect(() => {
-    setDisplayLimit(search.trim() ? 12 : INITIAL_LIMIT);
-  }, [search, activeFilter]);
-
   // Filter & prioritize models
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
 
     return allModels.filter((m) => {
-      // Search matching
       if (q) {
-        const matchesSearch =
+        const matches =
           m.name.toLowerCase().includes(q) ||
           m.id.toLowerCase().includes(q) ||
-          (m.isCustom && "custom finetune fine-tuned".includes(q));
-        if (!matchesSearch) return false;
+          (m.isCustom && "custom finetune fine-tuned ollama".includes(q));
+        if (!matches) return false;
       }
 
-      // Filter tabs
       if (activeFilter === "featured" && !q) {
-        if (m.isCustom) return true; // Keep user's custom models prominent in Featured
+        if (m.isCustom) return true;
         return FEATURED_IDS.some((fid) => m.id.toLowerCase().includes(fid.toLowerCase()));
       }
-      if (activeFilter === "free") {
-        return isModelFree(m);
-      }
-      if (activeFilter === "reasoning") {
-        return m.supportsReasoning;
-      }
-      if (activeFilter === "tools") {
-        return m.supportsTools;
-      }
-      if (activeFilter === "custom") {
-        return m.isCustom === true;
-      }
+      if (activeFilter === "free") return isModelFree(m);
+      if (activeFilter === "reasoning") return m.supportsReasoning;
+      if (activeFilter === "tools") return m.supportsTools;
+      if (activeFilter === "custom") return m.isCustom === true;
       return true;
     }).sort((a, b) => {
-      // Pin selected models to the absolute top
       const aSel = selected.includes(a.id);
       const bSel = selected.includes(b.id);
       if (aSel && !bSel) return -1;
       if (!aSel && bSel) return 1;
 
-      // Pin custom models next
       if (a.isCustom && !b.isCustom) return -1;
       if (!a.isCustom && b.isCustom) return 1;
 
-      // Then prioritize featured models
       const aFeat = FEATURED_IDS.some((f) => a.id.toLowerCase().includes(f.toLowerCase()));
       const bFeat = FEATURED_IDS.some((f) => b.id.toLowerCase().includes(f.toLowerCase()));
       if (aFeat && !bFeat) return -1;
@@ -200,13 +224,10 @@ function ModelSelectorComponent({ mode, selected, onChange, onCustomEndpointsCha
     });
   }, [allModels, search, activeFilter, selected]);
 
-  const visibleModels = useMemo(() => {
-    return filtered.slice(0, displayLimit);
-  }, [filtered, displayLimit]);
-
   const toggleModel = useCallback((id: string) => {
     if (mode === "single") {
       onChange([id]);
+      setPopoverOpen(false);
     } else {
       if (selected.includes(id)) {
         onChange(selected.filter((s) => s !== id));
@@ -215,6 +236,11 @@ function ModelSelectorComponent({ mode, selected, onChange, onCustomEndpointsCha
       }
     }
   }, [mode, selected, onChange]);
+
+  function removeSelected(id: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    onChange(selected.filter((s) => s !== id));
+  }
 
   function handleDeleteCustom(id: string, e: React.MouseEvent) {
     e.stopPropagation();
@@ -240,20 +266,11 @@ function ModelSelectorComponent({ mode, selected, onChange, onCustomEndpointsCha
     const trimmedId = customId.trim();
     const trimmedUrl = customBaseUrl.trim();
 
-    if (!trimmedName) {
-      setFormError("Please enter a model name.");
-      return;
-    }
-    if (!trimmedId) {
-      setFormError("Please enter a model ID (e.g. ft:gpt-4o-mini-... or model tag).");
-      return;
-    }
-    if (!trimmedUrl) {
-      setFormError("Please enter an API Base URL.");
+    if (!trimmedName || !trimmedId || !trimmedUrl) {
+      setFormError("Please enter model name, ID, and base URL.");
       return;
     }
 
-    // Check if ID already exists
     if (customModels.some((m) => m.id.toLowerCase() === trimmedId.toLowerCase())) {
       setFormError(`A custom model with ID "${trimmedId}" already exists.`);
       return;
@@ -277,14 +294,12 @@ function ModelSelectorComponent({ mode, selected, onChange, onCustomEndpointsCha
       // Ignore
     }
 
-    // Auto-select the newly created model
     if (mode === "single") {
       onChange([trimmedId]);
     } else if (selected.length < 4) {
       onChange([...selected, trimmedId]);
     }
 
-    // Reset and close
     setShowModal(false);
     setCustomName("");
     setCustomId("");
@@ -294,295 +309,336 @@ function ModelSelectorComponent({ mode, selected, onChange, onCustomEndpointsCha
 
   function applyPreset(p: typeof PRESETS[number]) {
     setCustomBaseUrl(p.baseUrl);
-    if (!customId) {
-      setCustomId(p.sampleId);
-    }
-    if (!customName) {
-      setCustomName(`${p.label} Model`);
-    }
+    if (!customId) setCustomId(p.sampleId);
+    if (!customName) setCustomName(`${p.label} Model`);
   }
 
-  function formatCtx(n: number) {
-    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-    if (n >= 1000) return `${Math.round(n / 1000)}k`;
-    return String(n);
-  }
-
-  const hasMore = filtered.length > displayLimit;
+  // Active model info for single mode
+  const currentModel = allModels.find((m) => m.id === selected[0]) || {
+    id: selected[0] || "deepseek/deepseek-r1",
+    name: (selected[0] || "deepseek/deepseek-r1").split("/").pop() || "DeepSeek R1",
+    context_length: 65536,
+    supportsReasoning: true,
+    supportsTools: true,
+    pricing: { prompt: 0, completion: 0 },
+  };
 
   return (
-    <div className="model-deck-card">
-      <div className="model-deck-header">
-        <div className="deck-title">
-          <span>{mode === "single" ? "Select Active Model" : "Select Models for Arena"}</span>
-          {mode === "compare" && (
-            <span className="brand-tag" style={{ color: selected.length === 4 ? "var(--accent)" : "inherit" }}>
-              {selected.length}/4 selected
-            </span>
-          )}
-          {!loading && (
-            <span className="brand-tag" style={{ fontSize: "10.5px" }}>
-              {filtered.length} of {allModels.length} models
-            </span>
-          )}
-        </div>
+    <div className="compact-model-bar" ref={popoverRef}>
+      {/* ── Single Model Bar ────────────────────────────────────────── */}
+      {mode === "single" && (
+        <div className="model-bar-inner">
+          <div className="model-bar-left">
+            <span className="model-bar-label">Active Model:</span>
 
-        <div className="model-deck-controls">
-          {/* Add Your Own Model Button */}
-          <button
-            type="button"
-            className="btn-secondary add-model-btn"
-            onClick={() => setShowModal(true)}
-            style={{
-              padding: "4px 11px",
-              fontSize: "11.5px",
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-              borderColor: "var(--accent-border)",
-              color: "var(--accent-light)",
-            }}
-          >
-            <span>+</span>
-            <span>Add Your Own Model</span>
-          </button>
-
-          {/* Capability filter tabs */}
-          <div className="model-filter-tabs">
             <button
-              className={`domain-chip${activeFilter === "featured" ? " active" : ""}`}
-              onClick={() => setActiveFilter("featured")}
-              style={{ padding: "4px 10px", fontSize: "11px" }}
+              type="button"
+              id="model-selector-trigger"
+              className={`model-pill-trigger${popoverOpen ? " is-open" : ""}`}
+              onClick={() => setPopoverOpen((prev) => !prev)}
             >
-              Featured
-            </button>
-            <button
-              className={`domain-chip${activeFilter === "free" ? " active" : ""}`}
-              onClick={() => setActiveFilter("free")}
-              style={{ padding: "4px 10px", fontSize: "11px", color: activeFilter === "free" ? "#fff" : "#34d399" }}
-            >
-              Free
-            </button>
-            <button
-              className={`domain-chip${activeFilter === "reasoning" ? " active" : ""}`}
-              onClick={() => setActiveFilter("reasoning")}
-              style={{ padding: "4px 10px", fontSize: "11px" }}
-            >
-              Reasoning
-            </button>
-            <button
-              className={`domain-chip${activeFilter === "tools" ? " active" : ""}`}
-              onClick={() => setActiveFilter("tools")}
-              style={{ padding: "4px 10px", fontSize: "11px" }}
-            >
-              Tools
-            </button>
-            {allModels.some((m) => m.isCustom) && (
-              <button
-                className={`domain-chip${activeFilter === "custom" ? " active" : ""}`}
-                onClick={() => setActiveFilter("custom")}
-                style={{ padding: "4px 10px", fontSize: "11px", color: activeFilter === "custom" ? "#fff" : "#fbbf24" }}
-              >
-                Your Models ({allModels.filter((m) => m.isCustom).length})
-              </button>
-            )}
-            <button
-              className={`domain-chip${activeFilter === "all" ? " active" : ""}`}
-              onClick={() => setActiveFilter("all")}
-              style={{ padding: "4px 10px", fontSize: "11px" }}
-            >
-              All Models
-            </button>
-          </div>
+              <div className="model-pill-main">
+                <span className="model-indicator-dot" />
+                <span className="model-pill-name">{currentModel.name}</span>
+                <span className="model-pill-id hide-on-mobile">{currentModel.id}</span>
+              </div>
 
-          <div className="deck-search">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}>
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            <input
-              id="model-search-input"
-              name="modelSearch"
-              type="search"
-              placeholder="Search models or custom models…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-        </div>
-      </div>
-
-      {loading && (
-        <div style={{ textAlign: "center", padding: "28px 0", color: "var(--text-subtle)" }}>
-          <span className="live-dot" style={{ display: "inline-block", marginRight: 8 }} />
-          Loading neural models directory…
-        </div>
-      )}
-
-      {error && (
-        <div style={{ color: "var(--rose)", fontSize: "12px", padding: "10px 0" }}>
-          ⚠ {error}
-        </div>
-      )}
-
-      {!loading && !error && (
-        <>
-          <div className="model-grid">
-            {visibleModels.length === 0 && (
-              <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "28px", color: "var(--text-subtle)" }}>
-                {activeFilter === "free" ? (
-                  <div>
-                    <div>No free models match your search query "{search}".</div>
-                    <button
-                      className="btn-secondary"
-                      onClick={() => { setSearch(""); setActiveFilter("free"); }}
-                      style={{ marginTop: 12, fontSize: 11 }}
-                    >
-                      Clear Search
-                    </button>
-                  </div>
-                ) : activeFilter === "custom" ? (
-                  <div>
-                    <div>No custom models added yet.</div>
-                    <button
-                      className="btn-primary"
-                      onClick={() => setShowModal(true)}
-                      style={{ marginTop: 12, fontSize: 11 }}
-                    >
-                      + Add Your Own Model
-                    </button>
-                  </div>
-                ) : (
-                  <div>No models match "{search}". Try searching another name or switch to "All Models".</div>
+              <div className="model-pill-meta">
+                <span className="model-pill-badge ctx">{formatCtx(currentModel.context_length)} ctx</span>
+                {currentModel.supportsReasoning && (
+                  <span className="model-pill-badge reasoning">Reasoning</span>
                 )}
+                {currentModel.supportsTools && (
+                  <span className="model-pill-badge tools">Tools</span>
+                )}
+                {isModelFree(currentModel as NormalizedModel) && (
+                  <span className="model-pill-badge free">Free</span>
+                )}
+                <span className="model-pill-caret">▾</span>
+              </div>
+            </button>
+          </div>
+
+          <div className="model-bar-right">
+            <button
+              type="button"
+              className="btn-secondary add-model-btn"
+              onClick={() => setShowModal(true)}
+              title="Connect a local Ollama model or fine-tune"
+            >
+              <span>+ Custom / Ollama</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Compare Mode Bar ────────────────────────────────────────── */}
+      {mode === "compare" && (
+        <div className="model-bar-inner compare-bar">
+          <div className="compare-bar-left">
+            <div className="compare-selected-chips">
+              <span className="model-bar-label">
+                Arena Models ({selected.length}/4):
+              </span>
+
+              {selected.map((selId) => {
+                const m = allModels.find((x) => x.id === selId);
+                const name = m?.name || selId.split("/").pop() || selId;
+                return (
+                  <div key={selId} className="compare-model-chip">
+                    <span>{name}</span>
+                    <button
+                      type="button"
+                      className="chip-remove-btn"
+                      onClick={(e) => removeSelected(selId, e)}
+                      title={`Remove ${name}`}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                );
+              })}
+
+              {selected.length < 4 && (
+                <button
+                  type="button"
+                  className="btn-secondary add-arena-model-btn"
+                  onClick={() => setPopoverOpen((prev) => !prev)}
+                >
+                  <span>+ Add Model ({4 - selected.length} slots left)</span>
+                  <span>▾</span>
+                </button>
+              )}
+            </div>
+
+            {/* Quick 1-Click Comparison Presets */}
+            <div className="compare-quick-presets">
+              <span style={{ fontSize: 11, color: "var(--text-subtle)", marginRight: 2 }}>
+                Quick Presets:
+              </span>
+              {COMPARE_PRESETS.map((preset) => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  className="preset-pill-btn"
+                  onClick={() => onChange(preset.models)}
+                  title={preset.desc}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="model-bar-right">
+            <button
+              type="button"
+              className="btn-secondary add-model-btn"
+              onClick={() => setShowModal(true)}
+              title="Connect a local Ollama model or custom endpoint"
+            >
+              <span>+ Custom Model</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Floating Popover / Dropdown ─────────────────────────────── */}
+      {popoverOpen && (
+        <div className="model-popover-card">
+          {/* Popover Header with Search */}
+          <div className="popover-search-header">
+            <div className="popover-search-box">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <input
+                ref={searchInputRef}
+                type="search"
+                className="popover-search-input"
+                placeholder="Type to filter 35+ models by name, provider, or ID…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              {search && (
+                <button
+                  type="button"
+                  className="popover-clear-btn"
+                  onClick={() => setSearch("")}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {/* Category Filter Chips */}
+            <div className="popover-filter-tabs">
+              <button
+                type="button"
+                className={`popover-tab${activeFilter === "featured" ? " active" : ""}`}
+                onClick={() => setActiveFilter("featured")}
+              >
+                Featured
+              </button>
+              <button
+                type="button"
+                className={`popover-tab${activeFilter === "free" ? " active" : ""}`}
+                onClick={() => setActiveFilter("free")}
+              >
+                Free
+              </button>
+              <button
+                type="button"
+                className={`popover-tab${activeFilter === "reasoning" ? " active" : ""}`}
+                onClick={() => setActiveFilter("reasoning")}
+              >
+                Reasoning
+              </button>
+              <button
+                type="button"
+                className={`popover-tab${activeFilter === "tools" ? " active" : ""}`}
+                onClick={() => setActiveFilter("tools")}
+              >
+                Tools
+              </button>
+              {allModels.some((m) => m.isCustom) && (
+                <button
+                  type="button"
+                  className={`popover-tab${activeFilter === "custom" ? " active" : ""}`}
+                  onClick={() => setActiveFilter("custom")}
+                >
+                  Custom ({allModels.filter((m) => m.isCustom).length})
+                </button>
+              )}
+              <button
+                type="button"
+                className={`popover-tab${activeFilter === "all" ? " active" : ""}`}
+                onClick={() => setActiveFilter("all")}
+              >
+                All Models ({allModels.length})
+              </button>
+            </div>
+          </div>
+
+          {/* Model List View */}
+          <div className="popover-model-list">
+            {loading && (
+              <div className="popover-loading">
+                <span className="live-dot" /> Loading models directory…
               </div>
             )}
 
-            {visibleModels.map((m) => {
+            {!loading && filtered.length === 0 && (
+              <div className="popover-empty">
+                <div>No models match "{search}".</div>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  style={{ marginTop: 8, fontSize: 11 }}
+                  onClick={() => { setSearch(""); setActiveFilter("all"); }}
+                >
+                  Clear Search Filter
+                </button>
+              </div>
+            )}
+
+            {!loading && filtered.map((m) => {
               const isSel = selected.includes(m.id);
-              const disabled = mode === "compare" && !isSel && selected.length >= 4;
               const isFree = isModelFree(m);
+              const disabled = mode === "compare" && !isSel && selected.length >= 4;
 
               return (
                 <div
                   key={m.id}
-                  className={`model-card${isSel ? " selected" : ""}${disabled ? " disabled" : ""}`}
+                  className={`popover-model-row${isSel ? " selected" : ""}${disabled ? " disabled" : ""}`}
                   onClick={() => !disabled && toggleModel(m.id)}
                 >
-                  <div className="model-card-top">
-                    <div style={{ overflow: "hidden", flex: 1, minWidth: 0 }}>
-                      <div className="model-card-name" style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span style={{ textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
-                          {m.name}
-                        </span>
-                      </div>
-                      <div className="model-card-id" title={m.id}>
-                        {m.isCustom ? `Endpoint: ${m.baseUrl}` : m.id}
-                      </div>
+                  <div className="row-left">
+                    <div className="row-checkbox">
+                      {mode === "single" ? (
+                        <div className={`radio-circle${isSel ? " active" : ""}`} />
+                      ) : (
+                        <input
+                          type="checkbox"
+                          checked={isSel}
+                          disabled={disabled}
+                          readOnly
+                        />
+                      )}
                     </div>
 
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-                      {m.isCustom && (
-                        <button
-                          type="button"
-                          onClick={(e) => handleDeleteCustom(m.id, e)}
-                          title="Remove custom model"
-                          style={{
-                            background: "transparent",
-                            border: "none",
-                            color: "var(--text-subtle)",
-                            cursor: "pointer",
-                            fontSize: 11,
-                            padding: "2px 6px",
-                            borderRadius: 4,
-                          }}
-                          onMouseEnter={(e) => (e.currentTarget.style.color = "var(--rose)")}
-                          onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-subtle)")}
-                        >
-                          Remove
-                        </button>
-                      )}
-                      <div className="selection-ring">
-                        {isSel && <span className="selection-check">✓</span>}
+                    <div className="row-info">
+                      <div className="row-title">
+                        <span className="row-name">{m.name}</span>
+                        {m.isCustom && <span className="badge-custom">Custom</span>}
+                        {isFree && <span className="badge-free">Free</span>}
+                        {m.supportsReasoning && <span className="badge-reasoning">R1</span>}
+                        {m.supportsTools && <span className="badge-tools">Tools</span>}
+                      </div>
+                      <div className="row-id">
+                        {m.isCustom ? `Local / Endpoint: ${m.baseUrl}` : m.id}
                       </div>
                     </div>
                   </div>
 
-                  <div className="model-card-bottom">
-                    <div className="model-badges">
-                      {m.isCustom && (
-                        <span className="badge-custom">Custom</span>
-                      )}
-                      {isFree && (
-                        <span className="badge-free">Free</span>
-                      )}
-                      {m.supportsReasoning && (
-                        <span className="badge-reasoning">Reasoning</span>
-                      )}
-                      {m.supportsTools && (
-                        <span className="badge-tools">Tools</span>
-                      )}
-                    </div>
-                    <span className="model-ctx">{formatCtx(m.context_length)} ctx</span>
+                  <div className="row-right">
+                    <span className="row-ctx">{formatCtx(m.context_length)} ctx</span>
+                    {m.isCustom && (
+                      <button
+                        type="button"
+                        className="row-del-btn"
+                        onClick={(e) => handleDeleteCustom(m.id, e)}
+                        title="Delete custom model"
+                      >
+                        ✕
+                      </button>
+                    )}
                   </div>
                 </div>
               );
             })}
           </div>
 
-          {/* Show More / Show All Controls */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginTop: 16 }}>
-            {hasMore && (
-              <>
-                <button
-                  className="btn-secondary"
-                  onClick={() => setDisplayLimit((prev) => prev + 12)}
-                  style={{ fontSize: "12px", padding: "6px 16px" }}
-                >
-                  Show More (+12)
-                </button>
-                <button
-                  className="btn-secondary"
-                  onClick={() => setDisplayLimit(filtered.length)}
-                  style={{ fontSize: "12px", padding: "6px 16px" }}
-                >
-                  Show All ({filtered.length})
-                </button>
-              </>
-            )}
-
-            {displayLimit > INITIAL_LIMIT && (
+          {/* Popover Footer */}
+          <div className="popover-footer">
+            <div style={{ fontSize: 11, color: "var(--text-subtle)" }}>
+              Showing {filtered.length} of {allModels.length} models
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
               <button
+                type="button"
                 className="btn-secondary"
-                onClick={() => setDisplayLimit(INITIAL_LIMIT)}
-                style={{ fontSize: "12px", padding: "6px 16px" }}
+                style={{ fontSize: 11, padding: "3px 10px" }}
+                onClick={() => setShowModal(true)}
               >
-                Show Less (Top {INITIAL_LIMIT})
+                + Add Custom Model
               </button>
-            )}
+              <button
+                type="button"
+                className="btn-primary"
+                style={{ fontSize: 11, padding: "3px 12px" }}
+                onClick={() => setPopoverOpen(false)}
+              >
+                Done
+              </button>
+            </div>
           </div>
-        </>
+        </div>
       )}
 
-      {/* ── Add Custom / Fine-Tuned Model Modal ── */}
+      {/* ── Add Custom Model Modal ──────────────────────────────────── */}
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-title">
-                <span>Add Your Own Model</span>
+                <span>Add Your Own Model / Local Ollama</span>
               </div>
               <button
                 type="button"
+                className="modal-close"
                 onClick={() => setShowModal(false)}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  color: "var(--text-subtle)",
-                  cursor: "pointer",
-                  fontSize: 18,
-                  lineHeight: 1,
-                }}
               >
                 ✕
               </button>
@@ -607,75 +663,55 @@ function ModelSelectorComponent({ mode, selected, onChange, onCustomEndpointsCha
                   </div>
                 </div>
 
-                {/* Model Name */}
                 <div className="modal-field">
                   <label htmlFor="custom-model-name">Display Name *</label>
                   <input
                     id="custom-model-name"
-                    name="customModelName"
                     type="text"
                     required
-                    placeholder="e.g. DIL Claims Custom Model"
+                    placeholder="e.g. My Actuarial Llama"
                     value={customName}
                     onChange={(e) => setCustomName(e.target.value)}
                   />
                 </div>
 
-                {/* Model ID */}
                 <div className="modal-field">
                   <label htmlFor="custom-model-id">Model ID / Checkpoint Tag *</label>
                   <input
                     id="custom-model-id"
-                    name="customModelId"
                     type="text"
                     required
-                    placeholder="e.g. ft:gpt-4o-mini-2024-07-18:my-org:v1 or llama3.2"
+                    placeholder="e.g. llama3.2 or ft:gpt-4o-mini-..."
                     value={customId}
                     onChange={(e) => setCustomId(e.target.value)}
                   />
-                  <span style={{ fontSize: 11, color: "var(--text-subtle)" }}>
-                    The model identifier passed to the inference endpoint.
-                  </span>
                 </div>
 
-                {/* Base URL */}
                 <div className="modal-field">
                   <label htmlFor="custom-base-url">API Base URL *</label>
                   <input
                     id="custom-base-url"
-                    name="customBaseUrl"
                     type="url"
                     required
-                    placeholder="e.g. https://api.openai.com/v1 or http://localhost:11434/v1"
+                    placeholder="e.g. http://localhost:11434/v1 or https://api.openai.com/v1"
                     value={customBaseUrl}
                     onChange={(e) => setCustomBaseUrl(e.target.value)}
                   />
-                  <span style={{ fontSize: 11, color: "var(--text-subtle)" }}>
-                    Standard OpenAI-compatible API base (e.g. /v1). /chat/completions is appended automatically.
-                  </span>
                 </div>
 
-                {/* API Key */}
                 <div className="modal-field">
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <label htmlFor="custom-api-key">API Key (Optional for Local Ollama/vLLM)</label>
                     <button
                       type="button"
                       onClick={() => setShowKeyText(!showKeyText)}
-                      style={{
-                        background: "none",
-                        border: "none",
-                        color: "var(--accent)",
-                        fontSize: 11,
-                        cursor: "pointer",
-                      }}
+                      style={{ background: "none", border: "none", color: "var(--accent)", fontSize: 11, cursor: "pointer" }}
                     >
                       {showKeyText ? "Hide" : "Show"}
                     </button>
                   </div>
                   <input
                     id="custom-api-key"
-                    name="customApiKey"
                     type={showKeyText ? "text" : "password"}
                     placeholder="sk-... (Stored strictly in your local browser)"
                     value={customApiKey}
@@ -683,13 +719,11 @@ function ModelSelectorComponent({ mode, selected, onChange, onCustomEndpointsCha
                   />
                 </div>
 
-                {/* Context Window & Capabilities */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                   <div className="modal-field">
                     <label htmlFor="custom-context-length">Context Window (Tokens)</label>
                     <input
                       id="custom-context-length"
-                      name="customContextLength"
                       type="number"
                       min={1024}
                       max={2000000}
@@ -700,10 +734,8 @@ function ModelSelectorComponent({ mode, selected, onChange, onCustomEndpointsCha
                   </div>
 
                   <div className="modal-field" style={{ justifyContent: "center", gap: 8, paddingTop: 18 }}>
-                    <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 12 }}>
                       <input
-                        id="custom-tools-cb"
-                        name="customToolsCb"
                         type="checkbox"
                         checked={customTools}
                         onChange={(e) => setCustomTools(e.target.checked)}
@@ -711,10 +743,8 @@ function ModelSelectorComponent({ mode, selected, onChange, onCustomEndpointsCha
                       <span>Supports Tools</span>
                     </label>
 
-                    <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 12 }}>
                       <input
-                        id="custom-reasoning-cb"
-                        name="customReasoningCb"
                         type="checkbox"
                         checked={customReasoning}
                         onChange={(e) => setCustomReasoning(e.target.checked)}

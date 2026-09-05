@@ -8,6 +8,7 @@ import ToolTimeline, { ToolEvent } from "@/components/ToolTimeline";
 import ComparisonTable, { CompareRow } from "@/components/ComparisonTable";
 import DatasetBrowser, { DILRecord } from "@/components/DatasetBrowser";
 import PromptHistorySidebar, { saveToHistory } from "@/components/PromptHistorySidebar";
+import ToolSandboxModal from "@/components/ToolSandboxModal";
 
 type ViewMode = "single" | "compare" | "dataset";
 
@@ -25,6 +26,15 @@ export default function Page() {
   const [systemPrompt, setSystemPrompt] = useState("");
   const [showSystemPrompt, setShowSystemPrompt] = useState(false);
   const [useTools, setUseTools] = useState(true);
+  const [selectedTools, setSelectedTools] = useState<string[]>([
+    "calculator",
+    "solvency_ratio_checker",
+    "insurance_knowledge_search",
+    "currency_converter",
+    "get_current_time",
+  ]);
+  const [toolChoice, setToolChoice] = useState<string>("auto");
+  const [sandboxOpen, setSandboxOpen] = useState(false);
   const [selectedModels, setSelectedModels] = useState<string[]>(["deepseek/deepseek-r1"]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [modelSystemPrompts, setModelSystemPrompts] = useState<Record<string, string>>({});
@@ -69,7 +79,15 @@ export default function Page() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model, prompt, systemPrompt, useTools, customEndpoint }),
+        body: JSON.stringify({
+          model,
+          prompt,
+          systemPrompt,
+          useTools,
+          selectedTools,
+          toolChoice,
+          customEndpoint,
+        }),
         signal: abortRef.current.signal,
       });
 
@@ -152,7 +170,7 @@ export default function Page() {
     } finally {
       setIsRunning(false);
     }
-  }, [prompt, systemPrompt, useTools, selectedModels, customEndpoints]);
+  }, [prompt, systemPrompt, useTools, selectedTools, toolChoice, selectedModels, customEndpoints]);
 
   const stopRun = useCallback(() => {
     abortRef.current?.abort();
@@ -175,6 +193,8 @@ export default function Page() {
           prompt,
           systemPrompt,
           useTools,
+          selectedTools,
+          toolChoice,
           modelSystemPrompts,
           modelCustomEndpoints: customEndpoints,
         }),
@@ -409,28 +429,91 @@ export default function Page() {
             {/* Command Deck Footer Controls */}
             <div className="command-footer">
               <div className="footer-left-controls">
-                {/* Tool toggle deck */}
-                <div className="tool-switch-deck">
-                  <span className="switch-label">Tool Calling</span>
-                  <label className="toggle-switch">
-                    <input
-                      type="checkbox"
-                      checked={useTools}
-                      onChange={(e) => setUseTools(e.target.checked)}
-                    />
-                    <span className="toggle-slider" />
-                  </label>
+                {/* Advanced Tool Control Station */}
+                <div className="tool-control-station">
+                  <div className="tool-master-toggle">
+                    <span className="switch-label">Tools</span>
+                    <label className="toggle-switch" title="Toggle tool calling for models">
+                      <input
+                        type="checkbox"
+                        checked={useTools}
+                        onChange={(e) => setUseTools(e.target.checked)}
+                      />
+                      <span className="toggle-slider" />
+                    </label>
+                  </div>
 
                   {useTools && (
-                    <div className="tool-active-pills">
-                      <span className="tool-chip">calculator</span>
-                      <span className="tool-chip">time</span>
-                      <span className="tool-chip">insurance_search</span>
-                    </div>
+                    <>
+                      {/* Granular Tool Toggles */}
+                      <div className="tool-select-chips">
+                        {[
+                          { id: "calculator", label: "Calculator", icon: "🧮" },
+                          { id: "solvency_ratio_checker", label: "Solvency II", icon: "⚖️" },
+                          { id: "insurance_knowledge_search", label: "Search Lake", icon: "🔍" },
+                          { id: "currency_converter", label: "Currency", icon: "💱" },
+                          { id: "get_current_time", label: "Time", icon: "⏱️" },
+                        ].map((t) => {
+                          const isChecked = selectedTools.includes(t.id);
+                          return (
+                            <button
+                              key={t.id}
+                              type="button"
+                              className={`tool-chip-toggle${isChecked ? " active" : ""}`}
+                              onClick={() => {
+                                if (isChecked) {
+                                  if (selectedTools.length > 1) {
+                                    setSelectedTools(selectedTools.filter((id) => id !== t.id));
+                                    if (toolChoice === t.id) setToolChoice("auto");
+                                  }
+                                } else {
+                                  setSelectedTools([...selectedTools, t.id]);
+                                }
+                              }}
+                              title={isChecked ? `Disable ${t.label}` : `Enable ${t.label}`}
+                            >
+                              <span>{t.icon}</span>
+                              <span>{t.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Execution Policy Dropdown */}
+                      <div className="tool-mode-dropdown-wrapper">
+                        <span style={{ fontSize: 11, color: "var(--text-subtle)", whiteSpace: "nowrap" }}>Mode:</span>
+                        <select
+                          className="tool-mode-select"
+                          value={toolChoice}
+                          onChange={(e) => setToolChoice(e.target.value)}
+                          title="Tool execution policy"
+                        >
+                          <option value="auto">Auto (Model Decides)</option>
+                          <option value="required">Required (Must Call Tool)</option>
+                          <optgroup label="Force Specific Tool">
+                            {selectedTools.map((tid) => (
+                              <option key={tid} value={tid}>
+                                Force: {tid}
+                              </option>
+                            ))}
+                          </optgroup>
+                        </select>
+                      </div>
+                    </>
                   )}
+
+                  {/* Direct Sandbox Modal Trigger */}
+                  <button
+                    type="button"
+                    className="btn-secondary sandbox-launch-btn"
+                    onClick={() => setSandboxOpen(true)}
+                    title="Test tools directly without invoking an LLM"
+                  >
+                    <span>⚡ Tool Sandbox</span>
+                  </button>
                 </div>
 
-                <div className="char-counter">
+                <div className="char-counter hide-on-mobile">
                   {prompt.length} chars
                 </div>
               </div>
@@ -519,8 +602,13 @@ export default function Page() {
             )}
 
             {/* Tool Chronometer */}
-            {toolEvents.length > 0 && (
-              <ToolTimeline events={toolEvents} />
+            {(toolEvents.length > 0 || useTools) && (
+              <ToolTimeline
+                events={toolEvents}
+                activeTools={useTools ? selectedTools : []}
+                toolChoice={toolChoice}
+                isRunning={isRunning}
+              />
             )}
 
             {/* Answer Card */}
@@ -760,6 +848,16 @@ export default function Page() {
           setPrompt(p);
           setSystemPrompt(sp);
           if (sp) setShowSystemPrompt(true);
+        }}
+      />
+
+      {/* Direct Manual Tool Sandbox Modal */}
+      <ToolSandboxModal
+        isOpen={sandboxOpen}
+        onClose={() => setSandboxOpen(false)}
+        onSendToPrompt={(text) => {
+          setPrompt(text);
+          window.scrollTo({ top: 0, behavior: "smooth" });
         }}
       />
     </div>

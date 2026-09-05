@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
-import { chatCompletionStream, ChatMessage } from "@/lib/openrouter";
-import { TOOL_SCHEMAS, runTool } from "@/lib/tools";
+import { chatCompletionStream, ChatMessage, ToolChoice } from "@/lib/openrouter";
+import { TOOL_SCHEMAS, getFilteredToolSchemas, ToolSchema, runTool } from "@/lib/tools";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -19,6 +19,8 @@ export async function POST(req: NextRequest) {
     prompt: string;
     systemPrompt?: string;
     useTools?: boolean;
+    selectedTools?: string[];
+    toolChoice?: string;
     customEndpoint?: { baseUrl?: string; apiKey?: string };
   };
 
@@ -31,7 +33,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { model, prompt, systemPrompt, useTools, customEndpoint } = body;
+  const { model, prompt, systemPrompt, useTools, selectedTools, toolChoice, customEndpoint } = body;
 
   if (!model || !prompt) {
     return new Response(
@@ -40,7 +42,33 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const tools = useTools ? TOOL_SCHEMAS : undefined;
+  let tools: ToolSchema[] | undefined = undefined;
+  let formattedToolChoice: ToolChoice | undefined = undefined;
+  let forcedToolName: string | null = null;
+
+  if (useTools) {
+    tools = getFilteredToolSchemas(selectedTools);
+    if (toolChoice === "none" || tools.length === 0) {
+      tools = undefined;
+    } else if (toolChoice === "required") {
+      formattedToolChoice = "required";
+    } else if (toolChoice && toolChoice !== "auto") {
+      const matched = tools.find((t) => t.function.name === toolChoice);
+      if (matched) {
+        formattedToolChoice = { type: "function", function: { name: toolChoice } };
+        forcedToolName = toolChoice;
+      } else {
+        formattedToolChoice = "auto";
+      }
+    } else {
+      formattedToolChoice = "auto";
+    }
+  }
+
+  const effectiveSystemPrompt = forcedToolName
+    ? `${systemPrompt ? systemPrompt + "\n\n" : ""}CRITICAL INSTRUCTION: You MUST invoke the '${forcedToolName}' tool to compute, evaluate, or retrieve the necessary data to answer the user prompt.`
+    : systemPrompt;
+
   const messages: ChatMessage[] = [{ role: "user", content: prompt }];
 
   const stream = new ReadableStream({
@@ -55,7 +83,8 @@ export async function POST(req: NextRequest) {
             model,
             messages,
             tools,
-            systemPrompt,
+            toolChoice: round === 0 ? formattedToolChoice : "auto",
+            systemPrompt: effectiveSystemPrompt,
             customEndpoint,
           });
 

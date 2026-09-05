@@ -31,11 +31,15 @@ export interface CustomEndpointConfig {
   apiKey?: string;
 }
 
+export type ToolChoice = "auto" | "none" | "required" | { type: "function"; function: { name: string } };
+
 export interface ChatParams {
   model: string;
   messages: ChatMessage[];
   tools?: unknown[];
+  toolChoice?: ToolChoice;
   temperature?: number;
+  max_tokens?: number;
   systemPrompt?: string;
   customEndpoint?: CustomEndpointConfig;
 }
@@ -242,13 +246,17 @@ export async function chatCompletion(params: ChatParams): Promise<ChatResponse> 
   const isGemmaOrNoTools = params.model.toLowerCase().includes("gemma");
   const effectiveTools = isGemmaOrNoTools ? undefined : (params.tools ?? undefined);
 
-  const body = {
+  const body: Record<string, unknown> = {
     model: params.model,
     messages,
     tools: effectiveTools,
     temperature: params.temperature ?? 0.7,
+    max_tokens: params.max_tokens ?? 2048,
     usage: { include: true },
   };
+  if (effectiveTools && params.toolChoice) {
+    body.tool_choice = params.toolChoice;
+  }
 
   let endpointUrl = `${OR_BASE}/chat/completions`;
   if (params.customEndpoint?.baseUrl) {
@@ -335,14 +343,18 @@ export async function chatCompletionStream(params: ChatParams): Promise<Response
   const isGemmaOrNoTools = params.model.toLowerCase().includes("gemma");
   const effectiveTools = isGemmaOrNoTools ? undefined : (params.tools ?? undefined);
 
-  const body = {
+  const body: Record<string, unknown> = {
     model: params.model,
     messages,
     tools: effectiveTools,
     temperature: params.temperature ?? 0.7,
+    max_tokens: params.max_tokens ?? 2048,
     stream: true,
     usage: { include: true },
   };
+  if (effectiveTools && params.toolChoice) {
+    body.tool_choice = params.toolChoice;
+  }
 
   let endpointUrl = `${OR_BASE}/chat/completions`;
   if (params.customEndpoint?.baseUrl) {
@@ -396,20 +408,65 @@ export async function chatCompletionStream(params: ChatParams): Promise<Response
 
 // ── Mock implementations ──────────────────────────────────────────────────────
 
-function mockChatCompletion(params: ChatParams): ChatResponse {
-  const prompt = params.messages.map((m) => m.content).join(" ");
+function getMockToolCall(params: ChatParams): { name: string; args: Record<string, unknown> } | null {
+  if (!params.tools || params.tools.length === 0) return null;
+
+  // Check if forced tool_choice
+  if (params.toolChoice && typeof params.toolChoice === "object" && params.toolChoice.function?.name) {
+    const forcedName = params.toolChoice.function.name;
+    if (forcedName === "solvency_ratio_checker") {
+      return { name: "solvency_ratio_checker", args: { eligible_own_funds: 185000000, scr: 120000000, mcr: 54000000 } };
+    }
+    if (forcedName === "currency_converter") {
+      return { name: "currency_converter", args: { amount: 2500000, from: "EUR", to: "USD" } };
+    }
+    if (forcedName === "insurance_knowledge_search") {
+      return { name: "insurance_knowledge_search", args: { query: "Solvency Capital Requirement SCR", domain: "eu_regulatory_compliance" } };
+    }
+    if (forcedName === "get_current_time") {
+      return { name: "get_current_time", args: { timezone: "Europe/Berlin" } };
+    }
+    return { name: "calculator", args: { expression: "42 * 100 / 12" } };
+  }
+
+  const prompt = params.messages.map((m) => m.content).join(" ").toLowerCase();
   const hasNumber = /\d+/.test(prompt);
 
-  if (hasNumber && params.tools && params.tools.length > 0) {
+  if (prompt.includes("solvency") || prompt.includes("scr") || prompt.includes("mcr") || prompt.includes("ratio")) {
+    return { name: "solvency_ratio_checker", args: { eligible_own_funds: 195000000, scr: 130000000 } };
+  }
+  if (prompt.includes("currency") || prompt.includes("convert") || prompt.includes("eur") || prompt.includes("usd") || prompt.includes("gbp")) {
+    return { name: "currency_converter", args: { amount: 500000, from: "EUR", to: "USD" } };
+  }
+  if (prompt.includes("time") || prompt.includes("timezone") || prompt.includes("date") || prompt.includes("today")) {
+    return { name: "get_current_time", args: { timezone: "UTC" } };
+  }
+  if (prompt.includes("search") || prompt.includes("regulation") || prompt.includes("eiopa") || prompt.includes("policy") || prompt.includes("insurance")) {
+    return { name: "insurance_knowledge_search", args: { query: prompt.slice(0, 40) } };
+  }
+  if (hasNumber) {
+    return { name: "calculator", args: { expression: "42 * 100 / 12" } };
+  }
+  if (params.toolChoice === "required") {
+    return { name: "calculator", args: { expression: "1000 * 1.05" } };
+  }
+  return null;
+}
+
+function mockChatCompletion(params: ChatParams): ChatResponse {
+  const prompt = params.messages.map((m) => m.content).join(" ");
+  const mockTool = getMockToolCall(params);
+
+  if (mockTool) {
     return {
-      content: "I calculated that for you using the calculator tool.",
+      content: `I executed the ${mockTool.name} tool to analyze your inquiry.`,
       tool_calls: [
         {
           id: "mock-tc-1",
           type: "function",
           function: {
-            name: "calculator",
-            arguments: JSON.stringify({ expression: "42 * 100 / 12" }),
+            name: mockTool.name,
+            arguments: JSON.stringify(mockTool.args),
           },
         },
       ],
@@ -435,7 +492,7 @@ function mockChatCompletion(params: ChatParams): ChatResponse {
 
 function mockChatCompletionStream(params: ChatParams): Response {
   const prompt = params.messages.map((m) => m.content).join(" ").toLowerCase();
-  const hasNumber = /\d+/.test(prompt);
+  const mockTool = getMockToolCall(params);
   const isReasoningModel = /r1|qwq|thinking|deepseek/.test(params.model.toLowerCase());
 
   const chunks: string[] = [];
@@ -448,22 +505,24 @@ function mockChatCompletionStream(params: ChatParams): Response {
   if (isReasoningModel) {
     chunks.push(
       sse({ choices: [{ delta: { reasoning: "Let me think about this step by step..." } }] }),
-      sse({ choices: [{ delta: { reasoning: "\n\nFirst, I need to understand the question about insurance..." } }] }),
-      sse({ choices: [{ delta: { reasoning: "\n\nAfter careful consideration, I have my answer." } }] })
+      sse({ choices: [{ delta: { reasoning: "\n\nFirst, I need to evaluate if a domain tool should be invoked..." } }] }),
+      sse({ choices: [{ delta: { reasoning: "\n\nPreparing to execute tool analysis..." } }] })
     );
   }
 
-  // Tool call chunk (if tools enabled and prompt has numbers)
-  if (hasNumber && params.tools && params.tools.length > 0) {
+  // Tool call chunk if applicable
+  if (mockTool) {
+    const rawArgs = JSON.stringify(mockTool.args);
+    const half = Math.floor(rawArgs.length / 2);
     chunks.push(
       sse({
         choices: [{
           delta: {
             tool_calls: [{
               index: 0,
-              id: "mock-tc-stream-1",
+              id: `mock-tc-${Date.now()}`,
               type: "function",
-              function: { name: "calculator", arguments: '{"expression":"' },
+              function: { name: mockTool.name, arguments: rawArgs.slice(0, half) },
             }]
           }
         }]
@@ -473,7 +532,7 @@ function mockChatCompletionStream(params: ChatParams): Response {
           delta: {
             tool_calls: [{
               index: 0,
-              function: { arguments: '42 * 100 / 12"}' },
+              function: { arguments: rawArgs.slice(half) },
             }]
           }
         }]

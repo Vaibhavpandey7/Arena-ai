@@ -13,6 +13,7 @@ export interface CompareRow {
   completionTokens: number;
   estCostUsd: number;
   toolCallCount: number;
+  toolEvents?: Array<{ type: "call" | "result"; name: string; data: string; timestamp: number }>;
 }
 
 interface Props {
@@ -24,10 +25,19 @@ interface Props {
 
 function ComparisonTable({ results, modelSystemPrompts, onSystemPromptChange, activeRecord }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
   const [copiedIndex, setCopiedIndex] = useState<string | null>(null);
 
   function toggleExpand(model: string) {
     setExpanded((prev) => {
+      const next = new Set(prev);
+      next.has(model) ? next.delete(model) : next.add(model);
+      return next;
+    });
+  }
+
+  function toggleToolTrace(model: string) {
+    setExpandedTools((prev) => {
       const next = new Set(prev);
       next.has(model) ? next.delete(model) : next.add(model);
       return next;
@@ -326,9 +336,31 @@ function ComparisonTable({ results, modelSystemPrompts, onSystemPromptChange, ac
                     </td>
 
                     <td>
-                      <span className="brand-tag">
-                        {row.toolCallCount}
-                      </span>
+                      {row.toolEvents && row.toolEvents.length > 0 ? (
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          style={{
+                            fontSize: "11px",
+                            padding: "3px 8px",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                            borderColor: "var(--cyan-border)",
+                            color: "var(--cyan-light)",
+                            background: "var(--cyan-dim)",
+                          }}
+                          onClick={() => toggleToolTrace(row.model)}
+                          title="Inspect tool execution trace for this model"
+                        >
+                          <span>{row.toolCallCount} call{row.toolCallCount !== 1 ? "s" : ""}</span>
+                          <span style={{ fontSize: "9px" }}>{expandedTools.has(row.model) ? "▲" : "▼"}</span>
+                        </button>
+                      ) : (
+                        <span className="brand-tag">
+                          {row.toolCallCount}
+                        </span>
+                      )}
                     </td>
 
                     <td>
@@ -352,7 +384,7 @@ function ComparisonTable({ results, modelSystemPrompts, onSystemPromptChange, ac
                             <ReactMarkdown>{row.answer}</ReactMarkdown>
                           </div>
 
-                          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4, flexWrap: "wrap" }}>
                             <button
                               className="btn-secondary"
                               onClick={() => toggleExpand(row.model)}
@@ -368,7 +400,48 @@ function ComparisonTable({ results, modelSystemPrompts, onSystemPromptChange, ac
                             >
                               {copiedIndex === row.model ? "✓ Copied" : "Copy"}
                             </button>
+
+                            {row.toolEvents && row.toolEvents.length > 0 && (
+                              <button
+                                className="btn-secondary"
+                                onClick={() => toggleToolTrace(row.model)}
+                                style={{
+                                  padding: "3px 10px",
+                                  fontSize: "11px",
+                                  borderColor: "var(--cyan-border)",
+                                  color: "var(--cyan-light)",
+                                }}
+                              >
+                                {expandedTools.has(row.model) ? "Hide Tool Calls" : `View Tool Calls (${row.toolEvents.length})`}
+                              </button>
+                            )}
                           </div>
+
+                          {/* Expanded Tool Trace Inspector */}
+                          {expandedTools.has(row.model) && row.toolEvents && (
+                            <div style={{ marginTop: 8, padding: "10px 12px", background: "var(--bg-canvas-subtle)", borderRadius: "6px", border: "1px solid var(--cyan-border)" }}>
+                              <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--cyan-light)", marginBottom: 6 }}>
+                                ⚡ Tool Execution Trace ({row.toolEvents.length} events)
+                              </div>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: "200px", overflowY: "auto" }}>
+                                {row.toolEvents.map((ev, ei) => (
+                                  <div key={ei} style={{ fontSize: "11px", fontFamily: "var(--font-mono)", background: "var(--bg-surface)", padding: "6px 8px", borderRadius: "4px", border: "1px solid var(--border-subtle)" }}>
+                                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                      <span style={{ color: ev.type === "call" ? "var(--cyan-light)" : "var(--emerald)", fontWeight: 700 }}>
+                                        [{ev.type.toUpperCase()}] {ev.name}()
+                                      </span>
+                                      <span style={{ color: "var(--text-subtle)", fontSize: "10px" }}>
+                                        {new Date(ev.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                                      </span>
+                                    </div>
+                                    <pre style={{ margin: "4px 0 0 0", fontSize: "10.5px", color: "var(--text-muted)", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                                      {ev.data}
+                                    </pre>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                     </td>

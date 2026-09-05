@@ -1,22 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
-import { chatCompletion, listModels, ChatMessage, ToolCall } from "@/lib/openrouter";
-import { TOOL_SCHEMAS, runTool } from "@/lib/tools";
+import { chatCompletion, listModels, ChatMessage, ToolCall, ToolChoice } from "@/lib/openrouter";
+import { TOOL_SCHEMAS, getFilteredToolSchemas, runTool } from "@/lib/tools";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const MAX_TOOL_ROUNDS = 5;
+
+export interface CompareToolEvent {
+  type: "call" | "result";
+  name: string;
+  data: string;
+  timestamp: number;
+}
 
 interface CompareRequestBody {
   models: string[];
   prompt: string;
   systemPrompt?: string;
   useTools?: boolean;
+  selectedTools?: string[];
+  toolChoice?: string;
   modelSystemPrompts?: Record<string, string>;
   modelCustomEndpoints?: Record<string, { baseUrl?: string; apiKey?: string }>;
 }
 
-interface CompareResult {
+export interface CompareResult {
   model: string;
   ok: boolean;
   answer?: string;
@@ -26,6 +36,7 @@ interface CompareResult {
   completionTokens: number;
   estCostUsd: number;
   toolCallCount: number;
+  toolEvents?: CompareToolEvent[];
 }
 
 async function runOneModel(
@@ -33,12 +44,36 @@ async function runOneModel(
   prompt: string,
   systemPrompt: string | undefined,
   useTools: boolean,
+  selectedTools: string[] | undefined,
+  toolChoice: string | undefined,
   modelList: Awaited<ReturnType<typeof listModels>>,
   customEndpoint?: { baseUrl?: string; apiKey?: string }
 ): Promise<CompareResult> {
   const start = Date.now();
   const messages: ChatMessage[] = [{ role: "user", content: prompt }];
-  const tools = useTools ? TOOL_SCHEMAS : undefined;
+  const toolEvents: CompareToolEvent[] = [];
+
+  let tools = useTools ? getFilteredToolSchemas(selectedTools) : undefined;
+  let formattedToolChoice: ToolChoice | undefined = undefined;
+  let forcedToolName: string | null = null;
+
+  if (useTools && tools && tools.length > 0) {
+    if (toolChoice === "none") {
+      tools = undefined;
+    } else if (toolChoice === "required") {
+      formattedToolChoice = "required";
+    } else if (toolChoice && toolChoice !== "auto") {
+      const matched = tools.find((t) => t.function.name === toolChoice);
+      if (matched) {
+        formattedToolChoice = { type: "function", function: { name: toolChoice } };
+        forcedToolName = toolChoice;
+      }
+    }
+  }
+
+  const effectiveSystemPrompt = forcedToolName
+    ? `${systemPrompt ? systemPrompt + "\n\n" : ""}CRITICAL INSTRUCTION: You MUST invoke the '${forcedToolName}' tool to compute, evaluate, or retrieve the necessary data to answer the user prompt.`
+    : systemPrompt;
 
   let promptTokens = 0;
   let completionTokens = 0;
@@ -51,7 +86,8 @@ async function runOneModel(
         model: modelId,
         messages,
         tools,
-        systemPrompt,
+        toolChoice: round === 0 ? formattedToolChoice : "auto",
+        systemPrompt: effectiveSystemPrompt,
         customEndpoint,
       });
 
@@ -65,7 +101,6 @@ async function runOneModel(
         break;
       }
 
-      // Tool calls
       const tcs: ToolCall[] = res.tool_calls;
       toolCallCount += tcs.length;
 
@@ -82,7 +117,23 @@ async function runOneModel(
         } catch {
           args = {};
         }
+
+        toolEvents.push({
+          type: "call",
+          name: tc.function.name,
+          data: JSON.stringify(args, null, 2),
+          timestamp: Date.now(),
+        });
+
         const result = await runTool(tc.function.name, args);
+
+        toolEvents.push({
+          type: "result",
+          name: tc.function.name,
+          data: result,
+          timestamp: Date.now(),
+        });
+
         messages.push({ role: "tool", content: result, tool_call_id: tc.id });
       }
     }
@@ -102,6 +153,7 @@ async function runOneModel(
       completionTokens,
       estCostUsd,
       toolCallCount,
+      toolEvents: toolEvents.length > 0 ? toolEvents : undefined,
     };
   } catch (err) {
     return {
@@ -113,6 +165,7 @@ async function runOneModel(
       completionTokens,
       estCostUsd: 0,
       toolCallCount,
+      toolEvents: toolEvents.length > 0 ? toolEvents : undefined,
     };
   }
 }
@@ -125,7 +178,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { models, prompt, systemPrompt, useTools, modelSystemPrompts, modelCustomEndpoints } = body;
+  const {
+    models,
+    prompt,
+    systemPrompt,
+    useTools,
+    selectedTools,
+    toolChoice,
+    modelSystemPrompts,
+    modelCustomEndpoints,
+  } = body;
 
   if (!models || models.length === 0 || !prompt) {
     return NextResponse.json(
@@ -152,6 +214,8 @@ export async function POST(req: NextRequest) {
         prompt,
         modelSystemPrompts?.[modelId] ?? systemPrompt,
         useTools ?? false,
+        selectedTools,
+        toolChoice,
         modelList,
         modelCustomEndpoints?.[modelId]
       )
