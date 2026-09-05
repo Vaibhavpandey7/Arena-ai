@@ -122,6 +122,8 @@
 html {
   font-size: 14px;
   scroll-behavior: smooth;
+  max-width: 100vw;
+  overflow-x: hidden;
 }
 
 body {
@@ -134,6 +136,8 @@ body {
   background-attachment: fixed;
   color: var(--text-main);
   min-height: 100vh;
+  width: 100%;
+  max-width: 100vw;
   line-height: 1.6;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
@@ -1853,27 +1857,699 @@ body {
   margin-top: 6px;
 }
 
-/* ── Responsive Adjustments ─────────────────────────────────────────────── */
+/* ── Component Layout Extensions ─────────────────────────────────────────── */
+.model-deck-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.model-filter-tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.studio-hero-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.studio-hero-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.studio-hero-title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--text-main);
+}
+
+.studio-hero-subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.studio-search-split-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.split-switcher {
+  display: flex;
+  align-items: center;
+  background: var(--bg-canvas-subtle);
+  padding: 3px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-default);
+}
+
+.split-btn {
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.split-btn:hover {
+  color: var(--text-main);
+}
+
+.split-btn.active {
+  background: var(--bg-surface-elevated);
+  color: var(--text-main);
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+.history-search-input {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--bg-canvas-subtle);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-main);
+  font-size: 13px;
+  outline: none;
+  font-family: var(--font-ui);
+}
+
+.history-search-input:focus {
+  border-color: var(--accent);
+}
+
+.matrix-table-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.hide-on-mobile {
+  display: inline-flex;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Comprehensive Mobile & Tablet Responsive Architecture (<= 768px)
+   ═══════════════════════════════════════════════════════════════════════════ */
 @media (max-width: 768px) {
+  /* Prevent horizontal scrolling on the root viewport */
+  html, body {
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    width: 100% !important;
+  }
+
+  /* ── Mobile Glass Navbar (2-Tier Adaptive Deck) ── */
+  .top-navbar {
+    top: 8px;
+    padding: 0 10px;
+    width: 100%;
+    max-width: 100vw;
+  }
+
   .navbar-inner {
-    padding: 8px 14px;
+    flex-wrap: wrap;
+    padding: 8px 12px;
+    gap: 8px;
     border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
   }
+
+  .brand-section {
+    order: 1;
+    gap: 8px;
+  }
+
+  .brand-badge {
+    width: 30px;
+    height: 30px;
+    font-size: 14px;
+    border-radius: 8px;
+  }
+
+  .brand-name {
+    font-size: 16px;
+  }
+
+  .navbar-actions {
+    order: 2;
+    gap: 6px;
+  }
+
+  .status-pill {
+    padding: 3px 8px;
+    font-size: 11px;
+    gap: 5px;
+  }
+
+  .nav-tab-deck {
+    order: 3;
+    width: 100%;
+    margin-top: 2px;
+    padding: 3px;
+    display: flex;
+    justify-content: space-between;
+    border-radius: var(--radius-full);
+  }
+
+  .nav-tab {
+    flex: 1;
+    justify-content: center;
+    text-align: center;
+    padding: 6px 4px;
+    font-size: 12px;
+    min-height: 34px;
+  }
+
+  /* ── Main App Container ── */
+  .app-container {
+    padding: 14px 10px 48px;
+    gap: 16px;
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  /* ── Command Deck (Prompt Console) ── */
   .command-deck {
-    padding: 16px;
+    padding: 14px;
     border-radius: var(--radius-lg);
   }
-  .records-grid {
-    grid-template-columns: 1fr;
+
+  .command-header {
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
   }
-  .model-grid {
-    grid-template-columns: 1fr;
+
+  .command-title {
+    font-size: 15px;
   }
-  .footer-left-controls, .footer-right-actions {
+
+  .hide-on-mobile {
+    display: none !important;
+  }
+
+  .suggestion-carousel {
+    gap: 6px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .suggestion-pill {
+    padding: 5px 10px;
+    font-size: 11px;
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .prompt-box-wrapper {
+    padding: 10px 12px;
+  }
+
+  /* Prevent iOS Safari from zooming on input focus (minimum 16px font-size) */
+  .main-prompt-input {
+    font-size: 16px !important;
+    min-height: 80px;
+    line-height: 1.5;
+  }
+
+  .system-prompt-input {
+    font-size: 16px !important;
+  }
+
+  .command-footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    margin-top: 12px;
+    padding-top: 10px;
+  }
+
+  .footer-left-controls {
     width: 100%;
     justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
   }
-  .btn-execute {
+
+  .tool-switch-deck {
+    flex-wrap: wrap;
+    padding: 4px 8px;
+    gap: 6px;
+  }
+
+  .tool-active-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    width: 100%;
+    margin-top: 2px;
+  }
+
+  .tool-chip {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+
+  .char-counter {
+    font-size: 11px;
+  }
+
+  .footer-right-actions {
     width: 100%;
   }
+
+  .btn-execute {
+    width: 100%;
+    justify-content: center;
+    height: 44px;
+    font-size: 14px;
+    border-radius: var(--radius-md);
+  }
+
+  /* ── Model Selection Deck ── */
+  .model-deck-card {
+    padding: 14px;
+    border-radius: var(--radius-lg);
+  }
+
+  .model-deck-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .deck-title {
+    justify-content: space-between;
+    width: 100%;
+    font-size: 14px;
+  }
+
+  .model-deck-controls {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .add-model-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 7px 12px !important;
+    font-size: 12px !important;
+  }
+
+  .model-filter-tabs {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    width: 100%;
+    max-width: 100%;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .model-filter-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .deck-search {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .deck-search input {
+    font-size: 16px !important;
+  }
+
+  .model-grid {
+    grid-template-columns: 1fr !important;
+    gap: 8px;
+  }
+
+  .model-card {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .model-card-name {
+    font-size: 13.5px;
+  }
+
+  .model-card-bottom {
+    padding-top: 6px;
+  }
+
+  .model-badges {
+    gap: 3px;
+  }
+
+  /* ── Single Model Results Workspace ── */
+  .bento-workspace {
+    gap: 14px;
+  }
+
+  .empty-hero-card {
+    padding: 32px 16px;
+    border-radius: var(--radius-lg);
+    gap: 12px;
+  }
+
+  .empty-title {
+    font-size: 20px;
+    line-height: 1.3;
+  }
+
+  .empty-desc {
+    font-size: 12.5px;
+    line-height: 1.5;
+  }
+
+  .empty-feature-grid {
+    gap: 6px;
+    margin-top: 6px;
+  }
+
+  .feature-pill {
+    font-size: 11px;
+    padding: 4px 10px;
+  }
+
+  .running-status-bar {
+    padding: 10px 14px;
+    border-radius: var(--radius-md);
+  }
+
+  .running-text {
+    font-size: 13px;
+  }
+
+  .neural-terminal {
+    border-radius: var(--radius-lg);
+  }
+
+  .terminal-header {
+    padding: 10px 14px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .terminal-body {
+    padding: 12px 14px;
+    font-size: 12px;
+    line-height: 1.6;
+    max-height: 280px;
+  }
+
+  .tool-chronometer {
+    border-radius: var(--radius-lg);
+  }
+
+  .tool-header {
+    padding: 10px 14px;
+  }
+
+  .tool-event-list {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .tool-event-item {
+    padding: 10px;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .tool-payload {
+    font-size: 11px;
+    padding: 6px 8px;
+  }
+
+  .answer-panel {
+    border-radius: var(--radius-lg);
+  }
+
+  .answer-header {
+    padding: 12px 14px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .model-source-pill {
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 10.5px;
+  }
+
+  .answer-body {
+    padding: 16px 14px;
+    font-size: 14px;
+    line-height: 1.65;
+  }
+
+  .answer-telemetry-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 12px 14px;
+  }
+
+  .telemetry-metrics {
+    gap: 8px 12px;
+  }
+
+  .metric-pill {
+    font-size: 11px;
+  }
+
+  .answer-telemetry-bar .btn-secondary {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* ── Head-to-Head Compare Workspace ── */
+  .compare-leaderboard {
+    grid-template-columns: 1fr !important;
+    gap: 8px;
+  }
+
+  .leader-card {
+    padding: 12px 14px;
+    gap: 12px;
+  }
+
+  .leader-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 17px;
+  }
+
+  .leader-value {
+    font-size: 14.5px;
+  }
+
+  .matrix-table-card {
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .matrix-table-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 12px 14px;
+  }
+
+  .export-actions {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .export-actions .btn-secondary {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .matrix-table-scroll {
+    overflow-x: auto;
+    width: 100%;
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .matrix-table th, .matrix-table td {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+
+  /* ── Insurance Data Lake Studio ── */
+  .lake-studio-deck {
+    gap: 14px;
+  }
+
+  .studio-hero {
+    padding: 14px;
+    border-radius: var(--radius-lg);
+    gap: 12px;
+  }
+
+  .studio-hero-title {
+    font-size: 16px;
+  }
+
+  .studio-hero-subtitle {
+    font-size: 11px;
+    line-height: 1.4;
+  }
+
+  .studio-search-split-bar {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .split-switcher {
+    width: 100%;
+    justify-content: space-between;
+    overflow-x: auto;
+  }
+
+  .split-btn {
+    flex: 1;
+    text-align: center;
+    padding: 5px 6px;
+    font-size: 11px;
+  }
+
+  .domain-filters-bar {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    width: 100%;
+    max-width: 100%;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .domain-filters-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .records-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+  }
+
+  .dil-record-card {
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+  }
+
+  .dil-card-q {
+    font-size: 13.5px;
+  }
+
+  .gold-eval-deck {
+    padding: 14px;
+    border-radius: var(--radius-lg);
+    gap: 12px;
+  }
+
+  .gold-eval-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px;
+  }
+
+  /* ── Custom Model Modal & History Drawer ── */
+  .modal-overlay {
+    padding: 10px;
+  }
+
+  .modal-card {
+    max-width: calc(100vw - 20px);
+    border-radius: var(--radius-lg);
+  }
+
+  .modal-header {
+    padding: 12px 16px;
+  }
+
+  .modal-body {
+    padding: 14px 16px;
+    max-height: 80vh;
+    gap: 12px;
+  }
+
+  .modal-field input,
+  .modal-field select {
+    font-size: 16px !important;
+  }
+
+  .history-drawer {
+    max-width: 100vw;
+    width: 100vw;
+    border-left: none;
+  }
+
+  .history-search-input {
+    font-size: 16px !important;
+  }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Compact Screen Breakpoint (<= 480px, e.g. iPhone SE, iPhone 12/13/14 mini)
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 480px) {
+  .status-pill-text {
+    display: none;
+  }
+
+  .status-pill {
+    padding: 4px 6px;
+  }
+
+  .brand-tag {
+    display: none;
+  }
+
+  .brand-name {
+    font-size: 15px;
+  }
+
+  .nav-tab {
+    font-size: 11px;
+    padding: 6px 2px;
+  }
+
+  .nav-tab span {
+    letter-spacing: -0.01em;
+  }
+}
+

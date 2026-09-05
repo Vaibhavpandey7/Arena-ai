@@ -132,7 +132,7 @@ function ComparisonTable({ results, modelSystemPrompts, onSystemPromptChange }: 
           </div>
         </div>
 
-        <div style={{ overflowX: "auto" }}>
+        <div className="matrix-table-scroll" style={{ overflowX: "auto" }}>
           <table className="matrix-table">
             <thead>
               <tr>

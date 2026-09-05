@@ -78,19 +78,10 @@ export default function PromptHistorySidebar({ open, onClose, onRestore }: Props
             id="history-search-input"
             name="historySearch"
             type="text"
+            className="history-search-input"
             placeholder="Search past prompts…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "7px 12px",
-              background: "var(--bg-canvas-subtle)",
-              border: "1px solid var(--border-default)",
-              borderRadius: "var(--radius-md)",
-              color: "var(--text-main)",
-              fontSize: "12.5px",
-              outline: "none",
-            }}
           />
         </div>
 

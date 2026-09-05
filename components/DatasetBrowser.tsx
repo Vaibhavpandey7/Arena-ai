@@ -81,20 +81,18 @@ function DatasetBrowser({ onLoadRecord, modelAnswer }: Props) {
     <div className="lake-studio-deck">
       {/* Studio Header & Filter Controls */}
       <div className="studio-hero">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div>
-              <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "18px", color: "var(--text-main)" }}>
-                Insurance Domain Intelligence Lake
-              </div>
-              <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>
-                38 Curated Synthetic Gold Records · 7 Regulatory & Actuarial Categories · Deterministic Train/Val/Test Split
-              </div>
+        <div className="studio-hero-top">
+          <div className="studio-hero-title-group">
+            <div className="studio-hero-title">
+              Insurance Domain Intelligence Lake
+            </div>
+            <div className="studio-hero-subtitle">
+              38 Curated Synthetic Gold Records · 7 Regulatory & Actuarial Categories · Deterministic Train/Val/Test Split
             </div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div className="deck-search" style={{ width: 220 }}>
+          <div className="studio-search-split-bar">
+            <div className="deck-search">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}>
                 <circle cx="11" cy="11" r="8" />
                 <line x1="21" y1="21" x2="16.65" y2="16.65" />
@@ -110,21 +108,12 @@ function DatasetBrowser({ onLoadRecord, modelAnswer }: Props) {
             </div>
 
             {/* Split Switcher */}
-            <div style={{ display: "flex", background: "var(--bg-canvas-subtle)", padding: 3, borderRadius: "var(--radius-full)", border: "1px solid var(--border-default)" }}>
+            <div className="split-switcher">
               {SPLITS.map((s) => (
                 <button
                   key={s}
                   onClick={() => setSplit(s)}
-                  style={{
-                    padding: "3px 10px",
-                    borderRadius: "var(--radius-full)",
-                    border: "none",
-                    background: split === s ? "var(--bg-surface-elevated)" : "transparent",
-                    color: split === s ? "var(--text-main)" : "var(--text-muted)",
-                    fontSize: "11px",
-                    fontWeight: split === s ? 600 : 400,
-                    cursor: "pointer",
-                  }}
+                  className={`split-btn${split === s ? " active" : ""}`}
                 >
                   {s || "All Splits"}
                 </button>
@@ -151,7 +140,7 @@ function DatasetBrowser({ onLoadRecord, modelAnswer }: Props) {
       {/* Gold Evaluation Side-by-Side Comparator */}
       {activeRecord && modelAnswer && (
         <div className="gold-eval-deck">
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "16px", color: "var(--text-main)" }}>
                 Ground Truth Evaluation Benchmark

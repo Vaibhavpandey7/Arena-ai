@@ -229,7 +229,7 @@ export default function Page() {
           <div className="navbar-actions">
             <div className="status-pill">
               <span className="live-dot" />
-              <span>OpenRouter Live</span>
+              <span className="status-pill-text">OpenRouter Live</span>
             </div>
 
             <button
@@ -264,7 +264,7 @@ export default function Page() {
               </div>
 
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span className="kbd-shortcut">⌘ + Enter to run</span>
+                <span className="kbd-shortcut hide-on-mobile">⌘ + Enter to run</span>
               </div>
             </div>
 

@@ -325,11 +325,11 @@ function ModelSelectorComponent({ mode, selected, onChange, onCustomEndpointsCha
           )}
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <div className="model-deck-controls">
           {/* Add Your Own Model Button */}
           <button
             type="button"
-            className="btn-secondary"
+            className="btn-secondary add-model-btn"
             onClick={() => setShowModal(true)}
             style={{
               padding: "4px 11px",
@@ -346,7 +346,7 @@ function ModelSelectorComponent({ mode, selected, onChange, onCustomEndpointsCha
           </button>
 
           {/* Capability filter tabs */}
-          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+          <div className="model-filter-tabs">
             <button
               className={`domain-chip${activeFilter === "featured" ? " active" : ""}`}
               onClick={() => setActiveFilter("featured")}
@@ -468,7 +468,7 @@ function ModelSelectorComponent({ mode, selected, onChange, onCustomEndpointsCha
                   onClick={() => !disabled && toggleModel(m.id)}
                 >
                   <div className="model-card-top">
-                    <div style={{ overflow: "hidden", flex: 1 }}>
+                    <div style={{ overflow: "hidden", flex: 1, minWidth: 0 }}>
                       <div className="model-card-name" style={{ display: "flex", alignItems: "center", gap: 6 }}>
                         <span style={{ textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
                           {m.name}
@@ -479,7 +479,7 @@ function ModelSelectorComponent({ mode, selected, onChange, onCustomEndpointsCha
                       </div>
                     </div>
 
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
                       {m.isCustom && (
                         <button
                           type="button"
