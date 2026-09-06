@@ -181,37 +181,144 @@ export default function Page() {
     if (!prompt.trim() || selectedModels.length === 0) return;
     saveToHistory(prompt, systemPrompt);
     setIsComparing(true);
-    setCompareResults([]);
     setCompareError("");
 
+    // Initialize all selected model cards with live loading state
+    const initialRows: CompareRow[] = selectedModels.map((m) => ({
+      model: m,
+      ok: true,
+      loading: true,
+      latencyMs: 0,
+      promptTokens: 0,
+      completionTokens: 0,
+      estCostUsd: 0,
+      toolCallCount: 0,
+    }));
+    setCompareResults(initialRows);
+
     try {
-      const res = await fetch("/api/compare", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          models: selectedModels,
-          prompt,
-          systemPrompt,
-          useTools,
-          selectedTools,
-          toolChoice,
-          modelSystemPrompts,
-          modelCustomEndpoints: customEndpoints,
-        }),
+      // Execute each model progressively with a 350ms stagger
+      // This eliminates 429 Too Many Requests concurrency spikes on OpenRouter
+      // and updates each model's card immediately upon completion
+      const promises = selectedModels.map(async (modelId, idx) => {
+        if (idx > 0) {
+          await new Promise((resolve) => setTimeout(resolve, idx * 350));
+        }
+
+        try {
+          const res = await fetch("/api/compare", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              models: [modelId],
+              prompt,
+              systemPrompt,
+              useTools,
+              selectedTools,
+              toolChoice,
+              modelSystemPrompts,
+              modelCustomEndpoints: customEndpoints,
+            }),
+          });
+
+          const data = await res.json();
+          const result = data.results?.[0];
+
+          if (result) {
+            setCompareResults((prev) =>
+              prev.map((r) => (r.model === modelId ? { ...result, loading: false } : r))
+            );
+          } else {
+            setCompareResults((prev) =>
+              prev.map((r) =>
+                r.model === modelId
+                  ? {
+                      ...r,
+                      ok: false,
+                      loading: false,
+                      error: data.error || "Model evaluation failed",
+                    }
+                  : r
+              )
+            );
+          }
+        } catch (err) {
+          setCompareResults((prev) =>
+            prev.map((r) =>
+              r.model === modelId
+                ? {
+                    ...r,
+                    ok: false,
+                    loading: false,
+                    error: (err as Error).message,
+                  }
+                : r
+            )
+          );
+        }
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        setCompareError(data.error ?? "Compare benchmark failed");
-      } else {
-        setCompareResults(data.results ?? []);
-      }
+      await Promise.all(promises);
     } catch (err) {
       setCompareError((err as Error).message);
     } finally {
       setIsComparing(false);
     }
-  }, [prompt, systemPrompt, useTools, selectedModels, modelSystemPrompts, customEndpoints]);
+  }, [prompt, systemPrompt, useTools, selectedTools, toolChoice, selectedModels, modelSystemPrompts, customEndpoints]);
+
+  const retryCompareModel = useCallback(
+    async (modelId: string) => {
+      setCompareResults((prev) =>
+        prev.map((r) =>
+          r.model === modelId
+            ? { ...r, loading: true, ok: true, error: undefined }
+            : r
+        )
+      );
+
+      try {
+        const res = await fetch("/api/compare", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            models: [modelId],
+            prompt,
+            systemPrompt,
+            useTools,
+            selectedTools,
+            toolChoice,
+            modelSystemPrompts,
+            modelCustomEndpoints: customEndpoints,
+          }),
+        });
+
+        const data = await res.json();
+        const result = data.results?.[0];
+        if (result) {
+          setCompareResults((prev) =>
+            prev.map((r) => (r.model === modelId ? { ...result, loading: false } : r))
+          );
+        } else {
+          setCompareResults((prev) =>
+            prev.map((r) =>
+              r.model === modelId
+                ? { ...r, ok: false, loading: false, error: data.error || "Retry failed" }
+                : r
+            )
+          );
+        }
+      } catch (err) {
+        setCompareResults((prev) =>
+          prev.map((r) =>
+            r.model === modelId
+              ? { ...r, ok: false, loading: false, error: (err as Error).message }
+              : r
+          )
+        );
+      }
+    },
+    [prompt, systemPrompt, useTools, selectedTools, toolChoice, modelSystemPrompts, customEndpoints]
+  );
 
   const exportSingleBenchmark = useCallback((format: "csv" | "json") => {
     if (!answer) return;
@@ -836,6 +943,7 @@ export default function Page() {
                 }
                 activeRecord={activeRecord}
                 prompt={prompt}
+                onRetryModel={retryCompareModel}
               />
             )}
           </div>

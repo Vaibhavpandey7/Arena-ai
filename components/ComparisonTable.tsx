@@ -12,6 +12,7 @@ import {
 export interface CompareRow {
   model: string;
   ok: boolean;
+  loading?: boolean;
   answer?: string;
   error?: string;
   latencyMs: number;
@@ -28,6 +29,7 @@ interface Props {
   onSystemPromptChange: (model: string, value: string) => void;
   activeRecord?: DILRecord | null;
   prompt?: string;
+  onRetryModel?: (model: string) => void;
 }
 
 type ViewMode = "split" | "tabs" | "table";
@@ -38,6 +40,7 @@ function ComparisonTable({
   onSystemPromptChange,
   activeRecord,
   prompt,
+  onRetryModel,
 }: Props) {
   const [viewMode, setViewMode] = useState<ViewMode>("split");
   const [activeTabModel, setActiveTabModel] = useState<string>(results[0]?.model ?? "");
@@ -660,15 +663,59 @@ function ComparisonTable({
 
                 {/* Main Markdown Answer Reading Canvas */}
                 <div className={`arena-answer-canvas ${isExpanded ? "expanded" : "limited"}`}>
-                  {!row.ok && (
-                    <div style={{ color: "var(--rose)", background: "var(--rose-dim)", padding: "14px 18px", borderRadius: "8px", border: "1px solid rgba(244,63,94,0.3)" }}>
-                      <div style={{ fontWeight: 700, marginBottom: 4 }}>⚠ Generation Error</div>
-                      <div style={{ fontSize: 12.5, lineHeight: 1.5 }}>{row.error ?? "An inference error occurred"}</div>
+                  {row.loading && (
+                    <div className="arena-loading-card">
+                      <div className="arena-loading-spinner" />
+                      <div className="arena-loading-text">Generating response…</div>
+                      <div className="arena-loading-sub">Connecting to model endpoint</div>
                     </div>
                   )}
 
-                  {row.ok && row.answer && (
+                  {!row.loading && !row.ok && (
+                    <div className="arena-error-box">
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                        <div style={{ fontWeight: 700 }}>⚠ Inference Error</div>
+                        {onRetryModel && (
+                          <button
+                            type="button"
+                            className="btn-secondary"
+                            onClick={() => onRetryModel(row.model)}
+                            style={{ fontSize: 11, padding: "2px 8px", borderColor: "var(--rose)", color: "var(--rose)" }}
+                          >
+                            🔄 Retry Model
+                          </button>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 12.5, lineHeight: 1.5 }}>{row.error ?? "An inference error occurred"}</div>
+                      {(row.error?.includes("429") || row.error?.toLowerCase().includes("rate limit") || row.error?.toLowerCase().includes("free-models-per-day")) && (
+                        <div style={{ marginTop: 8, padding: "8px 10px", background: "rgba(244,63,94,0.15)", borderRadius: "6px", fontSize: "11.5px", color: "var(--text-main)" }}>
+                          💡 <b>OpenRouter Rate Limit:</b> Free-tier models have a strict daily quota (<code>free-models-per-day</code>). Switch to production models (e.g. <b>GPT-4o Mini</b> or <b>Llama 3.3 70B</b>) or local Ollama models to bypass this limit.
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {!row.loading && row.ok && row.answer && row.answer.trim() && (
                     <ReactMarkdown>{row.answer}</ReactMarkdown>
+                  )}
+
+                  {!row.loading && row.ok && (!row.answer || !row.answer.trim()) && (
+                    <div className="arena-empty-answer-box">
+                      <div style={{ fontWeight: 600, marginBottom: 4 }}>ℹ Empty Response Received</div>
+                      <div style={{ fontSize: 12, marginBottom: 10 }}>
+                        The model concluded inference without producing text content. Output may have been consumed by internal reasoning or filtered.
+                      </div>
+                      {onRetryModel && (
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          onClick={() => onRetryModel(row.model)}
+                          style={{ fontSize: 11, padding: "4px 12px" }}
+                        >
+                          🔄 Retry Model
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
 
@@ -893,14 +940,59 @@ function ComparisonTable({
 
           {/* Expansive Reading Canvas */}
           <div className="arena-answer-canvas expanded" style={{ padding: "32px 36px", fontSize: "15px", lineHeight: 1.8 }}>
-            {!activeTabRow.ok && (
-              <div style={{ color: "var(--rose)", background: "var(--rose-dim)", padding: "16px 20px", borderRadius: "8px" }}>
-                ⚠ {activeTabRow.error ?? "An error occurred during inference"}
+            {activeTabRow.loading && (
+              <div className="arena-loading-card">
+                <div className="arena-loading-spinner" />
+                <div className="arena-loading-text">Generating response…</div>
+                <div className="arena-loading-sub">Connecting to model endpoint</div>
               </div>
             )}
 
-            {activeTabRow.ok && activeTabRow.answer && (
+            {!activeTabRow.loading && !activeTabRow.ok && (
+              <div className="arena-error-box">
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                  <div style={{ fontWeight: 700 }}>⚠ Inference Error</div>
+                  {onRetryModel && (
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      onClick={() => onRetryModel(activeTabRow.model)}
+                      style={{ fontSize: 11, padding: "3px 10px", borderColor: "var(--rose)", color: "var(--rose)" }}
+                    >
+                      🔄 Retry Model
+                    </button>
+                  )}
+                </div>
+                <div style={{ fontSize: 13, lineHeight: 1.6 }}>{activeTabRow.error ?? "An error occurred during inference"}</div>
+                {(activeTabRow.error?.includes("429") || activeTabRow.error?.toLowerCase().includes("rate limit") || activeTabRow.error?.toLowerCase().includes("free-models-per-day")) && (
+                  <div style={{ marginTop: 8, padding: "8px 10px", background: "rgba(244,63,94,0.15)", borderRadius: "6px", fontSize: "12px", color: "var(--text-main)" }}>
+                    💡 <b>OpenRouter Rate Limit:</b> Free-tier models have a strict daily quota (<code>free-models-per-day</code>). Switch to production models (e.g. <b>GPT-4o Mini</b> or <b>Llama 3.3 70B</b>) or local Ollama models to bypass this limit.
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!activeTabRow.loading && activeTabRow.ok && activeTabRow.answer && activeTabRow.answer.trim() && (
               <ReactMarkdown>{activeTabRow.answer}</ReactMarkdown>
+            )}
+
+            {!activeTabRow.loading && activeTabRow.ok && (!activeTabRow.answer || !activeTabRow.answer.trim()) && (
+              <div className="arena-empty-answer-box">
+                <div style={{ fontWeight: 600, marginBottom: 4 }}>ℹ Empty Response Received</div>
+                <div style={{ fontSize: 13, marginBottom: 12 }}>
+                  The model concluded inference without producing text content. Output may have been consumed by internal reasoning or filtered.
+                </div>
+                {onRetryModel && (
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => onRetryModel(activeTabRow.model)}
+                    style={{ fontSize: 11, padding: "4px 12px" }}
+                  >
+                    🔄 Re-run Model
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </div>

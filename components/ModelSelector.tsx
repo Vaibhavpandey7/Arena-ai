@@ -55,6 +55,11 @@ const PRESETS = [
 
 const COMPARE_PRESETS = [
   {
+    label: "⚡ Top 4 Benchmark",
+    models: ["openai/gpt-4o-mini", "meta-llama/llama-3.3-70b-instruct", "deepseek/deepseek-chat", "anthropic/claude-3-haiku"],
+    desc: "4 fast, production-reliable models that avoid free-tier daily caps",
+  },
+  {
     label: "⚡ Frontier Trio",
     models: ["openai/gpt-4o-mini", "meta-llama/llama-3.3-70b-instruct", "deepseek/deepseek-chat"],
     desc: "Top frontier reasoning & instruct models",
@@ -65,13 +70,8 @@ const COMPARE_PRESETS = [
     desc: "Zero-cost local Ollama models",
   },
   {
-    label: "💸 Free Tier",
-    models: ["liquid/lfm-2.5-2.6b:free", "nvidia/nemotron-3.5-lightning:free", "llama3.2:3b"],
-    desc: "Zero-cost high capability models",
-  },
-  {
     label: "🧮 Fast & Efficient",
-    models: ["openai/gpt-4o-mini", "llama3.2:3b", "meta-llama/llama-3.3-70b-instruct"],
+    models: ["openai/gpt-4o-mini", "meta-llama/llama-3.3-70b-instruct"],
     desc: "Fast & reliable executors",
   },
 ];

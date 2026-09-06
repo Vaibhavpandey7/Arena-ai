@@ -1854,6 +1854,56 @@ body {
   max-height: none;
 }
 
+/* Arena Loading Card State */
+.arena-loading-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 24px;
+  gap: 14px;
+  text-align: center;
+}
+
+.arena-loading-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--border-default);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.arena-loading-text {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.arena-loading-sub {
+  font-size: 12px;
+  color: var(--text-subtle);
+}
+
+.arena-empty-answer-box {
+  padding: 24px 20px;
+  border-radius: 8px;
+  background: var(--bg-canvas-subtle);
+  border: 1px dashed var(--border-default);
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.arena-error-box {
+  padding: 16px 20px;
+  border-radius: 8px;
+  background: var(--rose-dim);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+  color: var(--rose);
+}
+
 /* Markdown typography improvements */
 .arena-answer-canvas p {
   margin-bottom: 14px;

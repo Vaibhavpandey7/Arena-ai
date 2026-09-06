@@ -144,6 +144,20 @@ async function runOneModel(
     const estCostUsd =
       promptTokens * pricing.prompt + completionTokens * pricing.completion;
 
+    if (!answer || !answer.trim()) {
+      return {
+        model: modelId,
+        ok: false,
+        error: "Model completed inference without returning text content. Tokens may have been exhausted by internal reasoning, or the output was filtered.",
+        latencyMs,
+        promptTokens,
+        completionTokens,
+        estCostUsd,
+        toolCallCount,
+        toolEvents: toolEvents.length > 0 ? toolEvents : undefined,
+      };
+    }
+
     return {
       model: modelId,
       ok: true,
@@ -207,20 +221,25 @@ export async function POST(req: NextRequest) {
     // Proceed without pricing data
   }
 
-  const results = await Promise.all(
-    models.map((modelId) =>
-      runOneModel(
-        modelId,
-        prompt,
-        modelSystemPrompts?.[modelId] ?? systemPrompt,
-        useTools ?? false,
-        selectedTools,
-        toolChoice,
-        modelList,
-        modelCustomEndpoints?.[modelId]
-      )
-    )
-  );
+  // If multiple models are requested in a single POST, stagger dispatches by 350ms
+  // to prevent sudden concurrent spikes that trigger OpenRouter 429 Too Many Requests
+  const promises = models.map(async (modelId, idx) => {
+    if (idx > 0) {
+      await new Promise((resolve) => setTimeout(resolve, idx * 350));
+    }
+    return runOneModel(
+      modelId,
+      prompt,
+      modelSystemPrompts?.[modelId] ?? systemPrompt,
+      useTools ?? false,
+      selectedTools,
+      toolChoice,
+      modelList,
+      modelCustomEndpoints?.[modelId]
+    );
+  });
+
+  const results = await Promise.all(promises);
 
   return NextResponse.json({ results });
 }

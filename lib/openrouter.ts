@@ -251,7 +251,9 @@ export async function chatCompletion(params: ChatParams): Promise<ChatResponse> 
     messages,
     tools: effectiveTools,
     temperature: params.temperature ?? 0.7,
-    max_tokens: params.max_tokens ?? 2048,
+    max_tokens: params.max_tokens ?? (
+      /r1|qwq|reasoning|thinking|o1|o3/i.test(params.model) ? 4096 : 2500
+    ),
     usage: { include: true },
   };
   if (effectiveTools && params.toolChoice) {
@@ -271,60 +273,100 @@ export async function chatCompletion(params: ChatParams): Promise<ChatResponse> 
       }
     : orHeaders();
 
-  let res: Response;
-  try {
-    res = await fetch(endpointUrl, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(body),
-    });
+  const MAX_RETRIES = 3;
+  let res: Response | null = null;
+  let lastErrText = "";
 
-    if (!res.ok && body.tools && (res.status === 400 || res.status === 404)) {
-      const errClone = res.clone();
-      const errText = await errClone.text().catch(() => "");
-      if (errText.toLowerCase().includes("support tools") || errText.toLowerCase().includes("tools")) {
-        const bodyNoTools = { ...body, tools: undefined };
-        res = await fetch(endpointUrl, {
-          method: "POST",
-          headers,
-          body: JSON.stringify(bodyNoTools),
-        });
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      res = await fetch(endpointUrl, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+      });
+
+      // Handle 429 Rate Limiting with exponential backoff and jitter
+      if (res.status === 429 && attempt < MAX_RETRIES) {
+        const retryAfterHdr = res.headers.get("retry-after");
+        const delayMs = retryAfterHdr
+          ? Math.max(1500, parseInt(retryAfterHdr, 10) * 1000)
+          : (attempt + 1) * 2000 + Math.floor(Math.random() * 800);
+        await new Promise((r) => setTimeout(r, delayMs));
+        continue;
       }
-    }
-  } catch (err) {
-    if (body.tools) {
-      try {
-        const bodyNoTools = { ...body, tools: undefined };
-        res = await fetch(endpointUrl, {
-          method: "POST",
-          headers,
-          body: JSON.stringify(bodyNoTools),
-        });
-      } catch {
+
+      if (!res.ok && body.tools && (res.status === 400 || res.status === 404)) {
+        const errClone = res.clone();
+        const errText = await errClone.text().catch(() => "");
+        if (errText.toLowerCase().includes("support tools") || errText.toLowerCase().includes("tools")) {
+          const bodyNoTools = { ...body, tools: undefined };
+          res = await fetch(endpointUrl, {
+            method: "POST",
+            headers,
+            body: JSON.stringify(bodyNoTools),
+          });
+        }
+      }
+
+      break;
+    } catch (err) {
+      lastErrText = (err as Error).message;
+      if (attempt < MAX_RETRIES) {
+        await new Promise((r) => setTimeout(r, 1500));
+        continue;
+      }
+      if (body.tools) {
+        try {
+          const bodyNoTools = { ...body, tools: undefined };
+          res = await fetch(endpointUrl, {
+            method: "POST",
+            headers,
+            body: JSON.stringify(bodyNoTools),
+          });
+          break;
+        } catch {
+          throw new Error(`Unable to connect to model endpoint at ${endpointUrl}. Make sure your local server (e.g. Ollama) is running: ${(err as Error).message}`);
+        }
+      } else {
         throw new Error(`Unable to connect to model endpoint at ${endpointUrl}. Make sure your local server (e.g. Ollama) is running: ${(err as Error).message}`);
       }
-    } else {
-      throw new Error(`Unable to connect to model endpoint at ${endpointUrl}. Make sure your local server (e.g. Ollama) is running: ${(err as Error).message}`);
     }
   }
 
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Model inference failed: ${res.status} — ${err}`);
+  if (!res || !res.ok) {
+    const err = res ? await res.text() : lastErrText;
+    let errMsg = err;
+    try {
+      const parsed = JSON.parse(err);
+      errMsg = parsed.error?.message || parsed.message || err;
+    } catch {}
+    throw new Error(`Model inference failed: ${res?.status ?? 500} — ${errMsg}`);
   }
 
   const json = await res.json();
   const choice = json.choices?.[0];
-  const message = choice?.message;
+  const message = choice?.message as Record<string, unknown> | undefined;
+
+  let content = String(message?.content ?? "");
+  // Fallback to reasoning / reasoning_content / choice.text if content is empty
+  if (!content.trim()) {
+    if (message?.reasoning) {
+      content = String(message.reasoning);
+    } else if (message?.reasoning_content) {
+      content = String(message.reasoning_content);
+    } else if (choice?.text) {
+      content = String(choice.text);
+    }
+  }
 
   return {
-    content: message?.content ?? "",
-    tool_calls: message?.tool_calls,
+    content,
+    tool_calls: message?.tool_calls as ToolCall[] | undefined,
     usage: json.usage
       ? {
-          prompt_tokens: json.usage.prompt_tokens ?? 0,
-          completion_tokens: json.usage.completion_tokens ?? 0,
-          total_tokens: json.usage.total_tokens ?? 0,
+          prompt_tokens: Number(json.usage.prompt_tokens ?? 0),
+          completion_tokens: Number(json.usage.completion_tokens ?? 0),
+          total_tokens: Number(json.usage.total_tokens ?? 0),
           cost: json.usage.cost,
         }
       : undefined,
