@@ -56,18 +56,23 @@ const PRESETS = [
 const COMPARE_PRESETS = [
   {
     label: "⚡ Frontier Trio",
-    models: ["deepseek/deepseek-r1", "openai/gpt-4o", "anthropic/claude-3.5-sonnet"],
-    desc: "Top frontier reasoning & tool models",
+    models: ["openai/gpt-4o-mini", "meta-llama/llama-3.3-70b-instruct", "deepseek/deepseek-chat"],
+    desc: "Top frontier reasoning & instruct models",
   },
   {
-    label: "💸 Free Models",
-    models: ["google/gemini-2.0-flash-exp:free", "meta-llama/llama-3.3-70b-instruct:free", "deepseek/deepseek-r1:free"],
+    label: "🏠 Local Models",
+    models: ["llama3.2:3b", "mistral-small3.1:24b", "nemotron3:33b"],
+    desc: "Zero-cost local Ollama models",
+  },
+  {
+    label: "💸 Free Tier",
+    models: ["liquid/lfm-2.5-2.6b:free", "nvidia/nemotron-3.5-lightning:free", "llama3.2:3b"],
     desc: "Zero-cost high capability models",
   },
   {
-    label: "🧮 Tool Masters",
-    models: ["openai/gpt-4o", "anthropic/claude-3-haiku", "google/gemini-2.0-flash-001"],
-    desc: "Fast & reliable tool executors",
+    label: "🧮 Fast & Efficient",
+    models: ["openai/gpt-4o-mini", "llama3.2:3b", "meta-llama/llama-3.3-70b-instruct"],
+    desc: "Fast & reliable executors",
   },
 ];
 

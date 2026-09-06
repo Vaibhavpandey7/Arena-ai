@@ -812,6 +812,21 @@ export default function Page() {
               </div>
             )}
 
+            {compareResults.length === 0 && !isComparing && !compareError && (
+              <div className="empty-hero-card">
+                <h1 className="empty-title">Head-to-Head Arena Comparison</h1>
+                <p className="empty-desc">
+                  Benchmark up to 4 models simultaneously on complex insurance reasoning, actuarial calculations, and regulatory questions. Compare outputs side-by-side with generation speed, cost efficiency, and gold-standard accuracy.
+                </p>
+                <div className="empty-feature-grid">
+                  <span className="feature-pill">Side-by-Side Reading Cards</span>
+                  <span className="feature-pill">Full-Width Document Tabs</span>
+                  <span className="feature-pill">Tokens/Sec Velocity Tracking</span>
+                  <span className="feature-pill">Data Lake Ground Truth Alignment</span>
+                </div>
+              </div>
+            )}
+
             {compareResults.length > 0 && (
               <ComparisonTable
                 results={compareResults}
@@ -820,6 +835,7 @@ export default function Page() {
                   setModelSystemPrompts((prev) => ({ ...prev, [model]: value }))
                 }
                 activeRecord={activeRecord}
+                prompt={prompt}
               />
             )}
           </div>
