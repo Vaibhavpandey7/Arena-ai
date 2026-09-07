@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { evaluateGoldAlignment, GoldEvaluationResult } from "@/lib/benchmark-eval";
+import { DocumentIngestModal } from "./DocumentIngestModal";
 
 export interface DILRecord {
   id: string;
@@ -42,6 +43,7 @@ function DatasetBrowser({ onLoadRecord, modelAnswer, activeRecord: externalActiv
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [internalActiveRecord, setInternalActiveRecord] = useState<DILRecord | null>(null);
+  const [showIngestModal, setShowIngestModal] = useState(false);
 
   const activeRecord = externalActiveRecord !== undefined ? externalActiveRecord : internalActiveRecord;
 
@@ -163,22 +165,32 @@ function DatasetBrowser({ onLoadRecord, modelAnswer, activeRecord: externalActiv
             </div>
           </div>
 
-          {/* Quick Stats Pill */}
-          <div className="lake-stats-bar">
-            <div className="stat-segment">
-              <span className="stat-label">Total Records</span>
-              <span className="stat-val">{records.length}</span>
+          {/* Quick Stats Pill & Upload Action */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div className="lake-stats-bar">
+              <div className="stat-segment">
+                <span className="stat-label">Total Records</span>
+                <span className="stat-val">{records.length}</span>
+              </div>
+              <div className="stat-divider" />
+              <div className="stat-segment">
+                <span className="stat-label">Filtered</span>
+                <span className="stat-val" style={{ color: "var(--cyan-light)" }}>{filtered.length}</span>
+              </div>
+              <div className="stat-divider" />
+              <div className="stat-segment">
+                <span className="stat-label">Format</span>
+                <span className="stat-val" style={{ color: "var(--accent)" }}>DIL Schema v1.0</span>
+              </div>
             </div>
-            <div className="stat-divider" />
-            <div className="stat-segment">
-              <span className="stat-label">Filtered</span>
-              <span className="stat-val" style={{ color: "var(--cyan-light)" }}>{filtered.length}</span>
-            </div>
-            <div className="stat-divider" />
-            <div className="stat-segment">
-              <span className="stat-label">Format</span>
-              <span className="stat-val" style={{ color: "var(--accent)" }}>DIL Schema v1.0</span>
-            </div>
+
+            <button
+              className="lake-upload-btn"
+              onClick={() => setShowIngestModal(true)}
+              title="Upload an insurance policy or document to ingest into the Data Lake"
+            >
+              <span>📄 Ingest Document</span>
+            </button>
           </div>
         </div>
 
@@ -431,6 +443,16 @@ function DatasetBrowser({ onLoadRecord, modelAnswer, activeRecord: externalActiv
           })}
         </div>
       )}
+
+      {/* Ingest Document Modal */}
+      <DocumentIngestModal
+        isOpen={showIngestModal}
+        onClose={() => setShowIngestModal(false)}
+        onIngestSuccess={(res) => {
+          loadRecords();
+          setDomain(res.domain);
+        }}
+      />
     </div>
   );
 }

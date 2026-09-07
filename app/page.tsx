@@ -10,6 +10,8 @@ import DatasetBrowser, { DILRecord } from "@/components/DatasetBrowser";
 import PromptHistorySidebar, { saveToHistory } from "@/components/PromptHistorySidebar";
 import ToolSandboxModal from "@/components/ToolSandboxModal";
 import { evaluateGoldAlignment, GoldEvaluationResult } from "@/lib/benchmark-eval";
+import { DocumentPreviewModal, ParsedDocument } from "@/components/DocumentPreviewModal";
+import { DocumentIngestModal } from "@/components/DocumentIngestModal";
 
 type ViewMode = "single" | "compare" | "dataset";
 
@@ -56,6 +58,14 @@ export default function Page() {
   const [compareError, setCompareError] = useState("");
   const [customEndpoints, setCustomEndpoints] = useState<Record<string, { baseUrl: string; apiKey?: string }>>({});
 
+  const [attachedDoc, setAttachedDoc] = useState<ParsedDocument | null>(null);
+  const [isUploadingDoc, setIsUploadingDoc] = useState(false);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const [showDocPreview, setShowDocPreview] = useState(false);
+  const [showDocIngestModal, setShowDocIngestModal] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   const [activeRecord, setActiveRecord] = useState<DILRecord | null>(null);
   const [recordModelAnswers, setRecordModelAnswers] = useState<
     Record<string, { answer: string; model: string; usage?: typeof usage }>
@@ -65,11 +75,46 @@ export default function Page() {
   const answerPanelRef = useRef<HTMLDivElement | null>(null);
   const hasScrolledRef = useRef(false);
 
+  const handleDocUpload = useCallback(async (file: File) => {
+    setIsUploadingDoc(true);
+    setUploadError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/documents/parse", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to parse document");
+      }
+      setAttachedDoc(data.document);
+      if (!prompt.trim()) {
+        setPrompt(`Analyze this document (${data.document.name}): extract key coverage terms, limits, and exclusions.`);
+      }
+    } catch (err: unknown) {
+      setUploadError(err instanceof Error ? err.message : "Failed to upload document");
+    } finally {
+      setIsUploadingDoc(false);
+    }
+  }, [prompt]);
+
+  const getEffectivePrompt = useCallback(
+    (userPrompt: string) => {
+      const base = userPrompt.trim() || "Analyze the attached policy document and extract all key terms, coverage limits, exclusions, and conditions.";
+      if (!attachedDoc) return base;
+      return `[ATTACHED POLICY / DOCUMENT: ${attachedDoc.name} | Type: ${attachedDoc.type} | Size: ${attachedDoc.formattedSize}]\n--- DOCUMENT CONTENT START ---\n${attachedDoc.text}\n--- DOCUMENT CONTENT END ---\n\n[USER INQUIRY / TASK]\n${base}`;
+    },
+    [attachedDoc]
+  );
+
   const runSingle = useCallback(async () => {
-    if (!prompt.trim() || selectedModels.length === 0) return;
+    if ((!prompt.trim() && !attachedDoc) || selectedModels.length === 0) return;
     const model = selectedModels[0];
     const customEndpoint = customEndpoints[model];
-    saveToHistory(prompt, systemPrompt);
+    const effectivePrompt = getEffectivePrompt(prompt);
+    saveToHistory(prompt || (attachedDoc ? `Document: ${attachedDoc.name}` : "Insurance inquiry"), systemPrompt);
     setIsRunning(true);
     setReasoning("");
     setAnswer("");
@@ -85,7 +130,7 @@ export default function Page() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model,
-          prompt,
+          prompt: effectivePrompt,
           systemPrompt,
           useTools,
           selectedTools,
@@ -185,7 +230,7 @@ export default function Page() {
     } finally {
       setIsRunning(false);
     }
-  }, [prompt, systemPrompt, useTools, selectedTools, toolChoice, selectedModels, customEndpoints, activeRecord, usage]);
+  }, [prompt, systemPrompt, useTools, selectedTools, toolChoice, selectedModels, customEndpoints, activeRecord, usage, attachedDoc, getEffectivePrompt]);
 
   const stopRun = useCallback(() => {
     abortRef.current?.abort();
@@ -193,8 +238,9 @@ export default function Page() {
   }, []);
 
   const runCompare = useCallback(async () => {
-    if (!prompt.trim() || selectedModels.length === 0) return;
-    saveToHistory(prompt, systemPrompt);
+    if ((!prompt.trim() && !attachedDoc) || selectedModels.length === 0) return;
+    const effectivePrompt = getEffectivePrompt(prompt);
+    saveToHistory(prompt || (attachedDoc ? `Document: ${attachedDoc.name}` : "Insurance inquiry"), systemPrompt);
     setIsComparing(true);
     setCompareError("");
 
@@ -226,7 +272,7 @@ export default function Page() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               models: [modelId],
-              prompt,
+              prompt: effectivePrompt,
               systemPrompt,
               useTools,
               selectedTools,
@@ -279,7 +325,7 @@ export default function Page() {
     } finally {
       setIsComparing(false);
     }
-  }, [prompt, systemPrompt, useTools, selectedTools, toolChoice, selectedModels, modelSystemPrompts, customEndpoints]);
+  }, [prompt, systemPrompt, useTools, selectedTools, toolChoice, selectedModels, modelSystemPrompts, customEndpoints, attachedDoc, getEffectivePrompt]);
 
   const retryCompareModel = useCallback(
     async (modelId: string) => {
@@ -291,13 +337,15 @@ export default function Page() {
         )
       );
 
+      const effectivePrompt = getEffectivePrompt(prompt);
+
       try {
         const res = await fetch("/api/compare", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             models: [modelId],
-            prompt,
+            prompt: effectivePrompt,
             systemPrompt,
             useTools,
             selectedTools,
@@ -426,7 +474,7 @@ export default function Page() {
 
   const handleRun = mode === "single" ? (isRunning ? stopRun : runSingle) : runCompare;
   const isExecuting = isRunning || isComparing;
-  const isDisabled = !prompt.trim() || selectedModels.length === 0 || (mode === "compare" && isComparing);
+  const isDisabled = (!prompt.trim() && !attachedDoc) || selectedModels.length === 0 || (mode === "compare" && isComparing);
   const latestModelAnswer =
     (activeRecord && recordModelAnswers[activeRecord.id]?.answer) ||
     answer ||
@@ -513,6 +561,25 @@ export default function Page() {
               </div>
 
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept=".pdf,.txt,.md,.json,.csv"
+                  style={{ display: "none" }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleDocUpload(file);
+                  }}
+                />
+                <button
+                  type="button"
+                  className="attach-doc-btn"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingDoc}
+                  title="Attach an insurance policy or document (PDF, TXT, CSV, JSON)"
+                >
+                  <span>{isUploadingDoc ? "⏳ Parsing…" : "📎 Attach Document"}</span>
+                </button>
                 <span className="kbd-shortcut hide-on-mobile">⌘ + Enter to run</span>
               </div>
             </div>
@@ -531,8 +598,82 @@ export default function Page() {
               ))}
             </div>
 
-            {/* Prompt Input Box */}
-            <div className="prompt-box-wrapper">
+            {uploadError && (
+              <div className="doc-upload-error-banner">
+                <span>⚠ {uploadError}</span>
+                <button onClick={() => setUploadError(null)}>✕</button>
+              </div>
+            )}
+
+            {/* Prompt Input Box with Drag & Drop */}
+            <div
+              className={`prompt-box-wrapper${isDraggingFile ? " dragging-over" : ""}`}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDraggingFile(true);
+              }}
+              onDragLeave={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                  setIsDraggingFile(false);
+                }
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsDraggingFile(false);
+                const file = e.dataTransfer.files?.[0];
+                if (file) handleDocUpload(file);
+              }}
+            >
+              {isDraggingFile && (
+                <div className="drag-drop-overlay">
+                  <span className="drag-drop-icon">📄</span>
+                  <div className="drag-drop-title">Drop policy or document to attach</div>
+                  <div className="drag-drop-sub">PDF · TXT · MD · CSV · JSON</div>
+                </div>
+              )}
+
+              {/* Attached Document Card */}
+              {attachedDoc && (
+                <div className="attached-doc-card">
+                  <div className="attached-doc-left">
+                    <span className={`doc-badge doc-badge-${attachedDoc.type.toLowerCase()}`}>
+                      {attachedDoc.type}
+                    </span>
+                    <div className="attached-doc-details">
+                      <span className="attached-doc-name">{attachedDoc.name}</span>
+                      <span className="attached-doc-sub">
+                        {attachedDoc.formattedSize} · {attachedDoc.wordCount.toLocaleString()} words · ~{attachedDoc.tokenCount.toLocaleString()} tokens
+                      </span>
+                    </div>
+                  </div>
+                  <div className="attached-doc-actions">
+                    <button
+                      type="button"
+                      className="attached-action-btn"
+                      onClick={() => setShowDocPreview(true)}
+                      title="Inspect extracted text"
+                    >
+                      👁️ Preview
+                    </button>
+                    <button
+                      type="button"
+                      className="attached-action-btn highlight"
+                      onClick={() => setShowDocIngestModal(true)}
+                      title="Save this document to the Data Lake"
+                    >
+                      💾 Save to Lake
+                    </button>
+                    <button
+                      type="button"
+                      className="attached-remove-btn"
+                      onClick={() => setAttachedDoc(null)}
+                      title="Remove document"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              )}
               <textarea
                 id="prompt-input"
                 name="prompt"
@@ -1132,6 +1273,24 @@ export default function Page() {
         onSendToPrompt={(text) => {
           setPrompt(text);
           window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+      />
+
+      {/* Document Text Preview Modal */}
+      <DocumentPreviewModal
+        document={attachedDoc}
+        isOpen={showDocPreview}
+        onClose={() => setShowDocPreview(false)}
+        onSaveToLake={() => setShowDocIngestModal(true)}
+      />
+
+      {/* Document Ingestion into Data Lake Modal */}
+      <DocumentIngestModal
+        initialDocument={attachedDoc}
+        isOpen={showDocIngestModal}
+        onClose={() => setShowDocIngestModal(false)}
+        onIngestSuccess={() => {
+          // Success callback
         }}
       />
     </div>
