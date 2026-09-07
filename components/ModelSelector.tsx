@@ -709,6 +709,7 @@ function ModelSelectorComponent({ mode, selected, onChange, onCustomEndpointsCha
                     <label htmlFor="custom-api-key">API Key (Optional for Local Ollama/vLLM)</label>
                     <button
                       type="button"
+                      className="api-key-toggle-btn"
                       onClick={() => setShowKeyText(!showKeyText)}
                       style={{ background: "none", border: "none", color: "var(--accent)", fontSize: 11, cursor: "pointer" }}
                     >

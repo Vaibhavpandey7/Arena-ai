@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import { evaluateGoldAlignment, GoldEvaluationResult } from "@/lib/benchmark-eval";
 
 export interface DILRecord {
   id: string;
@@ -82,6 +83,11 @@ function DatasetBrowser({ onLoadRecord, modelAnswer, activeRecord: externalActiv
     URL.revokeObjectURL(a.href);
   }
 
+  const goldAlignment: GoldEvaluationResult | null =
+    activeRecord && modelAnswer
+      ? evaluateGoldAlignment(modelAnswer, activeRecord.response, activeRecord.evidence)
+      : null;
+
   function exportBenchmarkCSV() {
     if (!activeRecord) return;
     const headers = [
@@ -89,7 +95,10 @@ function DatasetBrowser({ onLoadRecord, modelAnswer, activeRecord: externalActiv
       "domain",
       "split",
       "difficulty",
-      "gold_quality_score",
+      "dataset_curation_score",
+      "gold_alignment_score",
+      "gold_alignment_label",
+      "evidence_verified",
       "question",
       "context",
       "model_answer",
@@ -103,6 +112,9 @@ function DatasetBrowser({ onLoadRecord, modelAnswer, activeRecord: externalActiv
       activeRecord.split,
       activeRecord.difficulty,
       (activeRecord.quality_score * 100).toFixed(0) + "%",
+      goldAlignment ? `${goldAlignment.score}%` : "N/A",
+      goldAlignment?.label ?? "N/A",
+      goldAlignment ? (goldAlignment.evidenceMatched ? "Yes" : "No") : "N/A",
       activeRecord.question,
       activeRecord.context ?? "",
       modelAnswer ?? "",
@@ -120,6 +132,12 @@ function DatasetBrowser({ onLoadRecord, modelAnswer, activeRecord: externalActiv
       exportedAt: new Date().toISOString(),
       record: activeRecord,
       modelAnswer: modelAnswer || null,
+      alignmentEvaluation: goldAlignment ? {
+        score: goldAlignment.score,
+        label: goldAlignment.label,
+        evidenceMatched: goldAlignment.evidenceMatched,
+        keyTermsMatched: goldAlignment.keyTermsMatched,
+      } : null,
     };
     download(JSON.stringify(payload, null, 2), `benchmark-${activeRecord.id}-eval.json`, "application/json");
   }
@@ -138,24 +156,43 @@ function DatasetBrowser({ onLoadRecord, modelAnswer, activeRecord: externalActiv
         <div className="studio-hero-top">
           <div className="studio-hero-title-group">
             <div className="studio-hero-title">
-              Insurance Domain Intelligence Lake
+              Insurance Data Lake & Ground Truth Studio
             </div>
             <div className="studio-hero-subtitle">
               38 Curated Synthetic Gold Records · 7 Regulatory & Actuarial Categories · Deterministic Train/Val/Test Split
             </div>
           </div>
 
-          <div className="studio-search-split-bar">
-            <div className="deck-search">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}>
-                <circle cx="11" cy="11" r="8" />
-                <line x1="21" y1="21" x2="16.65" y2="16.65" />
-              </svg>
+          {/* Quick Stats Pill */}
+          <div className="lake-stats-bar">
+            <div className="stat-segment">
+              <span className="stat-label">Total Records</span>
+              <span className="stat-val">{records.length}</span>
+            </div>
+            <div className="stat-divider" />
+            <div className="stat-segment">
+              <span className="stat-label">Filtered</span>
+              <span className="stat-val" style={{ color: "var(--cyan-light)" }}>{filtered.length}</span>
+            </div>
+            <div className="stat-divider" />
+            <div className="stat-segment">
+              <span className="stat-label">Format</span>
+              <span className="stat-val" style={{ color: "var(--accent)" }}>DIL Schema v1.0</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Filter Toolbar */}
+        <div className="studio-toolbar">
+          <div className="toolbar-left">
+            <div className="studio-search-wrapper">
+              <span className="search-icon">🔍</span>
               <input
                 id="dataset-search-input"
                 name="datasetSearch"
-                type="search"
-                placeholder="Search domain questions…"
+                type="text"
+                className="studio-search-input"
+                placeholder="Search across questions, tasks, regulatory citations, or keywords…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -203,10 +240,29 @@ function DatasetBrowser({ onLoadRecord, modelAnswer, activeRecord: externalActiv
                 Active Record: {activeRecord.id}
               </span>
               <span className="brand-tag">{activeRecord.domain.replace(/_/g, " ")}</span>
+              <span className="brand-tag" title="Benchmark record curation quality score">
+                Dataset Curation: {(activeRecord.quality_score * 100).toFixed(0)}%
+              </span>
+              {goldAlignment && (
+                <span
+                  className={`eval-score-badge ${
+                    goldAlignment.score >= 80
+                      ? "high"
+                      : goldAlignment.score >= 60
+                      ? "moderate"
+                      : goldAlignment.score >= 40
+                      ? "partial"
+                      : "divergent"
+                  }`}
+                >
+                  {goldAlignment.score}% Model Alignment · {goldAlignment.label}
+                </span>
+              )}
             </div>
 
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <button
+                type="button"
                 className="btn-secondary"
                 onClick={exportBenchmarkCSV}
                 style={{ fontSize: "11px", padding: "5px 12px" }}
@@ -214,6 +270,7 @@ function DatasetBrowser({ onLoadRecord, modelAnswer, activeRecord: externalActiv
                 Export CSV
               </button>
               <button
+                type="button"
                 className="btn-secondary"
                 onClick={exportBenchmarkJSON}
                 style={{ fontSize: "11px", padding: "5px 12px" }}
@@ -221,6 +278,7 @@ function DatasetBrowser({ onLoadRecord, modelAnswer, activeRecord: externalActiv
                 Export JSON
               </button>
               <button
+                type="button"
                 className="btn-primary"
                 onClick={() => handleSelect(activeRecord)}
                 style={{ fontSize: "11px", padding: "5px 14px" }}
@@ -231,27 +289,76 @@ function DatasetBrowser({ onLoadRecord, modelAnswer, activeRecord: externalActiv
           </div>
 
           <div className="gold-eval-grid">
-            <div className="eval-col">
+            {/* Model Generated Answer Column */}
+            <div className="eval-col" style={{ borderColor: goldAlignment ? "var(--cyan-border)" : undefined }}>
               <div className="eval-col-header">
                 <span>Model Generated Answer</span>
-                <span className="brand-tag">Evaluated Model</span>
+                {goldAlignment ? (
+                  <span
+                    className={`eval-score-badge ${
+                      goldAlignment.score >= 80
+                        ? "high"
+                        : goldAlignment.score >= 60
+                        ? "moderate"
+                        : goldAlignment.score >= 40
+                        ? "partial"
+                        : "divergent"
+                    }`}
+                  >
+                    {goldAlignment.score}% {goldAlignment.label}
+                  </span>
+                ) : (
+                  <span className="brand-tag">Evaluated Model</span>
+                )}
               </div>
+
+              {goldAlignment && (
+                <div className="gt-alignment-breakdown">
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11 }}>
+                    <span style={{ color: "var(--text-subtle)", fontWeight: 600, textTransform: "uppercase" }}>
+                      Evidence Citation Check:
+                    </span>
+                    {goldAlignment.evidenceMatched ? (
+                      <span className="gt-evidence-verified">✓ Verified Citation</span>
+                    ) : (
+                      <span className="gt-evidence-uncited">⚠ Uncited Evidence</span>
+                    )}
+                  </div>
+
+                  {goldAlignment.keyTermsMatched.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 11, color: "var(--text-subtle)", fontWeight: 600, textTransform: "uppercase", marginBottom: 4 }}>
+                        Matched Domain Keywords ({goldAlignment.keyTermsMatched.length}):
+                      </div>
+                      <div className="gt-kw-chips">
+                        {goldAlignment.keyTermsMatched.map((term, i) => (
+                          <span key={i} className="gt-kw-chip">
+                            {term}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="eval-col-content">
                 {modelAnswer ? (
                   <div style={{ whiteSpace: "pre-wrap" }}>{modelAnswer}</div>
                 ) : (
                   <div style={{ color: "var(--text-subtle)", fontStyle: "italic", fontSize: "13px", padding: "12px 0" }}>
-                    Inference not yet run for this record. Click "Run Evaluation" in the Single Arena to stream model output here.
+                    Inference not yet run for this record. Click "Run in Single Arena" to stream and evaluate model output.
                   </div>
                 )}
               </div>
             </div>
 
+            {/* Verified Gold Response Column */}
             <div className="eval-col" style={{ borderColor: "var(--accent-border)" }}>
               <div className="eval-col-header">
                 <span>Verified Gold Response</span>
-                <span className="quality-badge">
-                  Score {(activeRecord.quality_score * 100).toFixed(0)}%
+                <span className="quality-badge" title="Benchmark record curation score">
+                  Verified Expert · {(activeRecord.quality_score * 100).toFixed(0)}% Curation Quality
                 </span>
               </div>
               <div className="eval-col-content">

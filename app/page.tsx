@@ -9,6 +9,7 @@ import ComparisonTable, { CompareRow } from "@/components/ComparisonTable";
 import DatasetBrowser, { DILRecord } from "@/components/DatasetBrowser";
 import PromptHistorySidebar, { saveToHistory } from "@/components/PromptHistorySidebar";
 import ToolSandboxModal from "@/components/ToolSandboxModal";
+import { evaluateGoldAlignment, GoldEvaluationResult } from "@/lib/benchmark-eval";
 
 type ViewMode = "single" | "compare" | "dataset";
 
@@ -56,6 +57,9 @@ export default function Page() {
   const [customEndpoints, setCustomEndpoints] = useState<Record<string, { baseUrl: string; apiKey?: string }>>({});
 
   const [activeRecord, setActiveRecord] = useState<DILRecord | null>(null);
+  const [recordModelAnswers, setRecordModelAnswers] = useState<
+    Record<string, { answer: string; model: string; usage?: typeof usage }>
+  >({});
 
   const abortRef = useRef<AbortController | null>(null);
   const answerPanelRef = useRef<HTMLDivElement | null>(null);
@@ -100,6 +104,7 @@ export default function Page() {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
+      let accumulatedAnswer = "";
 
       while (true) {
         const { done, value } = await reader.read();
@@ -123,8 +128,10 @@ export default function Page() {
             case "reasoning":
               setReasoning((prev) => prev + (event.delta as string));
               break;
-            case "content":
-              setAnswer((prev) => prev + (event.delta as string));
+            case "content": {
+              const chunk = event.delta as string;
+              accumulatedAnswer += chunk;
+              setAnswer((prev) => prev + chunk);
               if (!hasScrolledRef.current) {
                 hasScrolledRef.current = true;
                 setTimeout(() => {
@@ -132,6 +139,7 @@ export default function Page() {
                 }, 40);
               }
               break;
+            }
             case "tool_call":
               setToolEvents((prev) => [
                 ...prev,
@@ -163,6 +171,13 @@ export default function Page() {
           }
         }
       }
+
+      if (activeRecord && accumulatedAnswer) {
+        setRecordModelAnswers((prev) => ({
+          ...prev,
+          [activeRecord.id]: { answer: accumulatedAnswer, model, usage },
+        }));
+      }
     } catch (err) {
       if ((err as Error).name !== "AbortError") {
         setError((err as Error).message);
@@ -170,7 +185,7 @@ export default function Page() {
     } finally {
       setIsRunning(false);
     }
-  }, [prompt, systemPrompt, useTools, selectedTools, toolChoice, selectedModels, customEndpoints]);
+  }, [prompt, systemPrompt, useTools, selectedTools, toolChoice, selectedModels, customEndpoints, activeRecord, usage]);
 
   const stopRun = useCallback(() => {
     abortRef.current?.abort();
@@ -333,6 +348,11 @@ export default function Page() {
     const model = selectedModels[0] ?? "unknown-model";
     const ts = new Date().toISOString();
 
+    const goldEval =
+      activeRecord && answer
+        ? evaluateGoldAlignment(answer, activeRecord.response, activeRecord.evidence)
+        : null;
+
     if (format === "json") {
       const payload = {
         exportedAt: ts,
@@ -352,6 +372,12 @@ export default function Page() {
           gold_response: activeRecord.response,
           evidence: activeRecord.evidence,
         } : null,
+        alignmentEvaluation: goldEval ? {
+          score: goldEval.score,
+          label: goldEval.label,
+          evidenceMatched: goldEval.evidenceMatched,
+          keyTermsMatched: goldEval.keyTermsMatched,
+        } : null,
       };
       const filename = activeRecord ? `benchmark-${activeRecord.id}-${model.split("/").pop()}.json` : `evaluation-${model.split("/").pop()}.json`;
       download(JSON.stringify(payload, null, 2), filename, "application/json");
@@ -364,7 +390,10 @@ export default function Page() {
         "question",
         "model_answer",
         "gold_response",
-        "gold_quality_score",
+        "dataset_curation_score",
+        "gold_alignment_score",
+        "gold_alignment_label",
+        "evidence_verified",
         "evidence",
         "prompt_tokens",
         "completion_tokens",
@@ -380,6 +409,9 @@ export default function Page() {
         answer,
         activeRecord?.response ?? "N/A",
         activeRecord?.quality_score !== undefined ? (activeRecord.quality_score * 100).toFixed(0) + "%" : "N/A",
+        goldEval ? `${goldEval.score}%` : "N/A",
+        goldEval?.label ?? "N/A",
+        goldEval ? (goldEval.evidenceMatched ? "Yes" : "No") : "N/A",
         activeRecord?.evidence ?? "N/A",
         usage?.prompt_tokens ?? "",
         usage?.completion_tokens ?? "",
@@ -395,7 +427,14 @@ export default function Page() {
   const handleRun = mode === "single" ? (isRunning ? stopRun : runSingle) : runCompare;
   const isExecuting = isRunning || isComparing;
   const isDisabled = !prompt.trim() || selectedModels.length === 0 || (mode === "compare" && isComparing);
-  const latestModelAnswer = mode === "single" ? answer : (compareResults.find((r) => r.ok)?.answer ?? "");
+  const latestModelAnswer =
+    (activeRecord && recordModelAnswers[activeRecord.id]?.answer) ||
+    answer ||
+    (compareResults.find((r) => r.ok)?.answer ?? "");
+  const singleGoldEval: GoldEvaluationResult | null =
+    activeRecord && answer
+      ? evaluateGoldAlignment(answer, activeRecord.response, activeRecord.evidence)
+      : null;
   const hasResults = answer || compareResults.length > 0 || error || compareError || isRunning || isComparing;
 
   return (
@@ -824,7 +863,30 @@ export default function Page() {
                           {activeRecord.id}
                         </span>
                         <span className="brand-tag">{activeRecord.domain.replace(/_/g, " ")}</span>
-                        <span className="quality-badge">{(activeRecord.quality_score * 100).toFixed(0)}% Gold Quality</span>
+                        <span className="brand-tag" title="Benchmark dataset curation quality score">
+                          Dataset Curation: {(activeRecord.quality_score * 100).toFixed(0)}%
+                        </span>
+
+                        {singleGoldEval ? (
+                          <span
+                            className={`eval-score-badge ${
+                              singleGoldEval.score >= 80
+                                ? "high"
+                                : singleGoldEval.score >= 60
+                                ? "moderate"
+                                : singleGoldEval.score >= 40
+                                ? "partial"
+                                : "divergent"
+                            }`}
+                            title="Objective alignment between model response and verified gold benchmark"
+                          >
+                            {singleGoldEval.score}% Model Alignment · {singleGoldEval.label}
+                          </span>
+                        ) : (
+                          <span className="eval-score-badge idle">
+                            {isRunning ? "Evaluating Alignment…" : "Awaiting Model Run"}
+                          </span>
+                        )}
                       </div>
 
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -848,9 +910,76 @@ export default function Page() {
 
                     <div className="gt-panel-body">
                       <div className="gt-side-by-side">
-                        <div className="gt-col">
+                        {/* Column 1: Model Output Alignment Diagnostics */}
+                        <div className="gt-col model-eval-col">
                           <div className="gt-col-title">
-                            <span>Verified Gold Standard Response</span>
+                            <span style={{ color: "var(--cyan-light)" }}>Model Output Alignment</span>
+                            {singleGoldEval ? (
+                              <span
+                                className={`eval-score-badge ${
+                                  singleGoldEval.score >= 80
+                                    ? "high"
+                                    : singleGoldEval.score >= 60
+                                    ? "moderate"
+                                    : singleGoldEval.score >= 40
+                                    ? "partial"
+                                    : "divergent"
+                                }`}
+                              >
+                                {singleGoldEval.score}% {singleGoldEval.label}
+                              </span>
+                            ) : (
+                              <span className="eval-score-badge idle">Pending Run</span>
+                            )}
+                          </div>
+
+                          {singleGoldEval && (
+                            <div className="gt-alignment-breakdown">
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11 }}>
+                                <span style={{ color: "var(--text-subtle)", fontWeight: 600, textTransform: "uppercase" }}>
+                                  Evidence Citation Check:
+                                </span>
+                                {singleGoldEval.evidenceMatched ? (
+                                  <span className="gt-evidence-verified">✓ Verified Citation</span>
+                                ) : (
+                                  <span className="gt-evidence-uncited">⚠ Uncited Evidence</span>
+                                )}
+                              </div>
+
+                              {singleGoldEval.keyTermsMatched.length > 0 && (
+                                <div>
+                                  <div style={{ fontSize: 11, color: "var(--text-subtle)", fontWeight: 600, textTransform: "uppercase", marginBottom: 4 }}>
+                                    Matched Domain Keywords ({singleGoldEval.keyTermsMatched.length}):
+                                  </div>
+                                  <div className="gt-kw-chips">
+                                    {singleGoldEval.keyTermsMatched.map((term, i) => (
+                                      <span key={i} className="gt-kw-chip">
+                                        {term}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          <div className="gt-col-text">
+                            {answer ? (
+                              <span style={{ color: "var(--text-muted)", fontSize: 12.5 }}>
+                                Model generated answer evaluated against ground truth standards. Click "View in Data Lake" for side-by-side comparison.
+                              </span>
+                            ) : (
+                              <span style={{ color: "var(--text-subtle)", fontStyle: "italic", fontSize: 12.5 }}>
+                                Click "Run Inference" above to evaluate model output alignment against this record.
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Column 2: Verified Gold Standard Response */}
+                        <div className="gt-col gold-standard-col">
+                          <div className="gt-col-title">
+                            <span style={{ color: "var(--accent)" }}>Verified Gold Standard Response</span>
                             <span className="quality-badge">Verified Expert</span>
                           </div>
                           <div className="gt-col-text">
@@ -955,6 +1084,11 @@ export default function Page() {
             onLoadRecord={(p, record) => {
               setPrompt(p);
               if (record) setActiveRecord(record);
+              setAnswer("");
+              setReasoning("");
+              setToolEvents([]);
+              setUsage(null);
+              setError("");
               setMode("single");
             }}
             modelAnswer={latestModelAnswer}
