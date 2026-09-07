@@ -236,8 +236,7 @@ body {
 .brand-logos-group {
   display: flex;
   align-items: center;
-  position: relative;
-  gap: 0;
+  gap: 8px;
   flex-shrink: 0;
 }
 
@@ -245,22 +244,20 @@ body {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  object-fit: cover;
-  box-shadow: 0 0 12px rgba(14, 165, 233, 0.4);
-  border: 1.5px solid rgba(14, 165, 233, 0.5);
-  z-index: 2;
+  object-fit: contain;
+  box-shadow: 0 0 10px rgba(14, 165, 233, 0.35);
+  border: 1px solid rgba(14, 165, 233, 0.45);
   transition: transform var(--transition-fast);
 }
 
 .brand-logo-globe {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  object-fit: cover;
-  margin-left: -8px;
-  box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
-  border: 1.5px solid rgba(245, 158, 11, 0.5);
-  z-index: 1;
+  object-fit: contain;
+  margin-left: 0;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.35);
+  border: 1px solid rgba(245, 158, 11, 0.45);
   transition: transform var(--transition-fast);
 }
 
@@ -272,53 +269,47 @@ body {
   transform: scale(1.08) rotate(4deg);
 }
 
-.brand-subtitle {
-  font-size: 10.5px;
-  color: var(--text-subtle);
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-}
-
-.hero-logo-banner {
-  display: inline-flex;
+.hero-logos-wrapper {
+  display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  margin-bottom: 20px;
-  padding: 8px 22px;
+  gap: 28px;
+  margin-bottom: 24px;
+}
+
+.hero-logo-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 68px;
+  height: 68px;
+  padding: 10px;
+  border-radius: 20px;
   background: var(--bg-surface-elevated);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-full);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25);
+  transition: all var(--transition-fast);
 }
 
-.hero-logo-img {
-  width: 52px;
-  height: 52px;
+.hero-logo-card.dil-card {
+  border-color: rgba(14, 165, 233, 0.35);
+  box-shadow: 0 0 24px rgba(14, 165, 233, 0.18);
+}
+
+.hero-logo-card.globe-card {
+  border-color: rgba(245, 158, 11, 0.35);
+  box-shadow: 0 0 24px rgba(245, 158, 11, 0.18);
+}
+
+.hero-logo-card:hover {
+  transform: translateY(-3px) scale(1.06);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+}
+
+.hero-logo-card .hero-logo-img {
+  width: 100%;
+  height: 100%;
   object-fit: contain;
-  border-radius: 50%;
-  transition: transform var(--transition-fast);
-}
-
-.hero-logo-img.dil {
-  box-shadow: 0 0 18px rgba(14, 165, 233, 0.35);
-  border: 2px solid rgba(14, 165, 233, 0.4);
-}
-
-.hero-logo-img.globe {
-  box-shadow: 0 0 18px rgba(245, 158, 11, 0.35);
-  border: 2px solid rgba(245, 158, 11, 0.4);
-}
-
-.hero-logo-banner:hover .hero-logo-img {
-  transform: scale(1.08);
-}
-
-.hero-logo-cross {
-  font-size: 16px;
-  font-weight: 300;
-  color: var(--text-subtle);
 }
 
 .brand-tag {

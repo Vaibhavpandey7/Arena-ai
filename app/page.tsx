@@ -449,11 +449,7 @@ export default function Page() {
               <img src="/dil-logo.png" alt="DIL Logo" className="brand-logo-dil" />
               <img src="/arena-globe-logo.png" alt="Global Arena Logo" className="brand-logo-globe" />
             </div>
-            <div>
-              <div className="brand-name">DIL Intelligence Studio</div>
-              <div className="brand-subtitle hide-on-mobile">Actuarial · Regulatory · Agentic Reasoning</div>
-            </div>
-            <span className="brand-tag">v3.0</span>
+            <div className="brand-name">DIL Intelligence Studio</div>
           </div>
 
           {/* Central Segmented Navigation Tabs */}
@@ -717,10 +713,13 @@ export default function Page() {
             {/* Empty Hero Card when no results yet */}
             {!hasResults && (
               <div className="empty-hero-card">
-                <div className="hero-logo-banner">
-                  <img src="/dil-logo.png" alt="DIL Logo" className="hero-logo-img dil" />
-                  <span className="hero-logo-cross">×</span>
-                  <img src="/arena-globe-logo.png" alt="Arena Globe" className="hero-logo-img globe" />
+                <div className="hero-logos-wrapper">
+                  <div className="hero-logo-card dil-card" title="DIL Knowledge Engine">
+                    <img src="/dil-logo.png" alt="DIL Logo" className="hero-logo-img" />
+                  </div>
+                  <div className="hero-logo-card globe-card" title="Global Arena Benchmark">
+                    <img src="/arena-globe-logo.png" alt="Arena Globe" className="hero-logo-img" />
+                  </div>
                 </div>
                 <h1 className="empty-title">DIL Intelligence Studio</h1>
                 <p className="empty-desc">
@@ -1059,10 +1058,13 @@ export default function Page() {
 
             {compareResults.length === 0 && !isComparing && !compareError && (
               <div className="empty-hero-card">
-                <div className="hero-logo-banner">
-                  <img src="/dil-logo.png" alt="DIL Logo" className="hero-logo-img dil" />
-                  <span className="hero-logo-cross">×</span>
-                  <img src="/arena-globe-logo.png" alt="Arena Globe" className="hero-logo-img globe" />
+                <div className="hero-logos-wrapper">
+                  <div className="hero-logo-card dil-card" title="DIL Knowledge Engine">
+                    <img src="/dil-logo.png" alt="DIL Logo" className="hero-logo-img" />
+                  </div>
+                  <div className="hero-logo-card globe-card" title="Global Arena Benchmark">
+                    <img src="/arena-globe-logo.png" alt="Arena Globe" className="hero-logo-img" />
+                  </div>
                 </div>
                 <h1 className="empty-title">DIL Head-to-Head Arena</h1>
                 <p className="empty-desc">
