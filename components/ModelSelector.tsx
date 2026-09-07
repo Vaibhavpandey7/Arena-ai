@@ -47,6 +47,7 @@ const CUSTOM_STORAGE_KEY = "ai-arena-custom-models";
 
 const PRESETS = [
   { label: "OpenAI", baseUrl: "https://api.openai.com/v1", sampleId: "ft:gpt-4o-mini-2024-07-18:org:model-name", needsKey: true },
+  { label: "Hugging Face", baseUrl: "https://router.huggingface.co/hf-inference/v1", sampleId: "meta-llama/Llama-3.2-3B-Instruct", needsKey: true },
   { label: "Together AI", baseUrl: "https://api.together.xyz/v1", sampleId: "togethercomputer/llama-3-8b-instruct", needsKey: true },
   { label: "Fireworks AI", baseUrl: "https://api.fireworks.ai/inference/v1", sampleId: "accounts/my-org/models/my-model", needsKey: true },
   { label: "Ollama (Local)", baseUrl: "http://localhost:11434/v1", sampleId: "llama3.2", needsKey: false },
