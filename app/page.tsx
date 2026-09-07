@@ -444,10 +444,14 @@ export default function Page() {
       <header className="top-navbar">
         <div className="navbar-inner">
           {/* Brand */}
-          <div className="brand-section" onClick={() => setMode("single")}>
-            <div className="brand-badge">AI</div>
+          <div className="brand-section" onClick={() => setMode("single")} title="DIL Intelligence Studio">
+            <div className="brand-logos-group">
+              <img src="/dil-logo.png" alt="DIL Logo" className="brand-logo-dil" />
+              <img src="/arena-globe-logo.png" alt="Global Arena Logo" className="brand-logo-globe" />
+            </div>
             <div>
-              <div className="brand-name">AI Arena</div>
+              <div className="brand-name">DIL Intelligence Studio</div>
+              <div className="brand-subtitle hide-on-mobile">Actuarial · Regulatory · Agentic Reasoning</div>
             </div>
             <span className="brand-tag">v3.0</span>
           </div>
@@ -713,14 +717,19 @@ export default function Page() {
             {/* Empty Hero Card when no results yet */}
             {!hasResults && (
               <div className="empty-hero-card">
-                <h1 className="empty-title">AI Arena Intelligence Studio</h1>
+                <div className="hero-logo-banner">
+                  <img src="/dil-logo.png" alt="DIL Logo" className="hero-logo-img dil" />
+                  <span className="hero-logo-cross">×</span>
+                  <img src="/arena-globe-logo.png" alt="Arena Globe" className="hero-logo-img globe" />
+                </div>
+                <h1 className="empty-title">DIL Intelligence Studio</h1>
                 <p className="empty-desc">
-                  Select a state-of-the-art model above and run complex insurance inquiries. Inspect reasoning traces in real time, observe autonomous tool invocations, and benchmark performance.
+                  Select a state-of-the-art model above and run complex insurance inquiries. Inspect reasoning traces in real time, observe autonomous tool invocations, and benchmark performance against verified Solvency II standards.
                 </p>
                 <div className="empty-feature-grid">
                   <span className="feature-pill">DeepSeek R1 Reasoning</span>
                   <span className="feature-pill">Live Tool Call Chronometer</span>
-                  <span className="feature-pill">38 DIL Insurance Records</span>
+                  <span className="feature-pill">38 Verified DIL Ground Truth Records</span>
                   <span className="feature-pill">Real-time SSE Streaming</span>
                 </div>
               </div>
@@ -1050,7 +1059,12 @@ export default function Page() {
 
             {compareResults.length === 0 && !isComparing && !compareError && (
               <div className="empty-hero-card">
-                <h1 className="empty-title">Head-to-Head Arena Comparison</h1>
+                <div className="hero-logo-banner">
+                  <img src="/dil-logo.png" alt="DIL Logo" className="hero-logo-img dil" />
+                  <span className="hero-logo-cross">×</span>
+                  <img src="/arena-globe-logo.png" alt="Arena Globe" className="hero-logo-img globe" />
+                </div>
+                <h1 className="empty-title">DIL Head-to-Head Arena</h1>
                 <p className="empty-desc">
                   Benchmark up to 4 models simultaneously on complex insurance reasoning, actuarial calculations, and regulatory questions. Compare outputs side-by-side with generation speed, cost efficiency, and gold-standard accuracy.
                 </p>

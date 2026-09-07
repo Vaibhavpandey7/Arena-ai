@@ -2,8 +2,13 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AI Arena",
-  description: "Multi-model LLM evaluation and comparison tool with insurance data pipeline backend",
+  title: "DIL Intelligence Studio",
+  description: "Next-generation multi-model LLM benchmark and evaluation studio for insurance, Solvency II directives, and actuarial intelligence",
+  icons: {
+    icon: "/dil-logo.png",
+    shortcut: "/dil-logo.png",
+    apple: "/dil-logo.png",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -11,6 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" data-theme="dark" suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" />
+        <link rel="icon" href="/dil-logo.png" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link

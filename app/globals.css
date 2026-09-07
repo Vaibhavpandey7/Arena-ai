@@ -230,6 +230,95 @@ body {
   background: linear-gradient(120deg, var(--text-main) 60%, var(--accent) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  white-space: nowrap;
+}
+
+.brand-logos-group {
+  display: flex;
+  align-items: center;
+  position: relative;
+  gap: 0;
+  flex-shrink: 0;
+}
+
+.brand-logo-dil {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 0 12px rgba(14, 165, 233, 0.4);
+  border: 1.5px solid rgba(14, 165, 233, 0.5);
+  z-index: 2;
+  transition: transform var(--transition-fast);
+}
+
+.brand-logo-globe {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-left: -8px;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+  border: 1.5px solid rgba(245, 158, 11, 0.5);
+  z-index: 1;
+  transition: transform var(--transition-fast);
+}
+
+.brand-section:hover .brand-logo-dil {
+  transform: scale(1.08) rotate(-4deg);
+}
+
+.brand-section:hover .brand-logo-globe {
+  transform: scale(1.08) rotate(4deg);
+}
+
+.brand-subtitle {
+  font-size: 10.5px;
+  color: var(--text-subtle);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.hero-logo-banner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding: 8px 22px;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-md);
+}
+
+.hero-logo-img {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  border-radius: 50%;
+  transition: transform var(--transition-fast);
+}
+
+.hero-logo-img.dil {
+  box-shadow: 0 0 18px rgba(14, 165, 233, 0.35);
+  border: 2px solid rgba(14, 165, 233, 0.4);
+}
+
+.hero-logo-img.globe {
+  box-shadow: 0 0 18px rgba(245, 158, 11, 0.35);
+  border: 2px solid rgba(245, 158, 11, 0.4);
+}
+
+.hero-logo-banner:hover .hero-logo-img {
+  transform: scale(1.08);
+}
+
+.hero-logo-cross {
+  font-size: 16px;
+  font-weight: 300;
+  color: var(--text-subtle);
 }
 
 .brand-tag {

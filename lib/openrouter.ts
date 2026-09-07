@@ -61,7 +61,7 @@ function orHeaders(): Record<string, string> {
   return {
     Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
     "HTTP-Referer": process.env.OPENROUTER_SITE_URL ?? "http://localhost:3000",
-    "X-Title": process.env.OPENROUTER_SITE_NAME ?? "AI Arena",
+    "X-Title": process.env.OPENROUTER_SITE_NAME ?? "DIL Intelligence Studio",
     "Content-Type": "application/json",
   };
 }
