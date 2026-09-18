@@ -228,7 +228,7 @@ interface ChatArenaProps {
 }
 
 export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps = {}) {
-  const [selectedModel, setSelectedModel] = useState("deepseek/deepseek-r1");
+  const [selectedModel, setSelectedModel] = useState("meta-llama/llama-3.3-70b-instruct:free");
   const [activePlugins, setActivePlugins] = useState<Set<string>>(
     new Set(["premium-calculator", "solvency-ii-checker"])
   );

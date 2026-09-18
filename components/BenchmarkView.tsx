@@ -215,10 +215,10 @@ export default function BenchmarkView({ onNavigate }: Props) {
   const [activeFilter, setActiveFilter] = useState("All");
   const [animated, setAnimated] = useState(false);
 
-  // Model selection for benchmark runs (1 to 4 models!)
+  // Model selection for benchmark runs (defaulted to 100% free models to preserve user credits)
   const [selectedModels, setSelectedModels] = useState<string[]>([
-    "deepseek/deepseek-r1",
-    "anthropic/claude-sonnet-4-5",
+    "deepseek/deepseek-v4-flash-0731:free",
+    "meta-llama/llama-3.3-70b-instruct:free",
   ]);
 
   // Results cache: questionId -> array of QuestionResult
@@ -246,7 +246,12 @@ export default function BenchmarkView({ onNavigate }: Props) {
 
   const handleAddModel = () => {
     if (selectedModels.length >= 4) return;
-    const pool = ["openai/gpt-4o", "google/gemini-2.0-flash-001", "meta-llama/llama-3.3-70b-instruct", "qwen/qwq-32b"];
+    const pool = [
+      "nvidia/nemotron-3.5-lightning:free",
+      "qwen/qwen3.8-27b:free",
+      "openrouter/free",
+      "openai/gpt-4o-mini",
+    ];
     const next = pool.find((p) => !selectedModels.includes(p)) || pool[0];
     setSelectedModels((prev) => [...prev, next]);
   };
