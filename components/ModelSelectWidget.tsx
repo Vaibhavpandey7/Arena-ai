@@ -1,5 +1,6 @@
 "use client";
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { MODEL_REGISTRY, MODEL_GROUPS, ModelDef, getModel } from "@/lib/model-registry";
 
 interface Props {
@@ -34,40 +35,82 @@ export default function ModelSelectWidget({
   const [activeTab, setActiveTab] = useState<string>("featured");
   const [apiModels, setApiModels] = useState<ApiModel[]>([]);
   const [isLoadingApi, setIsLoadingApi] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [coords, setCoords] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Focus search safely when opened without scrolling parent containers
   useEffect(() => {
-    if (isOpen) {
-      searchInputRef.current?.focus({ preventScroll: true });
+    setMounted(true);
+  }, []);
+
+  const updateCoords = useCallback(() => {
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      const desiredWidth = Math.max(rect.width, 360);
+      const viewportWidth = typeof window !== "undefined" ? window.innerWidth : 1200;
+      const left = Math.max(10, Math.min(rect.left, viewportWidth - desiredWidth - 16));
+
+      setCoords({
+        top: rect.bottom + 6,
+        left: left,
+        width: desiredWidth,
+      });
     }
-  }, [isOpen]);
+  }, []);
+
+  // Update position on open/resize/scroll and focus search
+  useEffect(() => {
+    if (!isOpen) return;
+    updateCoords();
+
+    const handleUpdate = () => updateCoords();
+    window.addEventListener("resize", handleUpdate);
+    window.addEventListener("scroll", handleUpdate, true);
+
+    const timer = setTimeout(() => {
+      searchInputRef.current?.focus({ preventScroll: true });
+    }, 40);
+
+    return () => {
+      window.removeEventListener("resize", handleUpdate);
+      window.removeEventListener("scroll", handleUpdate, true);
+      clearTimeout(timer);
+    };
+  }, [isOpen, updateCoords]);
 
   // Fetch all OpenRouter models from API
   useEffect(() => {
-    let mounted = true;
+    let isMounted = true;
     setIsLoadingApi(true);
     fetch("/api/models")
       .then((res) => res.json())
       .then((data) => {
-        if (mounted && Array.isArray(data.models)) {
+        if (isMounted && Array.isArray(data.models)) {
           setApiModels(data.models);
         }
       })
       .catch(() => {})
       .finally(() => {
-        if (mounted) setIsLoadingApi(false);
+        if (isMounted) setIsLoadingApi(false);
       });
     return () => {
-      mounted = false;
+      isMounted = false;
     };
   }, []);
 
   // Close on outside click
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(target) &&
+        triggerRef.current &&
+        !triggerRef.current.contains(target)
+      ) {
         setIsOpen(false);
       }
     }
@@ -186,7 +229,7 @@ export default function ModelSelectWidget({
   };
 
   return (
-    <div ref={dropdownRef} style={{ position: "relative", width: "100%" }}>
+    <div style={{ position: "relative", width: "100%" }}>
       {label && (
         <label
           style={{
@@ -205,6 +248,7 @@ export default function ModelSelectWidget({
 
       {/* Trigger Button */}
       <button
+        ref={triggerRef}
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
@@ -295,27 +339,42 @@ export default function ModelSelectWidget({
             <span style={{ color: "var(--text-muted)" }}>{placeholder}</span>
           )}
         </div>
-        <span style={{ color: "var(--text-muted)", fontSize: "0.7rem", marginLeft: "6px" }}>
-          {isOpen ? "▲" : "▼"}
-        </span>
+        <svg
+          width="11"
+          height="11"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{
+            color: "var(--text-muted)",
+            flexShrink: 0,
+            marginLeft: "6px",
+            opacity: 0.6,
+          }}
+        >
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
       </button>
 
-      {/* Popover Dropdown */}
-      {isOpen && (
+      {/* Popover Dropdown rendered into document.body to stay above chat div with full size */}
+      {isOpen && coords && mounted && createPortal(
         <div
+          ref={dropdownRef}
           style={{
-            position: "absolute",
-            top: "calc(100% + 6px)",
-            left: 0,
-            width: "100%",
-            maxWidth: "100%",
-            boxSizing: "border-box",
-            maxHeight: "380px",
-            background: "#0d1a30",
-            border: "1px solid var(--border)",
+            position: "fixed",
+            top: coords.top,
+            left: coords.left,
+            width: coords.width,
+            maxWidth: "calc(100vw - 24px)",
+            maxHeight: "420px",
+            background: "#0b1628",
+            border: "1px solid rgba(0, 212, 255, 0.35)",
             borderRadius: "10px",
-            boxShadow: "0 12px 32px rgba(0, 0, 0, 0.7), 0 0 1px rgba(0, 212, 255, 0.3)",
-            zIndex: 999,
+            boxShadow: "0 20px 50px rgba(0, 0, 0, 0.9), 0 0 24px rgba(0, 212, 255, 0.2)",
+            zIndex: 99999,
             display: "flex",
             flexDirection: "column",
             overflow: "hidden",
@@ -331,8 +390,8 @@ export default function ModelSelectWidget({
               placeholder="Search 440+ OpenRouter models..."
               style={{
                 width: "100%",
-                padding: "6px 10px",
-                fontSize: "0.78rem",
+                padding: "7px 10px",
+                fontSize: "0.8rem",
                 borderRadius: "6px",
                 background: "rgba(255, 255, 255, 0.05)",
                 border: "1px solid var(--border)",
@@ -386,7 +445,7 @@ export default function ModelSelectWidget({
           </div>
 
           {/* Model list items */}
-          <div style={{ flex: 1, overflowY: "auto", padding: "4px" }}>
+          <div className="model-select-list" style={{ flex: 1, overflowY: "auto", padding: "4px" }}>
             {filteredModels.length === 0 ? (
               <div style={{ padding: "16px", textAlign: "center", fontSize: "0.75rem", color: "var(--text-muted)" }}>
                 No models matching &quot;{search}&quot;
@@ -483,7 +542,8 @@ export default function ModelSelectWidget({
               })
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -5787,6 +5787,41 @@ body {
 /* ═══════════════════════════════════════════════════════════════════════════
    CHAT ARENA VIEW
    ═══════════════════════════════════════════════════════════════════════════ */
+/* Remove all scroll up/down buttons on scrollbars */
+*::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.model-select-list {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 212, 255, 0.35) rgba(0, 0, 0, 0.2);
+}
+
+.model-select-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.model-select-list::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.model-select-list::-webkit-scrollbar-thumb {
+  background: rgba(0, 212, 255, 0.35);
+  border-radius: 3px;
+}
+
+.model-select-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 212, 255, 0.65);
+}
+
+.model-select-list::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
 .arena-layout {
   display: flex;
   height: calc(100vh - 56px);
@@ -5795,9 +5830,9 @@ body {
 }
 
 .arena-sidebar {
-  width: 280px;
-  min-width: 280px;
-  max-width: 280px;
+  width: 260px;
+  min-width: 260px;
+  max-width: 260px;
   flex-shrink: 0;
   background: var(--bg-surface);
   border-right: 1px solid var(--border-default);
