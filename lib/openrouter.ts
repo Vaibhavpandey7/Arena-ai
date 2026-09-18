@@ -252,7 +252,8 @@ export async function chatCompletion(params: ChatParams): Promise<ChatResponse> 
     tools: effectiveTools,
     temperature: params.temperature ?? 0.7,
     max_tokens: params.max_tokens ?? (
-      /r1|qwq|reasoning|thinking|o1|o3/i.test(params.model) ? 4096 : 2500
+      /claude|opus|sonnet/i.test(params.model) ? 1000 :
+      /r1|qwq|reasoning|thinking|o1|o3/i.test(params.model) ? 2048 : 1200
     ),
     usage: { include: true },
   };
@@ -390,7 +391,10 @@ export async function chatCompletionStream(params: ChatParams): Promise<Response
     messages,
     tools: effectiveTools,
     temperature: params.temperature ?? 0.7,
-    max_tokens: params.max_tokens ?? 2048,
+    max_tokens: params.max_tokens ?? (
+      /claude|opus|sonnet/i.test(params.model) ? 1000 :
+      /r1|qwq|reasoning|thinking|o1|o3/i.test(params.model) ? 2048 : 1200
+    ),
     stream: true,
     usage: { include: true },
   };

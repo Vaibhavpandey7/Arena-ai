@@ -46,6 +46,7 @@ const FEATURED_IDS = [
 const CUSTOM_STORAGE_KEY = "ai-arena-custom-models";
 
 const PRESETS = [
+  { label: "DIL-V1 (Fine-tuned)", baseUrl: "http://localhost:8000/v1", sampleId: "Parthdaiict/dil-v1-insurance-model", needsKey: false },
   { label: "OpenAI", baseUrl: "https://api.openai.com/v1", sampleId: "ft:gpt-4o-mini-2024-07-18:org:model-name", needsKey: true },
   { label: "Hugging Face", baseUrl: "https://router.huggingface.co/hf-inference/v1", sampleId: "meta-llama/Llama-3.2-3B-Instruct", needsKey: true },
   { label: "Together AI", baseUrl: "https://api.together.xyz/v1", sampleId: "togethercomputer/llama-3-8b-instruct", needsKey: true },
@@ -315,8 +316,8 @@ function ModelSelectorComponent({ mode, selected, onChange, onCustomEndpointsCha
 
   function applyPreset(p: typeof PRESETS[number]) {
     setCustomBaseUrl(p.baseUrl);
-    if (!customId) setCustomId(p.sampleId);
-    if (!customName) setCustomName(`${p.label} Model`);
+    setCustomId(p.sampleId);
+    setCustomName(p.label.startsWith("DIL-V1") ? "DIL-V1 Insurance Model" : `${p.label} Model`);
   }
 
   // Active model info for single mode
