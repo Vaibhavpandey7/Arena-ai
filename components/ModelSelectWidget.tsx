@@ -35,6 +35,14 @@ export default function ModelSelectWidget({
   const [apiModels, setApiModels] = useState<ApiModel[]>([]);
   const [isLoadingApi, setIsLoadingApi] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Focus search safely when opened without scrolling parent containers
+  useEffect(() => {
+    if (isOpen) {
+      searchInputRef.current?.focus({ preventScroll: true });
+    }
+  }, [isOpen]);
 
   // Fetch all OpenRouter models from API
   useEffect(() => {
@@ -299,8 +307,9 @@ export default function ModelSelectWidget({
             position: "absolute",
             top: "calc(100% + 6px)",
             left: 0,
-            right: 0,
-            minWidth: "320px",
+            width: "100%",
+            maxWidth: "100%",
+            boxSizing: "border-box",
             maxHeight: "380px",
             background: "#0d1a30",
             border: "1px solid var(--border)",
@@ -313,10 +322,10 @@ export default function ModelSelectWidget({
           }}
         >
           {/* Search input */}
-          <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)" }}>
+          <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)", boxSizing: "border-box" }}>
             <input
+              ref={searchInputRef}
               type="text"
-              autoFocus
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search 440+ OpenRouter models..."
@@ -343,6 +352,7 @@ export default function ModelSelectWidget({
               borderBottom: "1px solid var(--border)",
               background: "rgba(0, 0, 0, 0.2)",
               overflowX: "auto",
+              scrollbarWidth: "none",
             }}
           >
             {[
@@ -409,8 +419,8 @@ export default function ModelSelectWidget({
                     }}
                   >
                     <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "2px" }}>
-                        <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text)" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "2px", flexWrap: "wrap" }}>
+                        <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {m.label}
                         </span>
                         {m.isFree && (
@@ -457,11 +467,11 @@ export default function ModelSelectWidget({
                           </span>
                         )}
                       </div>
-                      <div style={{ fontSize: "0.68rem", color: "var(--text-muted)", display: "flex", gap: "8px" }}>
+                      <div style={{ fontSize: "0.68rem", color: "var(--text-muted)", display: "flex", gap: "8px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         <span>{m.provider}</span>
                         <span>·</span>
                         <span>{m.contextK ? `${m.contextK}k context` : ""}</span>
-                        <span style={{ fontFamily: "var(--font-mono)", opacity: 0.7 }}>{m.id}</span>
+                        <span style={{ fontFamily: "var(--font-mono)", opacity: 0.7, overflow: "hidden", textOverflow: "ellipsis" }}>{m.id}</span>
                       </div>
                     </div>
 

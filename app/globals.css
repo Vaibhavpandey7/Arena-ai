@@ -5791,18 +5791,23 @@ body {
   display: flex;
   height: calc(100vh - 56px);
   overflow: hidden;
+  position: relative;
 }
 
 .arena-sidebar {
-  width: 260px;
-  min-width: 260px;
+  width: 280px;
+  min-width: 280px;
+  max-width: 280px;
+  flex-shrink: 0;
   background: var(--bg-surface);
   border-right: 1px solid var(--border-default);
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  overflow-x: hidden !important;
   padding: 14px;
   gap: 14px;
+  box-sizing: border-box;
 }
 
 .arena-sidebar::-webkit-scrollbar { width: 4px; }
@@ -5813,6 +5818,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .arena-sidebar-label {
@@ -5832,6 +5839,9 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .arena-active-model-select {
