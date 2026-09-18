@@ -52,8 +52,8 @@ export default function ModelSelectWidget({
     if (triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
       const viewportWidth = typeof window !== "undefined" ? window.innerWidth : 1200;
-      // Generous, readable dropdown width between 380px and viewport bounds
-      const desiredWidth = Math.min(Math.max(rect.width, 400), viewportWidth - 24);
+      // Generous, spacious dropdown width (520px) so filter options and model details have ample space
+      const desiredWidth = Math.min(Math.max(rect.width, 520), viewportWidth - 24);
       // Position left so it never bleeds off right edge or left edge of the screen
       let left = rect.left;
       if (left + desiredWidth > viewportWidth - 12) {
@@ -153,7 +153,7 @@ export default function ModelSelectWidget({
       const isFree =
         value.endsWith(":free") ||
         fromApi.id.endsWith(":free") ||
-        (fromApi.pricing && fromApi.pricing.prompt === 0 && fromApi.pricing.completion === 0);
+        (fromApi.pricing && Number(fromApi.pricing.prompt) === 0 && Number(fromApi.pricing.completion) === 0);
       return {
         id: value,
         label: fromApi.name || fromApi.id.split("/")[1] || fromApi.id,
@@ -205,7 +205,8 @@ export default function ModelSelectWidget({
         const isFree =
           apiM.id.endsWith(":free") ||
           apiM.id.includes(":free") ||
-          (apiM.pricing && apiM.pricing.prompt === 0 && apiM.pricing.completion === 0);
+          apiM.id.toLowerCase().includes("/free") ||
+          (apiM.pricing && Number(apiM.pricing.prompt) === 0 && Number(apiM.pricing.completion) === 0);
 
         list.push({
           id: apiM.id,
@@ -228,9 +229,55 @@ export default function ModelSelectWidget({
     return list;
   }, [apiModels]);
 
-  const freeCount = useMemo(() => {
-    return allUnified.filter((m) => m.isFree).length;
-  }, [allUnified]);
+  // Dynamic counts for all filter tabs
+  const featuredCount = MODEL_REGISTRY.length;
+  const freeCount = useMemo(() => allUnified.filter((m) => m.isFree).length, [allUnified]);
+  const reasoningCount = useMemo(
+    () =>
+      allUnified.filter(
+        (m) =>
+          m.tags?.includes("reasoning") ||
+          m.tags?.includes("extended-thinking") ||
+          m.id.toLowerCase().includes("r1") ||
+          m.id.toLowerCase().includes("reason") ||
+          m.id.toLowerCase().includes("qwq")
+      ).length,
+    [allUnified]
+  );
+  const domainCount = useMemo(
+    () =>
+      allUnified.filter(
+        (m) =>
+          m.tags?.includes("domain-specific") ||
+          m.id.toLowerCase().includes("insurance") ||
+          m.id.toLowerCase().includes("dil") ||
+          m.id.toLowerCase().includes("sonnet") ||
+          m.id.toLowerCase().includes("mistral")
+      ).length,
+    [allUnified]
+  );
+  const fastCount = useMemo(
+    () =>
+      allUnified.filter(
+        (m) =>
+          m.tags?.includes("fast") ||
+          m.id.toLowerCase().includes("flash") ||
+          m.id.toLowerCase().includes("mini") ||
+          m.id.toLowerCase().includes("small")
+      ).length,
+    [allUnified]
+  );
+  const visionCount = useMemo(
+    () =>
+      allUnified.filter(
+        (m) =>
+          m.tags?.includes("multimodal") ||
+          m.id.toLowerCase().includes("vision") ||
+          m.id.toLowerCase().includes("vl") ||
+          m.id.toLowerCase().includes("4o")
+      ).length,
+    [allUnified]
+  );
 
   // Filtered model list
   const filteredModels = useMemo(() => {
@@ -252,10 +299,40 @@ export default function ModelSelectWidget({
       if (!matchesQuery) return false;
 
       if (activeTab === "free") return Boolean(m.isFree);
-      if (activeTab === "reasoning") return m.tags?.includes("reasoning") || m.tags?.includes("extended-thinking");
-      if (activeTab === "domain") return m.tags?.includes("domain-specific") || m.id.includes("insurance") || m.id.includes("dil");
-      if (activeTab === "multimodal") return m.tags?.includes("multimodal") || m.id.includes("vision") || m.id.includes("vl");
-      if (activeTab === "fast") return m.tags?.includes("fast");
+      if (activeTab === "reasoning") {
+        return (
+          m.tags?.includes("reasoning") ||
+          m.tags?.includes("extended-thinking") ||
+          m.id.toLowerCase().includes("r1") ||
+          m.id.toLowerCase().includes("reason") ||
+          m.id.toLowerCase().includes("qwq")
+        );
+      }
+      if (activeTab === "domain") {
+        return (
+          m.tags?.includes("domain-specific") ||
+          m.id.toLowerCase().includes("insurance") ||
+          m.id.toLowerCase().includes("dil") ||
+          m.id.toLowerCase().includes("sonnet") ||
+          m.id.toLowerCase().includes("mistral")
+        );
+      }
+      if (activeTab === "multimodal") {
+        return (
+          m.tags?.includes("multimodal") ||
+          m.id.toLowerCase().includes("vision") ||
+          m.id.toLowerCase().includes("vl") ||
+          m.id.toLowerCase().includes("4o")
+        );
+      }
+      if (activeTab === "fast") {
+        return (
+          m.tags?.includes("fast") ||
+          m.id.toLowerCase().includes("flash") ||
+          m.id.toLowerCase().includes("mini") ||
+          m.id.toLowerCase().includes("small")
+        );
+      }
 
       return true;
     });
@@ -482,11 +559,11 @@ export default function ModelSelectWidget({
             left: coords.left,
             width: coords.width,
             maxWidth: "calc(100vw - 24px)",
-            maxHeight: "440px",
-            background: "#0b1628",
-            border: "1px solid rgba(0, 212, 255, 0.35)",
-            borderRadius: "10px",
-            boxShadow: "0 20px 50px rgba(0, 0, 0, 0.9), 0 0 24px rgba(0, 212, 255, 0.2)",
+            maxHeight: "520px",
+            background: "#081222",
+            border: "1px solid rgba(0, 212, 255, 0.4)",
+            borderRadius: "12px",
+            boxShadow: "0 24px 60px rgba(0, 0, 0, 0.92), 0 0 30px rgba(0, 212, 255, 0.22)",
             zIndex: 99999,
             display: "flex",
             flexDirection: "column",
@@ -494,78 +571,183 @@ export default function ModelSelectWidget({
             boxSizing: "border-box",
           }}
         >
-          {/* Search input */}
-          <div style={{ padding: "10px 12px", borderBottom: "1px solid var(--border)", boxSizing: "border-box" }}>
-            <input
-              ref={searchInputRef}
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search 440+ OpenRouter models..."
-              style={{
-                width: "100%",
-                padding: "8px 12px",
-                fontSize: "0.82rem",
-                borderRadius: "6px",
-                background: "rgba(255, 255, 255, 0.05)",
-                border: "1px solid var(--border)",
-                color: "var(--text)",
-                outline: "none",
-                boxSizing: "border-box",
-              }}
-            />
+          {/* Search input header */}
+          <div style={{ padding: "12px 14px", borderBottom: "1px solid var(--border)", background: "rgba(11, 22, 40, 0.8)", boxSizing: "border-box" }}>
+            <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+              <span style={{ position: "absolute", left: "10px", color: "var(--text-muted)", fontSize: "0.85rem" }}>
+                🔍
+              </span>
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search models by name, provider, or ID..."
+                style={{
+                  width: "100%",
+                  padding: "8px 12px 8px 34px",
+                  fontSize: "0.82rem",
+                  borderRadius: "7px",
+                  background: "rgba(255, 255, 255, 0.05)",
+                  border: "1px solid var(--border)",
+                  color: "var(--text)",
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  style={{
+                    position: "absolute",
+                    right: "10px",
+                    background: "none",
+                    border: "none",
+                    color: "var(--text-muted)",
+                    cursor: "pointer",
+                    fontSize: "0.75rem",
+                  }}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* Filter tabs */}
+          {/* Filter options div with ample space and modern wrapped layout */}
           <div
             style={{
-              display: "flex",
-              gap: "6px",
-              padding: "8px 12px",
+              padding: "10px 14px",
               borderBottom: "1px solid var(--border)",
-              background: "rgba(0, 0, 0, 0.3)",
-              overflowX: "auto",
-              scrollbarWidth: "none",
+              background: "rgba(6, 14, 28, 0.95)",
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "8px",
+              alignItems: "center",
               boxSizing: "border-box",
             }}
           >
             {[
-              { id: "featured", label: "Featured" },
-              { id: "free", label: `⭐ Free (${freeCount})` },
-              { id: "reasoning", label: "🧠 Reasoning" },
-              { id: "domain", label: "🛡 Domain" },
-              { id: "fast", label: "⚡ Fast" },
-              { id: "multimodal", label: "🌐 Vision" },
-              { id: "all", label: `All (${allUnified.length})` },
-            ].map((tab) => (
+              { id: "featured", label: "Featured", count: featuredCount },
+              { id: "free", label: "⭐ Free", count: freeCount },
+              { id: "reasoning", label: "🧠 Reasoning", count: reasoningCount },
+              { id: "domain", label: "🛡 Domain", count: domainCount },
+              { id: "fast", label: "⚡ Fast", count: fastCount },
+              { id: "multimodal", label: "🌐 Vision", count: visionCount },
+              { id: "all", label: "All Models", count: allUnified.length },
+            ].map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  style={{
+                    fontSize: "0.74rem",
+                    padding: "6px 13px",
+                    borderRadius: "20px",
+                    border: isActive
+                      ? "1px solid var(--cyan)"
+                      : "1px solid rgba(255, 255, 255, 0.09)",
+                    background: isActive
+                      ? "linear-gradient(135deg, rgba(0, 212, 255, 0.22), rgba(0, 150, 255, 0.12))"
+                      : "rgba(255, 255, 255, 0.03)",
+                    color: isActive ? "#ffffff" : "var(--text-muted)",
+                    fontWeight: isActive ? 700 : 500,
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    whiteSpace: "nowrap",
+                    transition: "all 0.15s ease",
+                    boxShadow: isActive ? "0 0 10px rgba(0, 212, 255, 0.25)" : "none",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.background = "rgba(255, 255, 255, 0.08)";
+                      e.currentTarget.style.color = "var(--text)";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.background = "rgba(255, 255, 255, 0.03)";
+                      e.currentTarget.style.color = "var(--text-muted)";
+                    }
+                  }}
+                >
+                  <span>{tab.label}</span>
+                  <span
+                    style={{
+                      fontSize: "0.64rem",
+                      padding: "1px 6px",
+                      borderRadius: "10px",
+                      background: isActive
+                        ? "rgba(0, 212, 255, 0.35)"
+                        : "rgba(255, 255, 255, 0.08)",
+                      color: isActive ? "#ffffff" : "var(--text-subtle)",
+                      fontWeight: 700,
+                    }}
+                  >
+                    {tab.count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Sub-bar: Active filter indicator & result count */}
+          <div
+            style={{
+              padding: "7px 14px",
+              background: "rgba(0, 0, 0, 0.35)",
+              borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              fontSize: "0.72rem",
+              color: "var(--text-muted)",
+              boxSizing: "border-box",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <span>Filtered by:</span>
+              <span style={{ color: "var(--cyan)", fontWeight: 700, textTransform: "capitalize" }}>
+                {activeTab === "all" ? "All Models" : activeTab === "free" ? "Free & Open-Source" : activeTab}
+              </span>
+              <span>·</span>
+              <span style={{ color: "var(--text)" }}>
+                {filteredModels.length} {filteredModels.length === 1 ? "model" : "models"} available
+              </span>
+            </div>
+
+            {(activeTab !== "featured" || search) && (
               <button
-                key={tab.id}
                 type="button"
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  setActiveTab("featured");
+                  setSearch("");
+                }}
                 style={{
-                  fontSize: "0.72rem",
-                  padding: "5px 12px",
-                  borderRadius: "6px",
-                  border: activeTab === tab.id ? "1px solid var(--cyan)" : "1px solid rgba(255, 255, 255, 0.08)",
-                  background: activeTab === tab.id ? "rgba(0, 212, 255, 0.2)" : "rgba(255, 255, 255, 0.03)",
-                  color: activeTab === tab.id ? "var(--cyan-light)" : "var(--text-muted)",
-                  fontWeight: activeTab === tab.id ? 700 : 500,
+                  background: "none",
+                  border: "none",
+                  color: "var(--cyan)",
                   cursor: "pointer",
-                  whiteSpace: "nowrap",
-                  flexShrink: 0,
-                  transition: "all 0.15s ease",
+                  fontSize: "0.7rem",
+                  textDecoration: "underline",
+                  padding: 0,
                 }}
               >
-                {tab.label}
+                Reset filters
               </button>
-            ))}
+            )}
           </div>
 
           {/* Model list items */}
           <div className="model-select-list" style={{ flex: 1, overflowY: "auto", padding: "6px" }}>
             {filteredModels.length === 0 ? (
-              <div style={{ padding: "20px", textAlign: "center", fontSize: "0.78rem", color: "var(--text-muted)" }}>
-                No models matching &quot;{search}&quot;
+              <div style={{ padding: "24px", textAlign: "center", fontSize: "0.78rem", color: "var(--text-muted)" }}>
+                No models matching &quot;{search}&quot; under &quot;{activeTab}&quot; filter.
               </div>
             ) : (
               filteredModels.map((m) => {
