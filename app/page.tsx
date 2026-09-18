@@ -18,11 +18,16 @@ const TABS: { id: Tab; icon: string; label: string }[] = [
 export default function Page() {
   const [activeTab, setActiveTab] = useState<Tab>("home");
   const [arenaInitialPrompt, setArenaInitialPrompt] = useState<string | undefined>(undefined);
+  const [h2hInitialPrompt, setH2hInitialPrompt] = useState<string | undefined>(undefined);
 
   const navigateTo = useCallback((tab: Tab, prompt?: string) => {
     setActiveTab(tab);
-    if (prompt && tab === "chat-arena") {
-      setArenaInitialPrompt(prompt);
+    if (prompt) {
+      if (tab === "chat-arena") {
+        setArenaInitialPrompt(prompt);
+      } else if (tab === "head-to-head") {
+        setH2hInitialPrompt(prompt);
+      }
     }
   }, []);
 
@@ -79,12 +84,14 @@ export default function Page() {
       )}
 
       {activeTab === "head-to-head" && (
-        <HeadToHeadView />
+        <HeadToHeadView
+          initialPrompt={h2hInitialPrompt}
+          onReady={() => setH2hInitialPrompt(undefined)}
+        />
       )}
 
       {activeTab === "chat-arena" && (
         <ChatArenaView
-          key={arenaInitialPrompt ?? "arena"}
           initialPrompt={arenaInitialPrompt}
           onReady={() => setArenaInitialPrompt(undefined)}
         />

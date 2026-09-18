@@ -563,7 +563,12 @@ function UseCaseScorecard({
 }
 
 /* ── Main HeadToHeadView Component ─────────────────────────────────────────── */
-export default function HeadToHeadView() {
+interface HeadToHeadProps {
+  initialPrompt?: string;
+  onReady?: () => void;
+}
+
+export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadProps = {}) {
   // Support up to 4 models (defaulted to 100% free models to preserve user credits)
   const [models, setModels] = useState<string[]>([
     "deepseek/deepseek-v4-flash-0731:free",
@@ -571,7 +576,15 @@ export default function HeadToHeadView() {
   ]);
   const [states, setStates] = useState<ModelState[]>([emptyModelState(), emptyModelState()]);
   const [activeUseCase, setActiveUseCase] = useState<InsuranceUseCaseId>("data-extraction");
-  const [prompt, setPrompt] = useState(USE_CASES[0].prompt);
+  const [prompt, setPrompt] = useState(initialPrompt || USE_CASES[0].prompt);
+
+  // Sync initialPrompt from benchmark or external navigation
+  useEffect(() => {
+    if (initialPrompt) {
+      setPrompt(initialPrompt);
+      onReady?.();
+    }
+  }, [initialPrompt, onReady]);
 
   const abortRefs = useRef<(AbortController | null)[]>([null, null, null, null]);
   const tickerRef = useRef<ReturnType<typeof setInterval> | null>(null);

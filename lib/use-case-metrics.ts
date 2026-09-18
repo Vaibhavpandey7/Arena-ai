@@ -188,6 +188,22 @@ export interface UseCaseEvaluation {
   overallScore: number;
 }
 
+const STOP_WORDS = new Set([
+  "a", "about", "above", "after", "again", "against", "all", "am", "an", "and",
+  "any", "are", "as", "at", "be", "because", "been", "before", "being", "below",
+  "between", "both", "but", "by", "can", "could", "did", "do", "does", "doing",
+  "down", "during", "each", "few", "for", "from", "further", "had", "has", "have",
+  "having", "he", "her", "here", "hers", "herself", "him", "himself", "his", "how",
+  "i", "if", "in", "into", "is", "it", "its", "itself", "just", "me", "more", "most",
+  "my", "myself", "no", "nor", "not", "now", "of", "off", "on", "once", "only",
+  "or", "other", "our", "ours", "ourselves", "out", "over", "own", "s", "same",
+  "she", "should", "so", "some", "such", "t", "than", "that", "the", "their",
+  "theirs", "them", "themselves", "then", "there", "these", "they", "this", "those",
+  "through", "to", "too", "under", "until", "up", "very", "was", "we", "were",
+  "what", "when", "where", "which", "while", "who", "whom", "why", "will", "with",
+  "would", "you", "your", "yours", "yourself", "yourselves"
+]);
+
 /**
  * Evaluates a model's response against the use-case specific metrics.
  * Uses ground truth comparison when goldResponse is provided, or heuristic NLP structural analysis when not.
@@ -200,36 +216,44 @@ export function evaluateUseCaseMetrics(
 ): UseCaseEvaluation {
   const config = INSURANCE_USE_CASES[useCaseId] || INSURANCE_USE_CASES["data-extraction"];
   const text = (modelAnswer || "").trim();
+  const textLower = text.toLowerCase();
   const gold = (goldResponse || "").trim();
-  const hasGold = Boolean(gold && gold.length > 10);
+  const hasGold = Boolean(gold && gold.length > 8);
 
-  // Helper tokenizers
-  const words = text.toLowerCase().match(/\b[a-z0-9_-]{2,}\b/g) || [];
-  const goldWords = hasGold ? (gold.toLowerCase().match(/\b[a-z0-9_-]{2,}\b/g) || []) : [];
-  const goldSet = new Set(goldWords);
+  // Model words extraction
+  const rawWords = textLower.match(/\b[a-z0-9_.-]{2,}\b/g) || [];
+  const modelWordSet = new Set(rawWords);
 
-  // Overlap ratio if gold available
-  let tokenOverlap = 0;
-  if (hasGold && goldWords.length > 0) {
-    const matched = words.filter(w => goldSet.has(w));
-    tokenOverlap = Math.min(100, Math.round((matched.length / Math.max(words.length, goldWords.length)) * 130));
-  }
+  // Gold keywords extraction (filtering out non-domain stop words)
+  const goldRawWords = hasGold ? (gold.toLowerCase().match(/\b[a-z0-9_.-]{2,}\b/g) || []) : [];
+  const goldKeywords = Array.from(new Set(goldRawWords.filter((w) => w.length > 2 && !STOP_WORDS.has(w))));
+
+  // Calculate factual recall: what fraction of critical gold concepts are addressed in the response
+  const matchedGoldKeywords = goldKeywords.filter((w) => modelWordSet.has(w) || textLower.includes(w));
+  const goldRecall = goldKeywords.length > 0 ? (matchedGoldKeywords.length / goldKeywords.length) : 0.8;
 
   // Structure detection heuristics
   const hasNumbers = (text.match(/\d+[\.,]?\d*/g) || []).length;
   const hasTables = /\|.*\|/.test(text) || /\b(table|schedule|summary)\b/i.test(text);
   const hasCitations = /\b(directive|article|regulation|solvency|eiopa|gl\s*\d|section|clause)\b/i.test(text);
   const hasFormulas = /[=+\-*\/%]|\b(sum|ratio|formula|factor|reserve)\b/i.test(text);
-  const hasLegalTerms = /\b(subrogation|warranty|indemnity|exclusion|deductible|liability|fnol|siu|ibnr)\b/i.test(text);
+  const hasLegalTerms = /\b(subrogation|warranty|indemnity|exclusion|deductible|liability|fnol|siu|ibnr|scr|mcr)\b/i.test(text);
 
-  // Base score
-  const baseConfidence = Math.min(95, Math.max(45, Math.round(words.length > 20 ? 68 + (words.length > 100 ? 12 : 5) : 35)));
+  // Evidence citation detection
+  let evidenceCitationMatched = false;
+  if (evidence && evidence.trim()) {
+    const evWords = (evidence.toLowerCase().match(/\b[a-z0-9_.-]{3,}\b/g) || []).filter((w) => !STOP_WORDS.has(w));
+    if (evWords.length > 0) {
+      const evMatches = evWords.filter((w) => textLower.includes(w));
+      evidenceCitationMatched = (evMatches.length / evWords.length) >= 0.35;
+    }
+  }
 
   function calculateMetric(m: MetricDefinition, isPrimary = false): MetricEvaluationResult {
-    let score = baseConfidence;
+    let score = 75;
 
     if (hasGold) {
-      // Ground-truth aligned calculation
+      // Ground-truth aligned calculation with full-range dynamic fidelity
       switch (m.id) {
         case "field-extraction-acc":
         case "semantic-acc":
@@ -238,60 +262,99 @@ export function evaluateUseCaseMetrics(
         case "compliance-detection-rate":
         case "risk-scoring-corr":
         case "precision":
-        case "formulaic-acc":
-          score = Math.min(98, Math.max(40, Math.round(tokenOverlap * 0.85 + (hasLegalTerms ? 12 : 0))));
+        case "formulaic-acc": {
+          // Dynamic semantic accuracy calibrated to factual gold recall + evidence/legal rigor
+          const baseAcc = Math.round(goldRecall * 75 + 16);
+          const evBonus = evidenceCitationMatched ? 6 : 0;
+          const legalBonus = hasLegalTerms ? 4 : 0;
+          score = Math.min(98, Math.max(18, baseAcc + evBonus + legalBonus));
           break;
+        }
         case "recall":
         case "completeness":
-        case "coverage-preservation":
-          score = Math.min(96, Math.max(35, Math.round((words.length / Math.max(1, goldWords.length)) * 80 + (tokenOverlap * 0.2))));
+        case "coverage-preservation": {
+          score = Math.min(97, Math.max(22, Math.round(goldRecall * 82 + 14)));
           break;
+        }
         case "numeric-acc":
-        case "num-calc-precision":
-        case "claim-amount-dev":
-          score = hasNumbers >= 3 ? Math.min(95, Math.max(50, 75 + Math.min(20, hasNumbers * 3))) : 55;
-          if (m.id === "claim-amount-dev") score = Math.max(2, Math.min(25, Math.round(100 - score))); // lower is better
+        case "num-calc-precision": {
+          const goldNumbers = gold.match(/\b\d+[\.,]?\d*\b/g) || [];
+          if (goldNumbers.length > 0) {
+            const matchedNums = goldNumbers.filter((n) => text.includes(n));
+            const numRatio = matchedNums.length / goldNumbers.length;
+            score = Math.min(98, Math.max(25, Math.round(numRatio * 75 + (hasNumbers >= 2 ? 18 : 10))));
+          } else {
+            score = hasNumbers >= 3 ? 91 : hasNumbers >= 1 ? 78 : 62;
+          }
           break;
-        case "table-acc":
-          score = hasTables ? 92 : 62;
+        }
+        case "table-acc": {
+          score = hasTables ? 94 : (gold.includes("|") ? 55 : 82);
           break;
+        }
         case "hallucination-rate":
-        case "fpr":
-          score = Math.max(3, Math.min(20, Math.round(25 - (tokenOverlap * 0.2)))); // lower is better
+        case "fpr": {
+          // Lower is better (typically 2% to 15%)
+          score = Math.max(2, Math.min(18, Math.round((1 - goldRecall) * 16 + 2)));
           break;
+        }
+        case "claim-amount-dev": {
+          // Variance from target reserve/amount (lower is better)
+          score = Math.max(3, Math.min(20, Math.round((1 - goldRecall) * 18 + 2)));
+          break;
+        }
         case "regulatory-citation-acc":
-        case "regulatory-adherence":
-          score = hasCitations ? Math.min(96, 78 + (text.match(/\d{2,4}/g)?.length || 0) * 3) : 58;
+        case "regulatory-adherence": {
+          score = evidenceCitationMatched
+            ? Math.min(98, 88 + (text.match(/\b\d{2,4}\b/g)?.length || 0) * 2)
+            : (hasCitations ? 76 : 58);
           break;
-        default:
-          score = Math.min(94, Math.max(50, Math.round(tokenOverlap * 0.75 + 20)));
+        }
+        case "clause-acc":
+        case "terminology-acc":
+        case "severity-route-acc":
+        case "escalation-acc":
+        case "risk-class-acc":
+        default: {
+          score = Math.min(96, Math.max(25, Math.round(goldRecall * 70 + (hasLegalTerms ? 16 : 8) + 10)));
+          break;
+        }
       }
     } else {
-      // Heuristic proxy calculation
+      // Heuristic proxy calculation when no gold standard exists (e.g. user custom prompts)
+      const wordCount = rawWords.length;
+      const depthScore = Math.min(22, Math.round(wordCount / 22));
+      const legalScore = hasLegalTerms ? 14 : 0;
+      const citationScore = hasCitations ? 12 : 0;
+      const structureScore = hasTables ? 8 : 0;
+      const formulaScore = hasFormulas ? 6 : 0;
+      const proxyBase = Math.min(93, Math.max(50, 52 + depthScore + legalScore + citationScore + structureScore + formulaScore));
+
       switch (m.id) {
         case "numeric-acc":
         case "num-calc-precision":
-          score = hasNumbers >= 4 ? 88 : hasNumbers >= 1 ? 74 : 52;
+          score = hasNumbers >= 4 ? 88 : hasNumbers >= 1 ? 76 : 58;
           break;
         case "table-acc":
-          score = hasTables ? 90 : 60;
+          score = hasTables ? 92 : 64;
           break;
         case "regulatory-citation-acc":
         case "compliance-detection-rate":
-          score = hasCitations ? 86 : 64;
+        case "regulatory-adherence":
+          score = hasCitations ? 90 : 62;
           break;
         case "hallucination-rate":
         case "fpr":
-          score = 6; // low estimate
+          score = hasLegalTerms ? 4 : 8;
           break;
         case "claim-amount-dev":
-          score = 8; // low variance estimate
+          score = 6;
           break;
         case "formulaic-acc":
-          score = hasFormulas ? 85 : 65;
+          score = hasFormulas ? 88 : 66;
           break;
         default:
-          score = isPrimary ? Math.min(92, baseConfidence + 6) : baseConfidence;
+          score = isPrimary ? proxyBase : Math.max(52, proxyBase - 3);
       }
     }
 
@@ -305,11 +368,11 @@ export function evaluateUseCaseMetrics(
   }
 
   const primary = calculateMetric(config.primaryMetric, true);
-  const secondaries = config.secondaryMetrics.map(m => calculateMetric(m, false));
+  const secondaries = config.secondaryMetrics.map((m) => calculateMetric(m, false));
 
-  // Compute weighted overall score
+  // Compute balanced overall score
   const secondaryAvg = secondaries.reduce((acc, s) => acc + (s.score || 0), 0) / Math.max(1, secondaries.length);
-  const overallScore = Math.round(primary.score * 0.45 + secondaryAvg * 0.55);
+  const overallScore = Math.round(primary.score * 0.5 + secondaryAvg * 0.5);
 
   return {
     useCaseId: config.id,

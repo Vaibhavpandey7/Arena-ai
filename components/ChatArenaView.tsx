@@ -427,16 +427,13 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
     setIsStreaming(false);
   };
 
-  // Auto-send initialPrompt (e.g. from Benchmark "Run in Arena" button)
+  // Paste initialPrompt into input (e.g. from Benchmark "Open in Arena" button)
   useEffect(() => {
-    if (initialPrompt && !initialSentRef.current) {
-      initialSentRef.current = true;
+    if (initialPrompt) {
+      setInput(initialPrompt);
       onReady?.();
-      // Small delay so component is fully mounted
-      setTimeout(() => handleSend(initialPrompt), 400);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialPrompt]);
+  }, [initialPrompt, onReady]);
 
   return (
     <div className="arena-layout">
