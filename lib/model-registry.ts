@@ -183,11 +183,57 @@ export const MODEL_REGISTRY: ModelDef[] = [
     tooltip:
       "DeepSeek's fast chat model, well-suited for general insurance Q&A and policy translation. Free on OpenRouter with high throughput.",
   },
+  {
+    id: "deepseek/deepseek-v4-flash-0731:free",
+    label: "DeepSeek V4 Flash",
+    provider: "DeepSeek",
+    providerInitial: "DS",
+    tier: "free",
+    tags: ["reasoning", "fast", "open-source"],
+    contextK: 128,
+    isFree: true,
+    badge: "fast",
+    tooltip:
+      "DeepSeek V4 Flash — high-throughput free reasoning model. Ideal for fast insurance data extraction and policy checks.",
+  },
+  {
+    id: "meta-llama/llama-3.3-70b-instruct:free",
+    label: "Llama 3.3 70B",
+    provider: "Meta",
+    providerInitial: "ML",
+    tier: "free",
+    tags: ["fast", "open-source"],
+    contextK: 128,
+    isFree: true,
+    badge: "fast",
+    tooltip:
+      "Meta's best open-source instruction model. Strong general-purpose performance. Free on OpenRouter.",
+  },
 ];
 
-/** Lookup by ID */
+/** Lookup by ID with flexible suffix matching */
 export function getModel(id: string): ModelDef | undefined {
-  return MODEL_REGISTRY.find((m) => m.id === id);
+  if (!id) return undefined;
+  // 1. Direct match
+  const exact = MODEL_REGISTRY.find((m) => m.id === id);
+  if (exact) return exact;
+
+  // 2. Base ID match (ignoring :free)
+  const baseId = id.replace(/:free$/, "");
+  const base = MODEL_REGISTRY.find((m) => m.id === baseId);
+  if (base) {
+    return {
+      ...base,
+      id,
+      isFree: id.endsWith(":free") || base.isFree,
+    };
+  }
+
+  // 3. Try appending :free
+  const freeVariant = MODEL_REGISTRY.find((m) => m.id === `${id}:free`);
+  if (freeVariant) return freeVariant;
+
+  return undefined;
 }
 
 /** Groups for the model picker */

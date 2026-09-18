@@ -241,6 +241,7 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
   const abortRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const chatInputRef = useRef<HTMLTextAreaElement | null>(null);
 
   const modelInfo = MODELS.find((m) => m.id === selectedModel);
   const activePluginCount = activePlugins.size;
@@ -431,6 +432,9 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
   useEffect(() => {
     if (initialPrompt) {
       setInput(initialPrompt);
+      setTimeout(() => {
+        chatInputRef.current?.focus();
+      }, 50);
       onReady?.();
     }
   }, [initialPrompt, onReady]);
@@ -662,6 +666,7 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
               📎
             </button>
             <textarea
+              ref={chatInputRef}
               className="arena-input-textarea"
               placeholder="Ask an insurance question or describe a task for the agent…"
               value={input}

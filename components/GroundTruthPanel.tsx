@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from "react";
 import { evaluateUseCaseMetrics, InsuranceUseCaseId, UseCaseEvaluation } from "@/lib/use-case-metrics";
 import { evaluateGoldAlignment, GoldEvaluationResult } from "@/lib/benchmark-eval";
+import { BENCHMARK_GOLD_REGISTRY } from "@/lib/benchmark-gold-data";
 
 interface Props {
   modelAnswer: string;
@@ -35,10 +36,22 @@ export default function GroundTruthPanel({
     if (evidence) setActiveEvidence(evidence);
   }, [goldResponse, evidence]);
 
-  // Compute standard alignment
+  // Find matching gold item for curated keyTerms
+  const matchedGoldItem = useMemo(() => {
+    return Object.values(BENCHMARK_GOLD_REGISTRY).find(
+      (item) => item.goldResponse === activeGold || item.useCaseId === useCaseId
+    );
+  }, [activeGold, useCaseId]);
+
+  // Compute standard alignment with domain key terms
   const goldEval: GoldEvaluationResult = useMemo(() => {
-    return evaluateGoldAlignment(modelAnswer, activeGold, activeEvidence);
-  }, [modelAnswer, activeGold, activeEvidence]);
+    return evaluateGoldAlignment(
+      modelAnswer,
+      activeGold,
+      activeEvidence,
+      matchedGoldItem?.keyTerms
+    );
+  }, [modelAnswer, activeGold, activeEvidence, matchedGoldItem]);
 
   // Compute use-case specific primary & secondary metrics
   const useCaseEval: UseCaseEvaluation = useMemo(() => {

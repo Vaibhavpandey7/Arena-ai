@@ -455,37 +455,20 @@ export default function BenchmarkView({ onNavigate }: Props) {
             }}
           >
             {selectedModels.map((mId, idx) => (
-              <div key={idx} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <div style={{ flex: 1 }}>
-                  <ModelSelectWidget
-                    label={`Model ${idx + 1}`}
-                    value={mId}
-                    compact
-                    onChange={(newId) => {
-                      setSelectedModels((prev) => {
-                        const next = [...prev];
-                        next[idx] = newId;
-                        return next;
-                      });
-                    }}
-                  />
-                </div>
-                {selectedModels.length > 1 && (
-                  <button
-                    onClick={() => handleRemoveModel(idx)}
-                    style={{
-                      marginTop: "16px",
-                      background: "transparent",
-                      border: "none",
-                      color: "var(--text-muted)",
-                      cursor: "pointer",
-                      fontSize: "0.85rem",
-                    }}
-                    title="Remove model"
-                  >
-                    ✕
-                  </button>
-                )}
+              <div key={idx} style={{ minWidth: 0 }}>
+                <ModelSelectWidget
+                  label={`Model ${idx + 1}`}
+                  value={mId}
+                  compact
+                  onRemove={selectedModels.length > 1 ? () => handleRemoveModel(idx) : undefined}
+                  onChange={(newId) => {
+                    setSelectedModels((prev) => {
+                      const next = [...prev];
+                      next[idx] = newId;
+                      return next;
+                    });
+                  }}
+                />
               </div>
             ))}
           </div>

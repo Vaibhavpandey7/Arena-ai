@@ -578,16 +578,20 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
   const [activeUseCase, setActiveUseCase] = useState<InsuranceUseCaseId>("data-extraction");
   const [prompt, setPrompt] = useState(initialPrompt || USE_CASES[0].prompt);
 
+  const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const abortRefs = useRef<(AbortController | null)[]>([null, null, null, null]);
+  const tickerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   // Sync initialPrompt from benchmark or external navigation
   useEffect(() => {
     if (initialPrompt) {
       setPrompt(initialPrompt);
+      setTimeout(() => {
+        promptTextareaRef.current?.focus();
+      }, 50);
       onReady?.();
     }
   }, [initialPrompt, onReady]);
-
-  const abortRefs = useRef<(AbortController | null)[]>([null, null, null, null]);
-  const tickerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const isAnyRunning = states.some((s) => s.isRunning);
 
@@ -879,30 +883,13 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
 
           <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
             {models.map((modelId, idx) => (
-              <div key={idx} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <div style={{ flex: 1 }}>
-                  <ModelSelectWidget
-                    label={`Model ${idx + 1}`}
-                    value={modelId}
-                    onChange={(newId) => handleModelChange(idx, newId)}
-                  />
-                </div>
-                {models.length > 1 && (
-                  <button
-                    onClick={() => handleRemoveModel(idx)}
-                    style={{
-                      marginTop: "16px",
-                      background: "transparent",
-                      border: "none",
-                      color: "var(--text-muted)",
-                      cursor: "pointer",
-                      fontSize: "0.85rem",
-                    }}
-                    title="Remove model"
-                  >
-                    ✕
-                  </button>
-                )}
+              <div key={idx} style={{ width: "100%", minWidth: 0 }}>
+                <ModelSelectWidget
+                  label={`Model ${idx + 1}`}
+                  value={modelId}
+                  onRemove={models.length > 1 ? () => handleRemoveModel(idx) : undefined}
+                  onChange={(newId) => handleModelChange(idx, newId)}
+                />
               </div>
             ))}
           </div>
@@ -1006,6 +993,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
           </div>
 
           <textarea
+            ref={promptTextareaRef}
             rows={3}
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}

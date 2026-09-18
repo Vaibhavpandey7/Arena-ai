@@ -43,13 +43,29 @@ function extractKeywords(text: string): string[] {
     .filter((w) => w.length > 2 && !STOP_WORDS.has(w));
 }
 
+function extractNumbers(text: string): string[] {
+  // Extract percentages, decimals, currencies, ratios, and integers (e.g. 62%, 0.96, 2009/138, 77)
+  const matches = text.match(/\b\d+[\.,]?\d*%?|\b\d+\/\d+\b/g) || [];
+  return Array.from(new Set(matches.map((m) => m.trim()))).filter((m) => m.length > 0);
+}
+
+// Basic stemming to match variants (e.g. "calculates" / "calculation" -> "calculat")
+function stemWord(word: string): string {
+  return word
+    .toLowerCase()
+    .replace(/(?:ing|tion|tions|ment|ments|ed|es|s)$/, "")
+    .trim();
+}
+
 /**
  * Computes objective alignment between model response and verified gold standard response.
+ * Evaluates across key domain concepts, numeric precision, regulatory citations, and semantic coverage.
  */
 export function evaluateGoldAlignment(
   modelAnswer?: string,
   goldResponse?: string,
-  evidence?: string
+  evidence?: string,
+  explicitKeyTerms?: string[]
 ): GoldEvaluationResult {
   if (!modelAnswer || !goldResponse) {
     return {
@@ -62,40 +78,96 @@ export function evaluateGoldAlignment(
   }
 
   const modelLower = modelAnswer.toLowerCase();
-  const goldTerms = Array.from(new Set(extractKeywords(goldResponse)));
+  const goldLower = goldResponse.toLowerCase();
+
+  // 1. Key Domain Terms Evaluation
+  let targetTerms: string[] = [];
+  if (explicitKeyTerms && explicitKeyTerms.length > 0) {
+    targetTerms = explicitKeyTerms;
+  } else {
+    // Extract domain-specific key phrases from gold response (headers, bold items, quotes, and prominent terms)
+    const boldMatches = goldResponse.match(/\*\*([^*]+)\*\*/g)?.map((b) => b.replace(/\*\*/g, "").trim()) || [];
+    const significantWords = Array.from(new Set(extractKeywords(goldResponse))).filter((w) => w.length > 3);
+    targetTerms = boldMatches.length >= 3 ? boldMatches : significantWords.slice(0, 16);
+  }
+
   const matchedTerms: string[] = [];
   const missingTerms: string[] = [];
 
-  for (const term of goldTerms) {
-    if (modelLower.includes(term)) {
-      matchedTerms.push(term);
+  for (const rawTerm of targetTerms) {
+    const termClean = rawTerm.toLowerCase().replace(/[^a-z0-9\s_%.-]/g, " ").trim();
+    if (!termClean) continue;
+
+    // Check direct substring, word tokens, or stemmed equivalence
+    const tokens = termClean.split(/\s+/).filter(Boolean);
+    const allTokensPresent = tokens.length > 0 && tokens.every((tok) => {
+      if (modelLower.includes(tok)) return true;
+      const stem = stemWord(tok);
+      return stem.length >= 3 && modelLower.includes(stem);
+    });
+
+    if (modelLower.includes(termClean) || allTokensPresent) {
+      matchedTerms.push(rawTerm);
     } else {
-      missingTerms.push(term);
+      missingTerms.push(rawTerm);
     }
   }
 
-  const keywordCoverage = goldTerms.length > 0 ? matchedTerms.length / goldTerms.length : 1;
+  const termRatio = targetTerms.length > 0 ? matchedTerms.length / targetTerms.length : 1;
 
-  // Check evidence citations if available
+  // 2. Numeric & Quantitative Precision Evaluation
+  const goldNumbers = extractNumbers(goldResponse);
+  let numericRatio = 1;
+  if (goldNumbers.length > 0) {
+    let matchedNumCount = 0;
+    for (const num of goldNumbers) {
+      const cleanNum = num.replace("%", "");
+      if (modelAnswer.includes(num) || modelAnswer.includes(cleanNum)) {
+        matchedNumCount++;
+      }
+    }
+    numericRatio = matchedNumCount / goldNumbers.length;
+  }
+
+  // 3. Evidence & Regulatory Citation Verification
   let evidenceMatched = false;
+  let evidenceRatio = 0.5;
   if (evidence && evidence.trim()) {
-    const evidenceKeywords = Array.from(new Set(extractKeywords(evidence))).filter((w) => w.length > 3);
-    if (evidenceKeywords.length > 0) {
-      const matchedCount = evidenceKeywords.filter((k) => modelLower.includes(k)).length;
-      evidenceMatched = matchedCount / evidenceKeywords.length >= 0.5;
-    } else {
-      evidenceMatched = modelLower.includes(evidence.trim().toLowerCase().slice(0, 30));
+    const evidenceClauses = evidence.split(/[,;\.]/).map((s) => s.trim()).filter((s) => s.length > 4);
+    let matchedClauses = 0;
+    for (const clause of evidenceClauses) {
+      const clauseLower = clause.toLowerCase();
+      // Check for directive numbers, article numbers, or statutory names
+      const clauseKeywords = extractKeywords(clauseLower);
+      const matchedKw = clauseKeywords.filter((kw) => modelLower.includes(kw));
+      if (clauseKeywords.length > 0 && matchedKw.length / clauseKeywords.length >= 0.4) {
+        matchedClauses++;
+      }
     }
+    evidenceRatio = evidenceClauses.length > 0 ? matchedClauses / evidenceClauses.length : 0.5;
+    evidenceMatched = evidenceRatio >= 0.4;
   }
 
-  // Factor in evidence verification (+10% boost if verified)
-  let rawScore = Math.round(keywordCoverage * 100);
-  if (evidence && evidenceMatched) {
-    rawScore = Math.min(100, rawScore + 10);
-  }
+  // 4. Overall Informative Keyword Overlap
+  const allGoldKeywords = Array.from(new Set(extractKeywords(goldResponse)));
+  const matchedKwCount = allGoldKeywords.filter((kw) => {
+    if (modelLower.includes(kw)) return true;
+    const stem = stemWord(kw);
+    return stem.length >= 3 && modelLower.includes(stem);
+  }).length;
+  const kwRatio = allGoldKeywords.length > 0 ? matchedKwCount / allGoldKeywords.length : 1;
 
-  // Ensure minimum calibration
-  const score = Math.max(0, Math.min(100, rawScore));
+  // 5. Multi-Factor Balanced Scoring (Calibrated for domain benchmark reality)
+  // Weighting: 40% Key Terms + 25% Numeric Precision + 20% Evidence Rigor + 15% Informative Overlap
+  const weightedScore =
+    termRatio * 40 +
+    numericRatio * 25 +
+    evidenceRatio * 20 +
+    kwRatio * 15;
+
+  // Add bonus for high evidence citation verification
+  const finalRaw = Math.round(weightedScore + (evidenceMatched ? 5 : 0));
+  const score = Math.max(0, Math.min(100, finalRaw));
 
   let label: GoldEvaluationResult["label"] = "Divergent";
   if (score >= 80) label = "High Alignment";
@@ -107,7 +179,7 @@ export function evaluateGoldAlignment(
     label,
     evidenceMatched,
     evidenceSnippet: evidence,
-    keyTermsMatched: matchedTerms.slice(0, 10),
+    keyTermsMatched: matchedTerms.slice(0, 12),
     missingKeyTerms: missingTerms.slice(0, 8),
   };
 }

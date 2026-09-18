@@ -31,6 +31,9 @@ export default function Page() {
     }
   }, []);
 
+  const clearH2hPrompt = useCallback(() => setH2hInitialPrompt(undefined), []);
+  const clearArenaPrompt = useCallback(() => setArenaInitialPrompt(undefined), []);
+
   return (
     <div className="studio-shell">
       {/* ── Top Navigation Bar ─────────────────────────────────────────── */}
@@ -86,14 +89,14 @@ export default function Page() {
       {activeTab === "head-to-head" && (
         <HeadToHeadView
           initialPrompt={h2hInitialPrompt}
-          onReady={() => setH2hInitialPrompt(undefined)}
+          onReady={clearH2hPrompt}
         />
       )}
 
       {activeTab === "chat-arena" && (
         <ChatArenaView
           initialPrompt={arenaInitialPrompt}
-          onReady={() => setArenaInitialPrompt(undefined)}
+          onReady={clearArenaPrompt}
         />
       )}
 
