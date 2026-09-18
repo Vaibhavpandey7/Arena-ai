@@ -49,7 +49,7 @@ export default function ModelSelectWidget({
   const updateCoords = useCallback(() => {
     if (triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
-      const desiredWidth = Math.max(rect.width, 360);
+      const desiredWidth = Math.max(rect.width, 480);
       const viewportWidth = typeof window !== "undefined" ? window.innerWidth : 1200;
       const left = Math.max(10, Math.min(rect.left, viewportWidth - desiredWidth - 16));
 
@@ -148,60 +148,54 @@ export default function ModelSelectWidget({
     return undefined;
   }, [value, apiModels]);
 
+  // Unified models: Curated registry + all OpenRouter API models
+  const allUnified = useMemo(() => {
+    const list: ModelDef[] = [...MODEL_REGISTRY];
+    const registryIds = new Set(MODEL_REGISTRY.map((m) => m.id));
+
+    for (const apiM of apiModels) {
+      if (!registryIds.has(apiM.id)) {
+        const isFree =
+          apiM.id.endsWith(":free") ||
+          apiM.id.includes(":free") ||
+          (apiM.pricing && apiM.pricing.prompt === 0 && apiM.pricing.completion === 0);
+
+        list.push({
+          id: apiM.id,
+          label: apiM.name || apiM.id,
+          provider: apiM.id.split("/")[0] || "OpenRouter",
+          providerInitial: (apiM.id.split("/")[0] || "OR").slice(0, 2).toUpperCase(),
+          tier: isFree ? "free" : "standard",
+          tags: [
+            apiM.supportsReasoning ? "reasoning" : undefined,
+            isFree ? "open-source" : undefined,
+            apiM.id.includes("vision") || apiM.id.includes("vl") ? "multimodal" : undefined,
+          ].filter(Boolean) as any,
+          contextK: Math.round((apiM.context_length || 4096) / 1000),
+          isFree: Boolean(isFree),
+          tooltip: `${apiM.name || apiM.id}`,
+          badge: apiM.supportsReasoning ? "reasoning" : "fast",
+        });
+      }
+    }
+    return list;
+  }, [apiModels]);
+
+  const freeCount = useMemo(() => {
+    return allUnified.filter((m) => m.isFree).length;
+  }, [allUnified]);
+
   // Filtered model list
   const filteredModels = useMemo(() => {
     const query = search.toLowerCase().trim();
 
-    // If "all" tab is selected or user searches, search both registry and API models
-    if (activeTab === "all" || (query.length > 1 && activeTab !== "featured")) {
-      const allUnified = [...MODEL_REGISTRY];
-      const registryIds = new Set(MODEL_REGISTRY.map((m) => m.id));
-
-      for (const apiM of apiModels) {
-        if (!registryIds.has(apiM.id)) {
-          const isFree =
-            apiM.id.endsWith(":free") ||
-            (apiM.pricing && apiM.pricing.prompt === 0 && apiM.pricing.completion === 0);
-          allUnified.push({
-            id: apiM.id,
-            label: apiM.name || apiM.id,
-            provider: apiM.id.split("/")[0] || "OpenRouter",
-            providerInitial: (apiM.id.split("/")[0] || "OR").slice(0, 2).toUpperCase(),
-            tier: isFree ? "free" : "standard",
-            tags: [
-              apiM.supportsReasoning ? "reasoning" : undefined,
-              isFree ? "open-source" : undefined,
-              apiM.id.includes("vision") || apiM.id.includes("vl") ? "multimodal" : undefined,
-            ].filter(Boolean) as any,
-            contextK: Math.round((apiM.context_length || 4096) / 1000),
-            isFree: Boolean(isFree),
-            tooltip: `${apiM.name || apiM.id}`,
-            badge: apiM.supportsReasoning ? "reasoning" : "fast",
-          });
-        }
-      }
-
-      return allUnified.filter((m) => {
-        const matchesQuery =
-          !query ||
-          m.label.toLowerCase().includes(query) ||
-          m.id.toLowerCase().includes(query) ||
-          m.provider.toLowerCase().includes(query);
-
-        if (!matchesQuery) return false;
-
-        if (activeTab === "free") return m.isFree;
-        if (activeTab === "reasoning") return m.tags?.includes("reasoning") || m.tags?.includes("extended-thinking");
-        if (activeTab === "domain") return m.tags?.includes("domain-specific") || m.id.includes("insurance") || m.id.includes("dil");
-        if (activeTab === "multimodal") return m.tags?.includes("multimodal") || m.id.includes("vision") || m.id.includes("vl");
-        if (activeTab === "fast") return m.tags?.includes("fast");
-
-        return true;
-      });
+    // If "featured" tab and no query, return curated registry
+    if (activeTab === "featured" && !query) {
+      return MODEL_REGISTRY;
     }
 
-    // Default: Curated Registry filtered by active tab
-    return MODEL_REGISTRY.filter((m) => {
+    // Filter from unified catalog
+    return allUnified.filter((m) => {
       const matchesQuery =
         !query ||
         m.label.toLowerCase().includes(query) ||
@@ -210,17 +204,15 @@ export default function ModelSelectWidget({
 
       if (!matchesQuery) return false;
 
-      if (activeTab === "featured") return true;
-      if (activeTab === "free") return m.isFree;
-      if (activeTab === "reasoning") return m.tags.includes("reasoning") || m.tags.includes("extended-thinking");
-      if (activeTab === "domain") return m.tags.includes("domain-specific");
-      if (activeTab === "multimodal") return m.tags.includes("multimodal");
-      if (activeTab === "fast") return m.tags.includes("fast") && m.tier !== "premium";
-      if (activeTab === "premium") return m.tier === "premium";
+      if (activeTab === "free") return Boolean(m.isFree);
+      if (activeTab === "reasoning") return m.tags?.includes("reasoning") || m.tags?.includes("extended-thinking");
+      if (activeTab === "domain") return m.tags?.includes("domain-specific") || m.id.includes("insurance") || m.id.includes("dil");
+      if (activeTab === "multimodal") return m.tags?.includes("multimodal") || m.id.includes("vision") || m.id.includes("vl");
+      if (activeTab === "fast") return m.tags?.includes("fast");
 
       return true;
     });
-  }, [search, activeTab, apiModels]);
+  }, [search, activeTab, allUnified]);
 
   const handleSelect = (id: string) => {
     onChange(id);
@@ -339,24 +331,6 @@ export default function ModelSelectWidget({
             <span style={{ color: "var(--text-muted)" }}>{placeholder}</span>
           )}
         </div>
-        <svg
-          width="11"
-          height="11"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          style={{
-            color: "var(--text-muted)",
-            flexShrink: 0,
-            marginLeft: "6px",
-            opacity: 0.6,
-          }}
-        >
-          <polyline points="6 9 12 15 18 9"></polyline>
-        </svg>
       </button>
 
       {/* Popover Dropdown rendered into document.body to stay above chat div with full size */}
@@ -369,7 +343,7 @@ export default function ModelSelectWidget({
             left: coords.left,
             width: coords.width,
             maxWidth: "calc(100vw - 24px)",
-            maxHeight: "420px",
+            maxHeight: "440px",
             background: "#0b1628",
             border: "1px solid rgba(0, 212, 255, 0.35)",
             borderRadius: "10px",
@@ -381,7 +355,7 @@ export default function ModelSelectWidget({
           }}
         >
           {/* Search input */}
-          <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)", boxSizing: "border-box" }}>
+          <div style={{ padding: "10px 12px", borderBottom: "1px solid var(--border)", boxSizing: "border-box" }}>
             <input
               ref={searchInputRef}
               type="text"
@@ -390,8 +364,8 @@ export default function ModelSelectWidget({
               placeholder="Search 440+ OpenRouter models..."
               style={{
                 width: "100%",
-                padding: "7px 10px",
-                fontSize: "0.8rem",
+                padding: "8px 12px",
+                fontSize: "0.82rem",
                 borderRadius: "6px",
                 background: "rgba(255, 255, 255, 0.05)",
                 border: "1px solid var(--border)",
@@ -406,37 +380,39 @@ export default function ModelSelectWidget({
           <div
             style={{
               display: "flex",
-              gap: "4px",
-              padding: "6px 8px",
+              gap: "6px",
+              padding: "8px 12px",
               borderBottom: "1px solid var(--border)",
-              background: "rgba(0, 0, 0, 0.2)",
+              background: "rgba(0, 0, 0, 0.3)",
               overflowX: "auto",
               scrollbarWidth: "none",
             }}
           >
             {[
               { id: "featured", label: "Featured" },
-              { id: "free", label: "⭐ Free" },
+              { id: "free", label: `⭐ Free (${freeCount})` },
               { id: "reasoning", label: "🧠 Reasoning" },
               { id: "domain", label: "🛡 Domain" },
               { id: "fast", label: "⚡ Fast" },
               { id: "multimodal", label: "🌐 Vision" },
-              { id: "all", label: `All (${apiModels.length || "440+"})` },
+              { id: "all", label: `All (${allUnified.length})` },
             ].map((tab) => (
               <button
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
                 style={{
-                  fontSize: "0.68rem",
-                  padding: "3px 8px",
-                  borderRadius: "4px",
-                  border: "none",
-                  background: activeTab === tab.id ? "var(--cyan)" : "transparent",
-                  color: activeTab === tab.id ? "#050b14" : "var(--text-muted)",
+                  fontSize: "0.72rem",
+                  padding: "5px 12px",
+                  borderRadius: "6px",
+                  border: activeTab === tab.id ? "1px solid var(--cyan)" : "1px solid rgba(255, 255, 255, 0.08)",
+                  background: activeTab === tab.id ? "rgba(0, 212, 255, 0.2)" : "rgba(255, 255, 255, 0.03)",
+                  color: activeTab === tab.id ? "var(--cyan-light)" : "var(--text-muted)",
                   fontWeight: activeTab === tab.id ? 700 : 500,
                   cursor: "pointer",
                   whiteSpace: "nowrap",
+                  flexShrink: 0,
+                  transition: "all 0.15s ease",
                 }}
               >
                 {tab.label}
