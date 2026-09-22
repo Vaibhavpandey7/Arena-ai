@@ -38,11 +38,25 @@ const LAKE_DIR = path.join(process.cwd(), "data", "lake");
 
 // ── In-memory cache & fallback ────────────────────────────────────────────────
 let _cache: DILRecord[] | null = null;
+// _loadingPromise deduplicates concurrent reads during a cache miss.
+// It is intentionally kept alive while loading so multiple callers awaiting
+// getAllRecords() at the same time share a single filesystem/KV read.
 let _loadingPromise: Promise<DILRecord[]> | null = null;
+// Cache TTL: 5 minutes for local file mode, so long-lived dev servers don't
+// serve indefinitely stale data after new records are ingested.
+const RECORD_CACHE_TTL_MS = USE_KV ? 5 * 60 * 1000 : 60 * 1000;
+let _cacheSetAt = 0;
 const _inMemoryLakeRecords: DILRecord[] = [];
 
 function invalidateCache() {
+  // Only clear the result cache — do NOT clear _loadingPromise.
+  // Clearing _loadingPromise while a load is in-flight causes concurrent callers
+  // to each spawn a new redundant filesystem/KV read (the race condition).
+  // The next call to getAllRecords() will start a fresh load after _cache is null.
   _cache = null;
+  _cacheSetAt = 0;
+  // We reset _loadingPromise here only when we *know* data has changed (post-ingest),
+  // so the next caller gets fresh data rather than re-using the completed stale promise.
   _loadingPromise = null;
 }
 
@@ -139,14 +153,21 @@ async function loadAllRecords(): Promise<DILRecord[]> {
 }
 
 async function getAllRecords(): Promise<DILRecord[]> {
-  if (_cache) return _cache;
+  // Serve from cache if it's still fresh
+  if (_cache && (Date.now() - _cacheSetAt) < RECORD_CACHE_TTL_MS) return _cache;
+  // If a load is already in-flight, join it instead of starting another
   if (_loadingPromise) return _loadingPromise;
+  // Start a fresh load and store the promise so concurrent callers can join
   _loadingPromise = loadAllRecords().then((records) => {
     _cache = records;
+    _cacheSetAt = Date.now();
+    // Reset _loadingPromise so the next TTL-expired call starts fresh
+    _loadingPromise = null;
     return records;
   });
   return _loadingPromise;
 }
+
 
 // ── Pipeline helpers ──────────────────────────────────────────────────────────
 function computeHash(instruction: string, question: string, response: string): string {

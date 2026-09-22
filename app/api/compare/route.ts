@@ -214,12 +214,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Maximum 4 models in compare mode" }, { status: 400 });
   }
 
+  // listModels() already has a 1-hour in-memory cache (module-level _modelCache in openrouter.ts).
+  // That cache persists within a single serverless instance lifetime, so cold starts
+  // will re-fetch from OpenRouter but warm instances serve from memory.
   let modelList: Awaited<ReturnType<typeof listModels>> = [];
   try {
     modelList = await listModels();
   } catch {
-    // Proceed without pricing data
+    // Proceed without pricing data — cost fields will be 0
   }
+
 
   // If multiple models are requested in a single POST, stagger dispatches by 350ms
   // to prevent sudden concurrent spikes that trigger OpenRouter 429 Too Many Requests

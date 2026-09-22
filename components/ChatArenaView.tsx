@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import ModelSelectWidget from "./ModelSelectWidget";
 
@@ -133,7 +133,7 @@ interface ChatMessage {
 }
 
 /* ── Connection tag component ───────────────────────────────────────────────── */
-function ConnTag({
+const ConnTag = React.memo(function ConnTag({
   type,
   label,
 }: {
@@ -146,10 +146,10 @@ function ConnTag({
       {icons[type]} {label}
     </span>
   );
-}
+});
 
 /* ── Tool call display ─────────────────────────────────────────────────────── */
-function ToolCallBlock({ events }: { events: ToolEvent[] }) {
+const ToolCallBlock = React.memo(function ToolCallBlock({ events }: { events: ToolEvent[] }) {
   return (
     <>
       {events.map((ev, i) => (
@@ -170,10 +170,13 @@ function ToolCallBlock({ events }: { events: ToolEvent[] }) {
       ))}
     </>
   );
-}
+});
 
 /* ── Message bubble ─────────────────────────────────────────────────────────── */
-function MessageBubble({ msg }: { msg: ChatMessage }) {
+// React.memo prevents re-rendering completed messages when only the last
+// streaming message changes. This is the single biggest re-render win during
+// long AI streaming responses.
+const MessageBubble = React.memo(function MessageBubble({ msg }: { msg: ChatMessage }) {
   return (
     <div className={`arena-msg ${msg.role}`}>
       <div className="arena-msg-avatar">
@@ -219,7 +222,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
       </div>
     </div>
   );
-}
+});
 
 /* ── Main Component ─────────────────────────────────────────────────────────── */
 interface ChatArenaProps {

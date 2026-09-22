@@ -3,6 +3,49 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import { createPortal } from "react-dom";
 import { MODEL_REGISTRY, MODEL_GROUPS, ModelDef, getModel } from "@/lib/model-registry";
 
+// ── Module-level API cache ────────────────────────────────────────────────────
+// All ModelSelectWidget instances share this single cache so /api/models is
+// fetched exactly once per browser session (or page load), not once per widget.
+interface ApiModel {
+  id: string;
+  name: string;
+  context_length: number;
+  pricing?: { prompt: number; completion: number };
+  supportsTools?: boolean;
+  supportsReasoning?: boolean;
+  isCustom?: boolean;
+}
+
+let _apiModelsCache: ApiModel[] | null = null;
+let _apiModelsFetchPromise: Promise<ApiModel[]> | null = null;
+
+function fetchApiModels(): Promise<ApiModel[]> {
+  // Serve from module-level cache if already loaded
+  if (_apiModelsCache) return Promise.resolve(_apiModelsCache);
+  // Deduplicate concurrent fetches (e.g. multiple widgets mounting simultaneously)
+  if (_apiModelsFetchPromise) return _apiModelsFetchPromise;
+
+  _apiModelsFetchPromise = fetch("/api/models")
+    .then((res) => res.json())
+    .then((data): ApiModel[] => {
+      const models = Array.isArray(data.models) ? data.models : [];
+      _apiModelsCache = models;
+      _apiModelsFetchPromise = null;
+      return models;
+    })
+    .catch((): ApiModel[] => {
+      _apiModelsFetchPromise = null;
+      return [];
+    });
+
+  return _apiModelsFetchPromise;
+}
+
+// ── Pagination constants ──────────────────────────────────────────────────────
+// The model dropdown renders at most PAGE_SIZE items at a time to avoid
+// creating 1,000+ DOM nodes at once. More items load as the user scrolls.
+const PAGE_SIZE = 50;
+
 interface Props {
   value: string;
   onChange: (id: string) => void;
@@ -13,15 +56,7 @@ interface Props {
   onRemove?: () => void;
 }
 
-interface ApiModel {
-  id: string;
-  name: string;
-  context_length: number;
-  pricing?: { prompt: number; completion: number };
-  supportsTools?: boolean;
-  supportsReasoning?: boolean;
-  isCustom?: boolean;
-}
+// ApiModel interface is now defined at module level above
 
 export default function ModelSelectWidget({
   value,
@@ -33,12 +68,19 @@ export default function ModelSelectWidget({
   onRemove,
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
+  // Raw search text (updated on every keystroke for responsiveness)
+  const [searchRaw, setSearchRaw] = useState("");
+  // Debounced search applied to filtering (updated 300ms after user stops typing)
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<string>("featured");
   const [apiModels, setApiModels] = useState<ApiModel[]>([]);
   const [isLoadingApi, setIsLoadingApi] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [coords, setCoords] = useState<{ top: number; left: number; width: number } | null>(null);
+  // Pagination: number of models currently shown in the list
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  // Sentinel ref for IntersectionObserver-based infinite scroll in the dropdown
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -88,18 +130,26 @@ export default function ModelSelectWidget({
     };
   }, [isOpen, updateCoords]);
 
-  // Fetch all OpenRouter models from API
+  // Debounce the search input — only update the filter 300ms after typing stops
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(searchRaw), 300);
+    return () => clearTimeout(timer);
+  }, [searchRaw]);
+
+  // Fetch OpenRouter models via shared module-level cache
+  // All widget instances share the same promise / result — only 1 network request
   useEffect(() => {
     let isMounted = true;
+    // If cache is already populated, update state synchronously (no spinner)
+    if (_apiModelsCache) {
+      setApiModels(_apiModelsCache);
+      return;
+    }
     setIsLoadingApi(true);
-    fetch("/api/models")
-      .then((res) => res.json())
-      .then((data) => {
-        if (isMounted && Array.isArray(data.models)) {
-          setApiModels(data.models);
-        }
+    fetchApiModels()
+      .then((models) => {
+        if (isMounted) setApiModels(models);
       })
-      .catch(() => {})
       .finally(() => {
         if (isMounted) setIsLoadingApi(false);
       });
@@ -107,6 +157,23 @@ export default function ModelSelectWidget({
       isMounted = false;
     };
   }, []);
+
+  // IntersectionObserver: load more models when the sentinel div at the bottom
+  // of the list enters the viewport
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisibleCount((prev) => prev + PAGE_SIZE);
+        }
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [isOpen]); // Re-attach when dropdown opens
 
   // Close on outside click
   useEffect(() => {
@@ -338,11 +405,19 @@ export default function ModelSelectWidget({
     });
   }, [search, activeTab, allUnified]);
 
+  // Reset pagination whenever the filter criteria change
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [search, activeTab]);
+
+
   const handleSelect = (id: string) => {
     onChange(id);
     setIsOpen(false);
+    setSearchRaw("");
     setSearch("");
+    setVisibleCount(PAGE_SIZE); // reset pagination for next open
   };
+
 
   return (
     <div style={{ position: "relative", width: "100%", boxSizing: "border-box" }}>
@@ -580,8 +655,8 @@ export default function ModelSelectWidget({
               <input
                 ref={searchInputRef}
                 type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                value={searchRaw}
+                onChange={(e) => setSearchRaw(e.target.value)}
                 placeholder="Search models by name, provider, or ID..."
                 style={{
                   width: "100%",
@@ -595,10 +670,10 @@ export default function ModelSelectWidget({
                   boxSizing: "border-box",
                 }}
               />
-              {search && (
+              {searchRaw && (
                 <button
                   type="button"
-                  onClick={() => setSearch("")}
+                  onClick={() => { setSearchRaw(""); setSearch(""); }}
                   style={{
                     position: "absolute",
                     right: "10px",
@@ -726,6 +801,7 @@ export default function ModelSelectWidget({
                 type="button"
                 onClick={() => {
                   setActiveTab("featured");
+                  setSearchRaw("");
                   setSearch("");
                 }}
                 style={{
@@ -747,10 +823,11 @@ export default function ModelSelectWidget({
           <div className="model-select-list" style={{ flex: 1, overflowY: "auto", padding: "6px" }}>
             {filteredModels.length === 0 ? (
               <div style={{ padding: "24px", textAlign: "center", fontSize: "0.78rem", color: "var(--text-muted)" }}>
-                No models matching &quot;{search}&quot; under &quot;{activeTab}&quot; filter.
+                No models matching &quot;{searchRaw}&quot; under &quot;{activeTab}&quot; filter.
               </div>
             ) : (
-              filteredModels.map((m) => {
+              <>
+                {filteredModels.slice(0, visibleCount).map((m) => {
                 const isSelected = m.id === value;
                 return (
                   <div
@@ -889,9 +966,25 @@ export default function ModelSelectWidget({
                     )}
                   </div>
                 );
-              })
+              })}
+                {/* Sentinel div — IntersectionObserver watches this to load more models */}
+                {visibleCount < filteredModels.length && (
+                  <div
+                    ref={sentinelRef}
+                    style={{
+                      padding: "10px",
+                      textAlign: "center",
+                      fontSize: "0.72rem",
+                      color: "var(--text-subtle)",
+                    }}
+                  >
+                    Showing {visibleCount} of {filteredModels.length} models — scroll for more
+                  </div>
+                )}
+              </>
             )}
           </div>
+
         </div>,
         document.body
       )}
