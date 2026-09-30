@@ -23,55 +23,65 @@ async function ocrImagesWithVision(images: { b64: string; mimeType: string }[]):
     throw new Error("OPENROUTER_API_KEY is not configured for AI Vision OCR");
   }
 
-  const content: any[] = [
-    {
-      type: "text",
-      text:
-        "You are an expert insurance document analyst and OCR engine. Please read and transcribe all policy text, terms, coverage schedules, insured details, limits, exclusions, deductibles, clauses, tables, and notes shown in this document image into clean, structured Markdown text. Preserve all numbers, policy codes, and section headers accurately.",
-    },
-  ];
+  const results: string[] = [];
+  const maxPages = Math.min(images.length, 6);
 
-  for (const img of images) {
-    content.push({
-      type: "image_url",
-      image_url: {
-        url: `data:${img.mimeType};base64,${img.b64}`,
-      },
-    });
-  }
+  for (let i = 0; i < maxPages; i++) {
+    const img = images[i];
+    const pageNum = i + 1;
 
-  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": process.env.OPENROUTER_SITE_URL || "http://localhost:3000",
-      "X-Title": process.env.OPENROUTER_SITE_NAME || "DIL Intelligence Studio",
-    },
-    body: JSON.stringify({
-      model: "openai/gpt-4o-mini",
-      messages: [
-        {
-          role: "user",
-          content,
+    try {
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": process.env.OPENROUTER_SITE_URL || "http://localhost:3000",
+          "X-Title": process.env.OPENROUTER_SITE_NAME || "DIL Intelligence Studio",
         },
-      ],
-      max_tokens: 3500,
-    }),
-  });
+        body: JSON.stringify({
+          model: "openai/gpt-4o-mini",
+          messages: [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "text",
+                  text: `Analyze this insurance policy document image (Page ${pageNum}) and extract all policy terms, coverage amounts, policy numbers, insured info, limits, exclusions, deductibles, tables, and conditions shown into clear structured markdown:`,
+                },
+                {
+                  type: "image_url",
+                  image_url: {
+                    url: `data:${img.mimeType};base64,${img.b64}`,
+                  },
+                },
+              ],
+            },
+          ],
+          max_tokens: 2500,
+        }),
+      });
 
-  if (!res.ok) {
-    const errorBody = await res.text();
-    throw new Error(`Vision OCR request failed (${res.status}): ${errorBody}`);
+      if (res.ok) {
+        const data = await res.json();
+        const text = data.choices?.[0]?.message?.content?.trim();
+        if (text && text.length > 10) {
+          results.push(maxPages > 1 ? `### [Page ${pageNum}]\n${text}` : text);
+        }
+      } else {
+        const errBody = await res.text();
+        console.warn(`Vision OCR failed on page ${pageNum}:`, res.status, errBody);
+      }
+    } catch (e) {
+      console.warn(`Vision OCR network exception on page ${pageNum}:`, e);
+    }
   }
 
-  const data = await res.json();
-  const transcribedText = data.choices?.[0]?.message?.content?.trim();
-  if (!transcribedText) {
-    throw new Error("Vision OCR returned empty text");
+  if (results.length === 0) {
+    throw new Error("Vision AI OCR was unable to transcribe text from the document pages");
   }
 
-  return transcribedText;
+  return results.join("\n\n---\n\n");
 }
 
 async function ocrScannedPdf(pdfBuffer: Buffer): Promise<string | null> {
@@ -85,8 +95,8 @@ async function ocrScannedPdf(pdfBuffer: Buffer): Promise<string | null> {
   try {
     writeFileSync(tempPdfPath, pdfBuffer);
 
-    // Convert first 1 to 6 pages to 150 DPI PNGs
-    const runRes = spawnSync(pdftoppmBin, ["-png", "-r", "150", "-f", "1", "-l", "6", tempPdfPath, outPrefix]);
+    // Convert first 1 to 6 pages to fast, compact 130 DPI JPEGs
+    const runRes = spawnSync(pdftoppmBin, ["-jpeg", "-r", "130", "-f", "1", "-l", "6", tempPdfPath, outPrefix]);
     if (runRes.status !== 0) {
       console.warn("pdftoppm failed with status", runRes.status, runRes.stderr?.toString());
       return null;
@@ -94,10 +104,10 @@ async function ocrScannedPdf(pdfBuffer: Buffer): Promise<string | null> {
 
     const dirEntries = readdirSync(tmpdir());
     const pageFiles = dirEntries
-      .filter((name) => name.startsWith(`${tempId}_page`) && name.endsWith(".png"))
+      .filter((name) => name.startsWith(`${tempId}_page`) && (name.endsWith(".jpg") || name.endsWith(".jpeg")))
       .sort((a, b) => {
-        const numA = parseInt(a.match(/(\d+)\.png$/)?.[1] || "0", 10);
-        const numB = parseInt(b.match(/(\d+)\.png$/)?.[1] || "0", 10);
+        const numA = parseInt(a.match(/(\d+)\.(jpg|jpeg)$/)?.[1] || "0", 10);
+        const numB = parseInt(b.match(/(\d+)\.(jpg|jpeg)$/)?.[1] || "0", 10);
         return numA - numB;
       });
 
@@ -112,7 +122,7 @@ async function ocrScannedPdf(pdfBuffer: Buffer): Promise<string | null> {
       const imgBuf = readFileSync(join(tmpdir(), file));
       images.push({
         b64: imgBuf.toString("base64"),
-        mimeType: "image/png",
+        mimeType: "image/jpeg",
       });
     }
 

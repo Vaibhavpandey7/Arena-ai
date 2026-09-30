@@ -46,7 +46,7 @@ export function DocumentPreviewModal({ document, isOpen, onClose, onSaveToLake }
         {/* Header */}
         <div className="doc-modal-header">
           <div className="doc-modal-title-wrap">
-            <span className={`doc-badge doc-badge-${document.type.toLowerCase()}`}>
+            <span className={`doc-badge doc-badge-${document.type.toLowerCase().replace(/[^a-z0-9_-]/g, "-")}`}>
               {document.type}
             </span>
             <div className="doc-modal-title-text">
