@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { spawnSync } from "child_process";
-import { existsSync } from "fs";
+import { writeFileSync, unlinkSync, existsSync } from "fs";
+import { join } from "path";
+import { tmpdir } from "os";
+import { randomBytes } from "crypto";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -15,22 +18,61 @@ function formatBytes(bytes: number, decimals = 1): string {
 }
 
 function extractTextFromPdfBuffer(buffer: Buffer): string {
-  // First try /usr/bin/pdftotext or pdftotext on PATH
   const pdftotextBin = existsSync("/usr/bin/pdftotext") ? "/usr/bin/pdftotext" : "pdftotext";
+  const tempPath = join(tmpdir(), `pdf_extract_${Date.now()}_${randomBytes(6).toString("hex")}.pdf`);
+
   try {
-    const result = spawnSync(pdftotextBin, ["-layout", "-", "-"], {
-      input: buffer,
-      maxBuffer: 20 * 1024 * 1024, // 20MB max
-      encoding: "utf-8",
-    });
-    if (result.stdout && result.stdout.trim().length > 0) {
-      return result.stdout.trim();
+    writeFileSync(tempPath, buffer);
+
+    // Pass 1: Poppler with -layout and UTF-8 encoding from disk (enables seeking to xref table at EOF)
+    try {
+      const res1 = spawnSync(pdftotextBin, ["-layout", "-enc", "UTF-8", tempPath, "-"], {
+        maxBuffer: 30 * 1024 * 1024,
+        encoding: "utf-8",
+      });
+      if (res1.stdout && res1.stdout.trim().length > 10) {
+        return res1.stdout.trim();
+      }
+    } catch (err) {
+      console.warn("pdftotext pass 1 (-layout) failed:", err);
     }
-  } catch (err) {
-    console.warn("pdftotext invocation failed, attempting fallback:", err);
+
+    // Pass 2: Poppler without -layout (standard sequential flow for complex column layouts)
+    try {
+      const res2 = spawnSync(pdftotextBin, ["-enc", "UTF-8", tempPath, "-"], {
+        maxBuffer: 30 * 1024 * 1024,
+        encoding: "utf-8",
+      });
+      if (res2.stdout && res2.stdout.trim().length > 10) {
+        return res2.stdout.trim();
+      }
+    } catch (err) {
+      console.warn("pdftotext pass 2 (standard) failed:", err);
+    }
+
+    // Pass 3: Poppler raw stream mode
+    try {
+      const res3 = spawnSync(pdftotextBin, ["-raw", "-enc", "UTF-8", tempPath, "-"], {
+        maxBuffer: 30 * 1024 * 1024,
+        encoding: "utf-8",
+      });
+      if (res3.stdout && res3.stdout.trim().length > 10) {
+        return res3.stdout.trim();
+      }
+    } catch (err) {
+      console.warn("pdftotext pass 3 (-raw) failed:", err);
+    }
+  } finally {
+    try {
+      if (existsSync(tempPath)) {
+        unlinkSync(tempPath);
+      }
+    } catch {
+      // ignore cleanup errors
+    }
   }
 
-  // Fallback: simple text stream extraction from uncompressed PDF blocks
+  // Pass 4: Fallback simple text stream extraction from uncompressed PDF blocks
   const raw = buffer.toString("binary");
   const textMatches: string[] = [];
   const regex = /BT[\s\S]*?ET/g;
@@ -46,11 +88,30 @@ function extractTextFromPdfBuffer(buffer: Buffer): string {
     }
   }
 
-  if (textMatches.length > 0) {
+  if (textMatches.length > 0 && textMatches.join(" ").trim().length > 10) {
     return textMatches.join("\n").trim();
   }
 
-  return "Could not extract readable text from this PDF. The document may be scanned or image-only.";
+  // Check if PDF contains image XObjects (scanned/raster document)
+  const isImageScan = buffer.includes(Buffer.from("/Image")) || buffer.includes(Buffer.from("/Subtype /Image"));
+  if (isImageScan) {
+    return (
+      "⚠️ Scanned / Image-Only PDF Detected:\n\n" +
+      "This document consists of scanned images or photos without an embedded digital text layer.\n\n" +
+      "Why this happens:\n" +
+      "• When physical insurance documents are scanned or photographed without OCR (Optical Character Recognition), the PDF stores raster pixel images (JPEG/PNG) rather than digital text characters.\n" +
+      "• Text extractors search for digital character codes and font tables, which are absent in pure image scans.\n\n" +
+      "Recommended Options:\n" +
+      "1. Copy & paste the text directly into the Evaluation Prompt textarea.\n" +
+      "2. Run OCR on the PDF (e.g., using Adobe Acrobat Searchable PDF, Apple Preview, or Google Drive) to add a text layer.\n" +
+      "3. Upload the policy as a .txt, .md, .csv, or .json file."
+    );
+  }
+
+  return (
+    "Could not extract readable text from this PDF. The document may be password-protected, encrypted, or use unsupported font encodings.\n\n" +
+    "Recommended Solution: Copy and paste the text directly into the Prompt box, or upload the file in TXT or CSV format."
+  );
 }
 
 export async function POST(req: NextRequest) {
