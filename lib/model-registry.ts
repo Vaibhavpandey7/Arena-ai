@@ -39,20 +39,7 @@ export const MODEL_REGISTRY: ModelDef[] = [
     isFree: true,
     badge: "fast",
     tooltip:
-      "OpenRouter Free Models Router — automatically routes to the best available free model with zero token costs.",
-  },
-  {
-    id: "qwen/qwen3.8-27b:free",
-    label: "Qwen 3.8 27B (Free)",
-    provider: "Qwen",
-    providerInitial: "QW",
-    tier: "free",
-    tags: ["reasoning", "multimodal", "open-source"],
-    contextK: 262,
-    isFree: true,
-    badge: "reasoning",
-    tooltip:
-      "Open-weight dense vision-language model with reasoning capabilities from Qwen. 100% free on OpenRouter.",
+      "OpenRouter Free Models Router — automatically balances traffic and routes to the best available free model with zero token costs and highest uptime.",
   },
   {
     id: "nvidia/nemotron-3-super-120b-a12b:free",
@@ -65,7 +52,59 @@ export const MODEL_REGISTRY: ModelDef[] = [
     isFree: true,
     badge: "reasoning",
     tooltip:
-      "NVIDIA 120B-parameter open hybrid MoE model activating 12B tokens with frontier reasoning. 100% free on OpenRouter.",
+      "NVIDIA 120B-parameter open hybrid MoE model activating 12B tokens with frontier reasoning. 100% free on OpenRouter with reliable uptime.",
+  },
+  {
+    id: "dots-studio/dots-3-note-preview:free",
+    label: "Dots3-Note Preview (Free)",
+    provider: "Dots Studio",
+    providerInitial: "DS",
+    tier: "free",
+    tags: ["reasoning", "open-source"],
+    contextK: 512,
+    isFree: true,
+    badge: "reasoning",
+    tooltip:
+      "Open-weight mixture-of-experts model from Dots Studio with a massive 512K context. 100% free on OpenRouter.",
+  },
+  {
+    id: "cohere/north-mini-code:free",
+    label: "North Mini Code (Free)",
+    provider: "Cohere",
+    providerInitial: "CO",
+    tier: "free",
+    tags: ["fast", "open-source"],
+    contextK: 256,
+    isFree: true,
+    badge: "fast",
+    tooltip:
+      "Cohere North Mini Code — fast and responsive free model with 256K context window. 100% free on OpenRouter.",
+  },
+  {
+    id: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+    label: "Nemotron 3 Nano Omni (Free)",
+    provider: "NVIDIA",
+    providerInitial: "NV",
+    tier: "free",
+    tags: ["reasoning", "fast", "open-source"],
+    contextK: 256,
+    isFree: true,
+    badge: "reasoning",
+    tooltip:
+      "NVIDIA 30B reasoning model with fast token generation and zero cost on OpenRouter.",
+  },
+  {
+    id: "qwen/qwen3.8-27b:free",
+    label: "Qwen 3.8 27B (Free)",
+    provider: "Qwen",
+    providerInitial: "QW",
+    tier: "free",
+    tags: ["reasoning", "multimodal", "open-source"],
+    contextK: 262,
+    isFree: true,
+    badge: "reasoning",
+    tooltip:
+      "Open-weight vision-language model with reasoning capabilities from Qwen. 100% free on OpenRouter (may hit shared upstream ModelRun rate limits during peak hours).",
   },
   {
     id: "google/gemma-4-31b-it:free",
@@ -78,7 +117,7 @@ export const MODEL_REGISTRY: ModelDef[] = [
     isFree: true,
     badge: "reasoning",
     tooltip:
-      "Google DeepMind's 30.7B dense multimodal model with native reasoning and vision capabilities. 100% free on OpenRouter.",
+      "Google DeepMind's 30.7B dense multimodal model. 100% free on OpenRouter (shared Google AI Studio upstream endpoint may experience temporary peak-hour rate limits).",
   },
   {
     id: "google/gemma-4-26b-a4b-it:free",
@@ -91,7 +130,7 @@ export const MODEL_REGISTRY: ModelDef[] = [
     isFree: true,
     badge: "fast",
     tooltip:
-      "Google DeepMind instruction-tuned MoE model with fast multimodal inference. 100% free on OpenRouter.",
+      "Google DeepMind instruction-tuned MoE model. 100% free on OpenRouter (subject to shared Google AI Studio upstream capacity).",
   },
   {
     id: "dots-studio/dots-3-note-preview:free",
@@ -226,17 +265,17 @@ export const MODEL_REGISTRY: ModelDef[] = [
       "Anthropic's latest Sonnet 4.6 with extended thinking mode and 1M context. Best in class for multi-step insurance scenario analysis and EIOPA compliance tasks.",
   },
   {
-    id: "anthropic/claude-3-5-sonnet",
-    label: "Claude Sonnet 3.5",
+    id: "anthropic/claude-haiku-4.5",
+    label: "Claude Haiku 4.5",
     provider: "Anthropic",
     providerInitial: "AN",
-    tier: "premium",
+    tier: "budget",
     tags: ["fast", "domain-specific"],
     contextK: 200,
     isFree: false,
-    badge: "premium",
+    badge: "fast",
     tooltip:
-      "Anthropic's proven workhorse with exceptional instruction following and 200K context. Highly rated for policy translation and claim assessment.",
+      "Anthropic's high-speed, cost-efficient model with 200K context. Excellent for rapid triage, policy classification, and fast evaluations.",
   },
   {
     id: "openai/gpt-4o",

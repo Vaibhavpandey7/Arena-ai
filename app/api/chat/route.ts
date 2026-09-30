@@ -77,10 +77,87 @@ export async function POST(req: NextRequest) {
         controller.enqueue(encoder.encode(sseEvent(obj)));
       }
 
+interface ParsedOpenRouterError {
+  message: string;
+  isRateLimit: boolean;
+  provider?: string;
+  raw?: string;
+}
+
+function parseOpenRouterError(status: number, errText: string, modelName: string): ParsedOpenRouterError {
+  let parsed: Record<string, any> | null = null;
+  try {
+    parsed = JSON.parse(errText);
+  } catch {
+    return {
+      message: errText ? `Inference failed (${status}): ${errText}` : `Inference failed with status ${status}`,
+      isRateLimit: status === 429,
+    };
+  }
+
+  const errObj = parsed?.error || parsed;
+  const rawMeta = errObj?.metadata;
+  const provider = rawMeta?.provider_name;
+  const raw = typeof rawMeta?.raw === "string" ? rawMeta.raw : (rawMeta?.raw ? JSON.stringify(rawMeta.raw) : "");
+  const baseMessage = String(errObj?.message || parsed?.message || `Inference failed (${status})`);
+  const code = Number(errObj?.code || status);
+
+  const isRateLimit =
+    code === 429 ||
+    /rate[- ]limit|quota|exceeded|too many requests|capacity/i.test(raw + " " + baseMessage);
+
+  if (baseMessage.includes("Provider returned error") || isRateLimit) {
+    if (raw && /rate[- ]limited|rate[- ]limit/i.test(raw)) {
+      return {
+        message: `Upstream Rate Limit: This free model (${modelName}) is temporarily rate-limited upstream${
+          provider ? ` by ${provider}` : ""
+        } due to high shared community traffic. Switch to "Free Models Router" (openrouter/free) or NVIDIA Nemotron (free), or retry shortly.`,
+        isRateLimit: true,
+        provider,
+        raw,
+      };
+    }
+    if (raw) {
+      return {
+        message: `Upstream Provider Error${provider ? ` (${provider})` : ""}: ${raw}`,
+        isRateLimit,
+        provider,
+        raw,
+      };
+    }
+    if (isRateLimit) {
+      return {
+        message: `Upstream Rate Limit (429)${
+          provider ? ` from ${provider}` : ""
+        }: The upstream provider reached its free tier capacity limit. Switch to "Free Models Router" (openrouter/free) or try again in a few moments.`,
+        isRateLimit: true,
+        provider,
+        raw,
+      };
+    }
+    return {
+      message: `Upstream Provider Error${
+        provider ? ` (${provider})` : ""
+      }: The upstream host returned an error. Please try another model or retry in a moment.`,
+      isRateLimit: false,
+      provider,
+      raw,
+    };
+  }
+
+  return {
+    message: baseMessage,
+    isRateLimit,
+    provider,
+    raw,
+  };
+}
+
+      let activeModel = model;
       try {
         for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-          const orResponse = await chatCompletionStream({
-            model,
+          let orResponse = await chatCompletionStream({
+            model: activeModel,
             messages,
             tools,
             toolChoice: round === 0 ? formattedToolChoice : "auto",
@@ -90,15 +167,41 @@ export async function POST(req: NextRequest) {
 
           if (!orResponse.ok) {
             const errText = await orResponse.text();
-            let errMsg = `Inference failed (${orResponse.status})`;
-            try {
-              const errJson = JSON.parse(errText);
-              errMsg = errJson.error?.message || errJson.message || errMsg;
-            } catch {
-              if (errText) errMsg = errText;
+            const parsedErr = parseOpenRouterError(orResponse.status, errText, activeModel);
+
+            // Auto-fallback: If a free model hit upstream rate limits or provider outage,
+            // seamlessly redirect to OpenRouter's Free Router so user doesn't get blocked
+            const isFreeModel = activeModel.endsWith(":free") || activeModel.includes("free");
+            if (
+              isFreeModel &&
+              activeModel !== "openrouter/free" &&
+              (parsedErr.isRateLimit || orResponse.status === 429 || orResponse.status === 503 || errText.includes("Provider returned error"))
+            ) {
+              console.warn(`[chat-route] Model ${activeModel} hit upstream rate limit. Auto-falling back to openrouter/free.`);
+              send({
+                type: "content",
+                delta: `> ℹ️ **Notice**: Selected model \`${activeModel}\` is temporarily rate-limited upstream${
+                  parsedErr.provider ? ` by ${parsedErr.provider}` : ""
+                }. Automatically redirected through **Free Models Router** so your evaluation completes.\n\n`,
+              });
+
+              activeModel = "openrouter/free";
+              orResponse = await chatCompletionStream({
+                model: activeModel,
+                messages,
+                tools,
+                toolChoice: round === 0 ? formattedToolChoice : "auto",
+                systemPrompt: effectiveSystemPrompt,
+                customEndpoint,
+              });
             }
-            send({ type: "error", error: errMsg });
-            break;
+
+            if (!orResponse.ok) {
+              const fallbackErrText = await orResponse.text();
+              const fallbackParsed = parseOpenRouterError(orResponse.status, fallbackErrText, activeModel);
+              send({ type: "error", error: fallbackParsed.message });
+              break;
+            }
           }
 
           // Parse SSE stream from OpenRouter
@@ -131,6 +234,13 @@ export async function POST(req: NextRequest) {
                 chunk = JSON.parse(data);
               } catch {
                 continue;
+              }
+
+              // Handle streaming error chunk emitted mid-stream
+              if (chunk.error) {
+                const streamParsed = parseOpenRouterError(400, JSON.stringify(chunk), activeModel);
+                send({ type: "error", error: streamParsed.message });
+                break;
               }
 
               // Usage chunk (may arrive at end)

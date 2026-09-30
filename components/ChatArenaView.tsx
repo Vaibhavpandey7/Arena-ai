@@ -369,6 +369,19 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
                 return next;
               });
               break;
+            case "error": {
+              const errMsg = String(event.error || "Inference error");
+              answer = answer ? `${answer}\n\n⚠ ${errMsg}` : `⚠ ${errMsg}`;
+              setMessages((prev) => {
+                const next = [...prev];
+                const last = next[next.length - 1];
+                if (last?.role === "assistant" && last.isStreaming) {
+                  next[next.length - 1] = { ...last, content: answer };
+                }
+                return next;
+              });
+              break;
+            }
             case "tool_call":
               toolEvents = [
                 ...toolEvents,

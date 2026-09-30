@@ -313,6 +313,10 @@ export default function BenchmarkView({ onNavigate }: Props) {
                 if (dataStr === "[DONE]") break;
                 try {
                   const parsed = JSON.parse(dataStr);
+                  if (parsed.type === "error" || parsed.error) {
+                    fullText = `⚠ ${parsed.error || "Model returned an error"}`;
+                    break;
+                  }
                   const chunk = (parsed.delta && (parsed.type === "content" || parsed.type === "text"))
                     ? parsed.delta
                     : (parsed.t === "text" || parsed.t === "content") ? parsed.c : null;
