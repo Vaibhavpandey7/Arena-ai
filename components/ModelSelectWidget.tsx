@@ -194,9 +194,21 @@ export default function ModelSelectWidget({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isOpen]);
 
+  // Helper to determine if an OpenRouter model is genuinely free
+  const checkIsFree = (mId: string, pricing?: { prompt?: number; completion?: number }): boolean => {
+    if (mId.endsWith(":free") || mId === "openrouter/free") return true;
+    if (pricing && Number(pricing.prompt) === 0 && Number(pricing.completion) === 0) return true;
+    return false;
+  };
+
   // Current selected model details with comprehensive fallback resolution
   const selectedModel = useMemo(() => {
     if (!value) return undefined;
+
+    // Check if live API models list contains this model (or base model)
+    const fromApi = apiModels.find(
+      (m) => m.id === value || m.id === value.replace(/:free$/, "")
+    );
 
     // 1. Direct registry lookup
     let fromRegistry = getModel(value);
@@ -205,22 +217,22 @@ export default function ModelSelectWidget({
       fromRegistry = getModel(baseId);
     }
     if (fromRegistry) {
+      // Live API pricing takes precedence over static registry
+      const effectiveFree = fromApi
+        ? checkIsFree(value, fromApi.pricing)
+        : (value.endsWith(":free") || value === "openrouter/free" ? true : fromRegistry.isFree);
+
       return {
         ...fromRegistry,
         id: value,
-        isFree: value.endsWith(":free") || fromRegistry.isFree,
+        isFree: effectiveFree,
+        tier: effectiveFree ? "free" : fromRegistry.tier === "free" ? "budget" : fromRegistry.tier,
       };
     }
 
     // 2. Direct API models lookup
-    const fromApi = apiModels.find(
-      (m) => m.id === value || m.id === value.replace(/:free$/, "")
-    );
     if (fromApi) {
-      const isFree =
-        value.endsWith(":free") ||
-        fromApi.id.endsWith(":free") ||
-        (fromApi.pricing && Number(fromApi.pricing.prompt) === 0 && Number(fromApi.pricing.completion) === 0);
+      const isFree = checkIsFree(value, fromApi.pricing);
       return {
         id: value,
         label: fromApi.name || fromApi.id.split("/")[1] || fromApi.id,
@@ -239,7 +251,7 @@ export default function ModelSelectWidget({
     }
 
     // 3. Fallback synthesis from ID string so it NEVER shows empty "Select model..."
-    const isFree = value.includes(":free");
+    const isFree = value.endsWith(":free") || value === "openrouter/free";
     const parts = value.split("/");
     const provider = parts.length > 1 ? parts[0] : "AI";
     const rawName = parts.length > 1 ? parts[1] : parts[0];
@@ -264,16 +276,28 @@ export default function ModelSelectWidget({
 
   // Unified models: Curated registry + all OpenRouter API models
   const allUnified = useMemo(() => {
-    const list: ModelDef[] = [...MODEL_REGISTRY];
+    const apiMap = new Map(apiModels.map((m) => [m.id, m]));
+
+    // Start with curated registry models, updating isFree from live OpenRouter pricing if available
+    const list: ModelDef[] = MODEL_REGISTRY.map((regModel) => {
+      const apiM = apiMap.get(regModel.id);
+      if (apiM) {
+        const isFree = checkIsFree(apiM.id, apiM.pricing);
+        return {
+          ...regModel,
+          isFree,
+          tier: isFree ? "free" : regModel.tier === "free" ? "budget" : regModel.tier,
+        };
+      }
+      return regModel;
+    });
+
     const registryIds = new Set(MODEL_REGISTRY.map((m) => m.id));
 
+    // Append all other models from OpenRouter API
     for (const apiM of apiModels) {
       if (!registryIds.has(apiM.id)) {
-        const isFree =
-          apiM.id.endsWith(":free") ||
-          apiM.id.includes(":free") ||
-          apiM.id.toLowerCase().includes("/free") ||
-          (apiM.pricing && Number(apiM.pricing.prompt) === 0 && Number(apiM.pricing.completion) === 0);
+        const isFree = checkIsFree(apiM.id, apiM.pricing);
 
         list.push({
           id: apiM.id,
@@ -350,9 +374,9 @@ export default function ModelSelectWidget({
   const filteredModels = useMemo(() => {
     const query = search.toLowerCase().trim();
 
-    // If "featured" tab and no query, return curated registry
+    // If "featured" tab and no query, return curated registry from allUnified (dynamic isFree)
     if (activeTab === "featured" && !query) {
-      return MODEL_REGISTRY;
+      return allUnified.slice(0, MODEL_REGISTRY.length);
     }
 
     // Filter from unified catalog

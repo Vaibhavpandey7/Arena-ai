@@ -217,8 +217,8 @@ export default function BenchmarkView({ onNavigate }: Props) {
 
   // Model selection for benchmark runs (defaulted to 100% free models to preserve user credits)
   const [selectedModels, setSelectedModels] = useState<string[]>([
-    "deepseek/deepseek-v4-flash-0731:free",
-    "meta-llama/llama-3.3-70b-instruct:free",
+    "openrouter/free",
+    "qwen/qwen3.8-27b:free",
   ]);
 
   // Results cache: questionId -> array of QuestionResult

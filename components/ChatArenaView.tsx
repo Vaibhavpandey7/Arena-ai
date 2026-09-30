@@ -231,7 +231,7 @@ interface ChatArenaProps {
 }
 
 export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps = {}) {
-  const [selectedModel, setSelectedModel] = useState("meta-llama/llama-3.3-70b-instruct:free");
+  const [selectedModel, setSelectedModel] = useState("openrouter/free");
   const [activePlugins, setActivePlugins] = useState<Set<string>>(
     new Set(["premium-calculator", "solvency-ii-checker"])
   );
@@ -599,7 +599,15 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
         <div className="arena-messages">
           {messages.length === 0 ? (
             <div className="arena-welcome">
-              <div className="arena-welcome-icon">🛡️</div>
+              <div className="arena-welcome-logos">
+                <div className="welcome-logo-card dil-card" title="DIL Knowledge Engine">
+                  <img src="/dil-logo.png" alt="DIL Logo" className="welcome-logo-img" />
+                </div>
+                <span className="welcome-logo-divider">×</span>
+                <div className="welcome-logo-card globe-card" title="Insurance AI Arena">
+                  <img src="/arena-globe-logo.png" alt="Insurance AI Arena" className="welcome-logo-img" />
+                </div>
+              </div>
               <div className="arena-welcome-title">
                 Welcome to the Insurance Chat Arena
               </div>

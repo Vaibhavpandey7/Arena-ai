@@ -261,11 +261,13 @@ body {
   transition: transform var(--transition-fast);
 }
 
-.brand-section:hover .brand-logo-dil {
+.brand-section:hover .brand-logo-dil,
+.studio-brand:hover .brand-logo-dil {
   transform: scale(1.08) rotate(-4deg);
 }
 
-.brand-section:hover .brand-logo-globe {
+.brand-section:hover .brand-logo-globe,
+.studio-brand:hover .brand-logo-globe {
   transform: scale(1.08) rotate(4deg);
 }
 
@@ -273,8 +275,16 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 28px;
+  gap: 24px;
   margin-bottom: 24px;
+}
+
+.hero-logo-divider {
+  font-size: 24px;
+  font-weight: 300;
+  color: var(--text-subtle);
+  opacity: 0.55;
+  user-select: none;
 }
 
 .hero-logo-card {
@@ -310,6 +320,57 @@ body {
   width: 100%;
   height: 100%;
   object-fit: contain;
+}
+
+/* Arena Welcome State Logos */
+.arena-welcome-logos {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 8px;
+}
+
+.welcome-logo-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  padding: 8px;
+  border-radius: 16px;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-default);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  transition: all var(--transition-fast);
+}
+
+.welcome-logo-card.dil-card {
+  border-color: rgba(14, 165, 233, 0.4);
+  box-shadow: 0 0 18px rgba(14, 165, 233, 0.18);
+}
+
+.welcome-logo-card.globe-card {
+  border-color: rgba(245, 158, 11, 0.4);
+  box-shadow: 0 0 18px rgba(245, 158, 11, 0.18);
+}
+
+.welcome-logo-card:hover {
+  transform: translateY(-2px) scale(1.06);
+}
+
+.welcome-logo-card .welcome-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.welcome-logo-divider {
+  font-size: 18px;
+  font-weight: 300;
+  color: var(--text-subtle);
+  opacity: 0.5;
+  user-select: none;
 }
 
 .brand-tag {

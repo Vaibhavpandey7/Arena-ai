@@ -27,31 +27,190 @@ export interface ModelDef {
 }
 
 export const MODEL_REGISTRY: ModelDef[] = [
+  // ── Verified Free Models on OpenRouter ($0 prompt, $0 completion) ────────
+  {
+    id: "openrouter/free",
+    label: "Free Models Router",
+    provider: "OpenRouter",
+    providerInitial: "OR",
+    tier: "free",
+    tags: ["fast", "open-source"],
+    contextK: 200,
+    isFree: true,
+    badge: "fast",
+    tooltip:
+      "OpenRouter Free Models Router — automatically routes to the best available free model with zero token costs.",
+  },
+  {
+    id: "qwen/qwen3.8-27b:free",
+    label: "Qwen 3.8 27B (Free)",
+    provider: "Qwen",
+    providerInitial: "QW",
+    tier: "free",
+    tags: ["reasoning", "multimodal", "open-source"],
+    contextK: 262,
+    isFree: true,
+    badge: "reasoning",
+    tooltip:
+      "Open-weight dense vision-language model with reasoning capabilities from Qwen. 100% free on OpenRouter.",
+  },
+  {
+    id: "nvidia/nemotron-3-super-120b-a12b:free",
+    label: "Nemotron 3 Super 120B (Free)",
+    provider: "NVIDIA",
+    providerInitial: "NV",
+    tier: "free",
+    tags: ["reasoning", "open-source"],
+    contextK: 262,
+    isFree: true,
+    badge: "reasoning",
+    tooltip:
+      "NVIDIA 120B-parameter open hybrid MoE model activating 12B tokens with frontier reasoning. 100% free on OpenRouter.",
+  },
+  {
+    id: "google/gemma-4-31b-it:free",
+    label: "Gemma 4 31B (Free)",
+    provider: "Google",
+    providerInitial: "GG",
+    tier: "free",
+    tags: ["reasoning", "multimodal", "open-source"],
+    contextK: 262,
+    isFree: true,
+    badge: "reasoning",
+    tooltip:
+      "Google DeepMind's 30.7B dense multimodal model with native reasoning and vision capabilities. 100% free on OpenRouter.",
+  },
+  {
+    id: "google/gemma-4-26b-a4b-it:free",
+    label: "Gemma 4 26B A4B (Free)",
+    provider: "Google",
+    providerInitial: "GG",
+    tier: "free",
+    tags: ["fast", "multimodal", "open-source"],
+    contextK: 262,
+    isFree: true,
+    badge: "fast",
+    tooltip:
+      "Google DeepMind instruction-tuned MoE model with fast multimodal inference. 100% free on OpenRouter.",
+  },
+  {
+    id: "dots-studio/dots-3-note-preview:free",
+    label: "Dots3-Note Preview (Free)",
+    provider: "Dots Studio",
+    providerInitial: "DS",
+    tier: "free",
+    tags: ["reasoning", "open-source"],
+    contextK: 512,
+    isFree: true,
+    badge: "reasoning",
+    tooltip:
+      "Open-weight mixture-of-experts model from Dots Studio with a massive 512K context. 100% free on OpenRouter.",
+  },
+  {
+    id: "liquid/lfm-2.5-2.6b:free",
+    label: "Liquid LFM 2.5 2.6B (Free)",
+    provider: "LiquidAI",
+    providerInitial: "LQ",
+    tier: "free",
+    tags: ["reasoning", "fast", "open-source"],
+    contextK: 65,
+    isFree: true,
+    badge: "fast",
+    tooltip:
+      "Compact reasoning model from Liquid AI suited for agentic workflows and policy triage. 100% free on OpenRouter.",
+  },
+  {
+    id: "inclusionai/ling-3.0-flash-sante:free",
+    label: "Ling 3.0 Flash Santé (Free)",
+    provider: "inclusionAI",
+    providerInitial: "IA",
+    tier: "free",
+    tags: ["domain-specific", "open-source"],
+    contextK: 262,
+    isFree: true,
+    badge: "fast",
+    tooltip:
+      "Health, claims, and underwriting-focused MoE model with domain knowledge. 100% free on OpenRouter.",
+  },
+  {
+    id: "nvidia/nemotron-3-ultra-550b-a55b:free",
+    label: "Nemotron 3 Ultra 550B (Free)",
+    provider: "NVIDIA",
+    providerInitial: "NV",
+    tier: "free",
+    tags: ["reasoning", "open-source", "long-context"],
+    contextK: 1000,
+    isFree: true,
+    badge: "reasoning",
+    tooltip:
+      "NVIDIA 550B frontier reasoning model with 1M context. 100% free on OpenRouter.",
+  },
+  {
+    id: "nvidia/nemotron-3.5-lightning:free",
+    label: "Nemotron 3.5 Lightning (Free)",
+    provider: "NVIDIA",
+    providerInitial: "NV",
+    tier: "free",
+    tags: ["fast", "open-source", "long-context"],
+    contextK: 1000,
+    isFree: true,
+    badge: "fast",
+    tooltip:
+      "NVIDIA 3.5 Lightning open MoE model with 1M context. 100% free on OpenRouter.",
+  },
+
+  // ── Standard & Premium Paid Models (Correctly Marked isFree: false) ───────
   {
     id: "deepseek/deepseek-r1",
     label: "DeepSeek R1",
     provider: "DeepSeek",
     providerInitial: "DS",
-    tier: "free",
+    tier: "budget",
     tags: ["reasoning", "open-source"],
     contextK: 164,
-    isFree: true,
+    isFree: false,
     badge: "reasoning",
     tooltip:
-      "State-of-the-art open-source reasoning model from DeepSeek. Outputs full chain-of-thought. Excellent for actuarial and regulatory tasks. Free on OpenRouter.",
+      "State-of-the-art open reasoning model from DeepSeek. Outputs full chain-of-thought. Excellent for actuarial and regulatory tasks. Paid on OpenRouter ($0.70/$2.50 per M tokens).",
   },
   {
     id: "deepseek/deepseek-r1-0528",
     label: "DeepSeek R1 0528",
     provider: "DeepSeek",
     providerInitial: "DS",
-    tier: "free",
+    tier: "budget",
     tags: ["reasoning", "open-source"],
     contextK: 164,
-    isFree: true,
+    isFree: false,
     badge: "reasoning",
     tooltip:
-      "May 2025 update of DeepSeek R1 with improved reasoning and instruction following. Free on OpenRouter.",
+      "May 2025 update of DeepSeek R1 with improved reasoning and instruction following. Paid on OpenRouter ($0.50/$2.15 per M tokens).",
+  },
+  {
+    id: "deepseek/deepseek-chat",
+    label: "DeepSeek V3",
+    provider: "DeepSeek",
+    providerInitial: "DS",
+    tier: "budget",
+    tags: ["fast", "open-source"],
+    contextK: 64,
+    isFree: false,
+    badge: "fast",
+    tooltip:
+      "DeepSeek's fast V3 chat model, well-suited for general insurance Q&A and policy translation. Paid on OpenRouter ($0.26/$1.03 per M tokens).",
+  },
+  {
+    id: "meta-llama/llama-3.3-70b-instruct",
+    label: "Llama 3.3 70B",
+    provider: "Meta",
+    providerInitial: "ML",
+    tier: "budget",
+    tags: ["fast", "open-source"],
+    contextK: 128,
+    isFree: false,
+    badge: "fast",
+    tooltip:
+      "Meta's best open-source instruction model. Strong general-purpose performance across policy workflows. Paid on OpenRouter ($0.10/$0.32 per M tokens).",
   },
   {
     id: "anthropic/claude-sonnet-4.6",
@@ -132,32 +291,6 @@ export const MODEL_REGISTRY: ModelDef[] = [
       "Google's hybrid fast-reasoning model. Offers a thinking budget for complex tasks. Best price-to-performance ratio for regulatory tasks.",
   },
   {
-    id: "meta-llama/llama-3.3-70b-instruct",
-    label: "Llama 3.3 70B",
-    provider: "Meta",
-    providerInitial: "ML",
-    tier: "free",
-    tags: ["fast", "open-source"],
-    contextK: 128,
-    isFree: true,
-    badge: "fast",
-    tooltip:
-      "Meta's best open-source instruction model. Strong general-purpose performance. Free on OpenRouter. Good baseline for benchmarking comparisons.",
-  },
-  {
-    id: "qwen/qwq-32b",
-    label: "QwQ 32B",
-    provider: "Alibaba",
-    providerInitial: "QB",
-    tier: "free",
-    tags: ["reasoning", "open-source"],
-    contextK: 32,
-    isFree: true,
-    badge: "reasoning",
-    tooltip:
-      "Alibaba's open-source reasoning model. Strong mathematical and logical reasoning. Free on OpenRouter. Excellent for actuarial calculations.",
-  },
-  {
     id: "mistralai/mistral-large-2407",
     label: "Mistral Large",
     provider: "Mistral AI",
@@ -169,45 +302,6 @@ export const MODEL_REGISTRY: ModelDef[] = [
     badge: "fast",
     tooltip:
       "EU-based Mistral AI's flagship model. Strong multilingual capability. Relevant for European insurance contexts (EIOPA, Solvency II, GDPR).",
-  },
-  {
-    id: "deepseek/deepseek-chat",
-    label: "DeepSeek V3",
-    provider: "DeepSeek",
-    providerInitial: "DS",
-    tier: "free",
-    tags: ["fast", "open-source"],
-    contextK: 64,
-    isFree: true,
-    badge: "fast",
-    tooltip:
-      "DeepSeek's fast chat model, well-suited for general insurance Q&A and policy translation. Free on OpenRouter with high throughput.",
-  },
-  {
-    id: "deepseek/deepseek-v4-flash-0731:free",
-    label: "DeepSeek V4 Flash",
-    provider: "DeepSeek",
-    providerInitial: "DS",
-    tier: "free",
-    tags: ["reasoning", "fast", "open-source"],
-    contextK: 128,
-    isFree: true,
-    badge: "fast",
-    tooltip:
-      "DeepSeek V4 Flash — high-throughput free reasoning model. Ideal for fast insurance data extraction and policy checks.",
-  },
-  {
-    id: "meta-llama/llama-3.3-70b-instruct:free",
-    label: "Llama 3.3 70B",
-    provider: "Meta",
-    providerInitial: "ML",
-    tier: "free",
-    tags: ["fast", "open-source"],
-    contextK: 128,
-    isFree: true,
-    badge: "fast",
-    tooltip:
-      "Meta's best open-source instruction model. Strong general-purpose performance. Free on OpenRouter.",
   },
 ];
 
@@ -225,7 +319,7 @@ export function getModel(id: string): ModelDef | undefined {
     return {
       ...base,
       id,
-      isFree: id.endsWith(":free") || base.isFree,
+      isFree: id.endsWith(":free") ? true : base.isFree,
     };
   }
 

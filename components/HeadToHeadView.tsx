@@ -571,8 +571,8 @@ interface HeadToHeadProps {
 export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadProps = {}) {
   // Support up to 4 models (defaulted to 100% free models to preserve user credits)
   const [models, setModels] = useState<string[]>([
-    "deepseek/deepseek-v4-flash-0731:free",
-    "meta-llama/llama-3.3-70b-instruct:free",
+    "openrouter/free",
+    "qwen/qwen3.8-27b:free",
   ]);
   const [states, setStates] = useState<ModelState[]>([emptyModelState(), emptyModelState()]);
   const [activeUseCase, setActiveUseCase] = useState<InsuranceUseCaseId>("data-extraction");

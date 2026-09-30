@@ -90,8 +90,20 @@ export default function Page() {
           className="studio-brand"
           onClick={() => setActiveTab("home")}
           style={{ background: "none", border: "none", padding: 0 }}
+          title="Digital Insurance Intelligence Studio"
         >
-          <div className="studio-brand-logo">DI</div>
+          <div className="brand-logos-group">
+            <img
+              src="/dil-logo.png"
+              alt="DIL Logo"
+              className="brand-logo-dil"
+            />
+            <img
+              src="/arena-globe-logo.png"
+              alt="Insurance AI Arena Globe"
+              className="brand-logo-globe"
+            />
+          </div>
           <span className="studio-brand-name">
             Digital <span>Insurance</span> Intelligence Studio
           </span>

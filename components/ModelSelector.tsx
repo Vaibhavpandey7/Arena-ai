@@ -31,15 +31,16 @@ interface Props {
 }
 
 const FEATURED_IDS = [
+  "openrouter/free",
+  "qwen/qwen3.8-27b:free",
+  "nvidia/nemotron-3-super-120b-a12b:free",
   "deepseek/deepseek-r1",
   "openai/gpt-4o",
-  "anthropic/claude-3.5-sonnet",
-  "google/gemini-2.0-flash-001",
   "meta-llama/llama-3.3-70b-instruct",
-  "qwen/qwq-32b",
   "deepseek/deepseek-chat",
   "openai/gpt-4o-mini",
-  "anthropic/claude-3-haiku",
+  "anthropic/claude-sonnet-4.6",
+  "google/gemini-3.8-flash",
   "mistralai/mistral-large-2407",
 ];
 
@@ -81,8 +82,9 @@ const COMPARE_PRESETS = [
 function isModelFree(m: NormalizedModel) {
   if (m.isCustom) return false;
   return (
-    m.id.toLowerCase().includes(":free") ||
-    (m.pricing && m.pricing.prompt === 0 && m.pricing.completion === 0)
+    m.id.toLowerCase().endsWith(":free") ||
+    m.id.toLowerCase() === "openrouter/free" ||
+    (m.pricing && Number(m.pricing.prompt) === 0 && Number(m.pricing.completion) === 0)
   );
 }
 

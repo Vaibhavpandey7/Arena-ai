@@ -2,35 +2,28 @@
 
 Total Models: **445** | Generated: 2026-09-18T07:11:38.313Z
 
-## 🌟 Free Models (25)
+## 🌟 Free Models (Verified on OpenRouter)
 
 | Model ID | Name | Context Window | Modality |
 |---|---|---|---|
-| `inclusionai/ling-3.0-flash-vl:free` | inclusionAI: Ling 3.0 Flash VL (free) | 262K | text+image+video->text |
-| `nex-agi/nex-n2.5-mini:free` | Nex AGI: Nex-N2.5-Mini (free) | 262K | text+image->text |
-| `nex-agi/nex-n2.5-pro:free` | Nex AGI: Nex-N2.5-Pro (free) | 262K | text+image->text |
-| `inclusionai/ling-3.0-flash-sante:free` | inclusionAI: Ling 3.0 Flash Sante (free) | 262K | text->text |
-| `inclusionai/ling-3.0-flash-fin:free` | inclusionAI: Ling 3.0 Flash Fin (free) | 262K | text->text |
+| `openrouter/free` | Free Models Router | 200K | text+image->text |
 | `qwen/qwen3.8-27b:free` | Qwen: Qwen3.8 27B (free) | 262K | text+image+video->text |
+| `nvidia/nemotron-3-super-120b-a12b:free` | NVIDIA: Nemotron 3 Super (free) | 262K | text->text |
+| `google/gemma-4-31b-it:free` | Google: Gemma 4 31B (free) | 262K | text+image+video->text |
+| `google/gemma-4-26b-a4b-it:free` | Google: Gemma 4 26B A4B (free) | 262K | text+image+video->text |
 | `dots-studio/dots-3-note-preview:free` | Dots Studio: Dots3-Note Preview (free) | 512K | text+image->text |
 | `liquid/lfm-2.5-2.6b:free` | LiquidAI: LFM2.5-2.6B (free) | 66K | text->text |
+| `inclusionai/ling-3.0-flash-sante:free` | inclusionAI: Ling 3.0 Flash Sante (free) | 262K | text->text |
+| `nvidia/nemotron-3-ultra-550b-a55b:free` | NVIDIA: Nemotron 3 Ultra (free) | 1000K | text->text |
 | `nvidia/nemotron-3.5-lightning:free` | NVIDIA: Nemotron 3.5 Lightning (free) | 1000K | text->text |
-| `deepseek/deepseek-v4-flash-0731:free` | DeepSeek: DeepSeek V4 Flash 0731 (free) | 1049K | text->text |
+| `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free` | NVIDIA: Nemotron 3 Nano Omni (free) | 256K | text+image+audio+video->text |
+| `nvidia/nemotron-3.5-content-safety:free` | NVIDIA: Nemotron 3.5 Content Safety (free) | 128K | text+image->text |
+| `thinkingmachines/inkling:free` | Thinking Machines: Inkling (free) | 1049K | text+image+audio->text |
 | `thinkingmachines/inkling-small:free` | Thinking Machines: Inkling Small (free) | 1049K | text+image+audio->text |
 | `poolside/laguna-s-2.1:free` | Poolside: Laguna S 2.1 (free) | 262K | text->text |
-| `thinkingmachines/inkling:free` | Thinking Machines: Inkling (free) | 1049K | text+image+audio->text |
 | `poolside/laguna-xs-2.1:free` | Poolside: Laguna XS 2.1 (free) | 262K | text->text |
 | `cohere/north-mini-code:free` | Cohere: North Mini Code (free) | 256K | text->text |
-| `z-ai/glm-5.2:free` | Z.ai: GLM 5.2 (free) | 33K | text->text |
-| `nvidia/nemotron-3.5-content-safety:free` | NVIDIA: Nemotron 3.5 Content Safety (free) | 128K | text+image->text |
-| `nvidia/nemotron-3-ultra-550b-a55b:free` | NVIDIA: Nemotron 3 Ultra (free) | 1000K | text->text |
-| `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free` | NVIDIA: Nemotron 3 Nano Omni (free) | 256K | text+image+audio+video->text |
-| `google/gemma-4-26b-a4b-it:free` | Google: Gemma 4 26B A4B  (free) | 262K | text+image+video->text |
-| `google/gemma-4-31b-it:free` | Google: Gemma 4 31B (free) | 262K | text+image+video->text |
-| `google/lyria-3-pro-preview` | Google: Lyria 3 Pro Preview | 1049K | text+image->text+audio |
-| `google/lyria-3-clip-preview` | Google: Lyria 3 Clip Preview | 1049K | text+image->text+audio |
-| `nvidia/nemotron-3-super-120b-a12b:free` | NVIDIA: Nemotron 3 Super (free) | 262K | text->text |
-| `openrouter/free` | Free Models Router | 200K | text+image->text |
+| `stealth/space-bunny-alpha` | Space Bunny Alpha | 1000K | text+image+video->text |
 
 ---
 
