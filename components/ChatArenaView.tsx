@@ -263,13 +263,35 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
   };
 
   const handleSend = useCallback(async (overridePrompt?: string) => {
-    const text = (overridePrompt ?? input).trim();
-    if (!text || isStreaming) return;
+    let text = (overridePrompt ?? input).trim();
+    if ((!text && !attachedFile) || isStreaming) return;
 
+    let effectivePrompt = text;
+    const currentFile = attachedFile;
+    setAttachedFile(null);
     setInput("");
 
+    if (currentFile) {
+      try {
+        const formData = new FormData();
+        formData.append("file", currentFile);
+        const parseRes = await fetch("/api/documents/parse", {
+          method: "POST",
+          body: formData,
+        });
+        const parseData = await parseRes.json();
+        if (parseData.success && parseData.document) {
+          const doc = parseData.document;
+          const docHeader = `[ATTACHED POLICY / DOCUMENT: ${doc.name} | Type: ${doc.type} | Size: ${doc.formattedSize}]\n--- DOCUMENT CONTENT START ---\n${doc.text}\n--- DOCUMENT CONTENT END ---\n\n`;
+          effectivePrompt = docHeader + (text || "Please analyze this attached insurance document, extract key terms, limits, and exclusions.");
+        }
+      } catch (err) {
+        console.warn("Failed to parse attached document in chat arena:", err);
+      }
+    }
+
     // Add user message
-    const userMsg: ChatMessage = { role: "user", content: text };
+    const userMsg: ChatMessage = { role: "user", content: text || `[Uploaded: ${currentFile?.name}]` };
     setMessages((prev) => [...prev, userMsg]);
 
     // Add streaming assistant message
@@ -301,7 +323,7 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: selectedModel,
-          prompt: text,
+          prompt: effectivePrompt,
           useTools: activePluginCount > 0,
           selectedTools: ["calculator", "solvency_ratio_checker", "insurance_knowledge_search", "currency_converter"],
         }),
@@ -503,7 +525,7 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
           <input
             type="file"
             ref={fileInputRef}
-            accept=".pdf,.txt,.md,.json,.csv"
+            accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.md,.json,.csv"
             style={{ display: "none" }}
             onChange={(e) => setAttachedFile(e.target.files?.[0] ?? null)}
           />

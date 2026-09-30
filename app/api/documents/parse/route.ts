@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { spawnSync } from "child_process";
-import { writeFileSync, unlinkSync, existsSync } from "fs";
+import { writeFileSync, unlinkSync, existsSync, readdirSync, readFileSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 import { randomBytes } from "crypto";
@@ -15,6 +15,120 @@ function formatBytes(bytes: number, decimals = 1): string {
   const sizes = ["B", "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+}
+
+async function ocrImagesWithVision(images: { b64: string; mimeType: string }[]): Promise<string> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) {
+    throw new Error("OPENROUTER_API_KEY is not configured for AI Vision OCR");
+  }
+
+  const content: any[] = [
+    {
+      type: "text",
+      text:
+        "You are an expert insurance document analyst and OCR engine. Please read and transcribe all policy text, terms, coverage schedules, insured details, limits, exclusions, deductibles, clauses, tables, and notes shown in this document image into clean, structured Markdown text. Preserve all numbers, policy codes, and section headers accurately.",
+    },
+  ];
+
+  for (const img of images) {
+    content.push({
+      type: "image_url",
+      image_url: {
+        url: `data:${img.mimeType};base64,${img.b64}`,
+      },
+    });
+  }
+
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": process.env.OPENROUTER_SITE_URL || "http://localhost:3000",
+      "X-Title": process.env.OPENROUTER_SITE_NAME || "DIL Intelligence Studio",
+    },
+    body: JSON.stringify({
+      model: "openai/gpt-4o-mini",
+      messages: [
+        {
+          role: "user",
+          content,
+        },
+      ],
+      max_tokens: 3500,
+    }),
+  });
+
+  if (!res.ok) {
+    const errorBody = await res.text();
+    throw new Error(`Vision OCR request failed (${res.status}): ${errorBody}`);
+  }
+
+  const data = await res.json();
+  const transcribedText = data.choices?.[0]?.message?.content?.trim();
+  if (!transcribedText) {
+    throw new Error("Vision OCR returned empty text");
+  }
+
+  return transcribedText;
+}
+
+async function ocrScannedPdf(pdfBuffer: Buffer): Promise<string | null> {
+  const pdftoppmBin = existsSync("/usr/bin/pdftoppm") ? "/usr/bin/pdftoppm" : "pdftoppm";
+  const tempId = `ocr_${Date.now()}_${randomBytes(4).toString("hex")}`;
+  const tempPdfPath = join(tmpdir(), `${tempId}.pdf`);
+  const outPrefix = join(tmpdir(), `${tempId}_page`);
+
+  const createdFiles: string[] = [tempPdfPath];
+
+  try {
+    writeFileSync(tempPdfPath, pdfBuffer);
+
+    // Convert first 1 to 6 pages to 150 DPI PNGs
+    const runRes = spawnSync(pdftoppmBin, ["-png", "-r", "150", "-f", "1", "-l", "6", tempPdfPath, outPrefix]);
+    if (runRes.status !== 0) {
+      console.warn("pdftoppm failed with status", runRes.status, runRes.stderr?.toString());
+      return null;
+    }
+
+    const dirEntries = readdirSync(tmpdir());
+    const pageFiles = dirEntries
+      .filter((name) => name.startsWith(`${tempId}_page`) && name.endsWith(".png"))
+      .sort((a, b) => {
+        const numA = parseInt(a.match(/(\d+)\.png$/)?.[1] || "0", 10);
+        const numB = parseInt(b.match(/(\d+)\.png$/)?.[1] || "0", 10);
+        return numA - numB;
+      });
+
+    pageFiles.forEach((f) => createdFiles.push(join(tmpdir(), f)));
+
+    if (pageFiles.length === 0) {
+      return null;
+    }
+
+    const images: { b64: string; mimeType: string }[] = [];
+    for (const file of pageFiles) {
+      const imgBuf = readFileSync(join(tmpdir(), file));
+      images.push({
+        b64: imgBuf.toString("base64"),
+        mimeType: "image/png",
+      });
+    }
+
+    return await ocrImagesWithVision(images);
+  } catch (err) {
+    console.warn("ocrScannedPdf failed:", err);
+    return null;
+  } finally {
+    for (const f of createdFiles) {
+      try {
+        if (existsSync(f)) unlinkSync(f);
+      } catch {
+        // ignore
+      }
+    }
+  }
 }
 
 function extractTextFromPdfBuffer(buffer: Buffer): string {
@@ -132,9 +246,44 @@ export async function POST(req: NextRequest) {
     let extractedText = "";
     let detectedType = "text";
 
-    if (ext === "pdf" || file.type === "application/pdf") {
+    const isImage = ["png", "jpg", "jpeg", "webp", "tiff", "bmp"].includes(ext) || file.type.startsWith("image/");
+
+    if (isImage) {
+      detectedType = "IMAGE (AI OCR)";
+      try {
+        const b64 = buffer.toString("base64");
+        let safeMime = "image/png";
+        if (ext === "jpg" || ext === "jpeg") safeMime = "image/jpeg";
+        else if (ext === "webp") safeMime = "image/webp";
+        else if (ext === "gif") safeMime = "image/gif";
+        else if (file.type && file.type.startsWith("image/")) safeMime = file.type;
+        extractedText = await ocrImagesWithVision([{ b64, mimeType: safeMime }]);
+      } catch (err: any) {
+        console.warn("Direct image OCR failed:", err);
+        extractedText = `Could not run AI OCR on image: ${err.message}`;
+      }
+    } else if (ext === "pdf" || file.type === "application/pdf") {
       detectedType = "PDF";
       extractedText = extractTextFromPdfBuffer(buffer);
+
+      // If text extraction yielded nothing or detected a scanned document, automatically invoke AI Vision OCR!
+      const isScannedOrEmpty =
+        !extractedText ||
+        extractedText.length < 30 ||
+        extractedText.includes("Scanned / Image-Only PDF Detected") ||
+        extractedText.includes("Could not extract readable text");
+
+      if (isScannedOrEmpty) {
+        try {
+          const ocrText = await ocrScannedPdf(buffer);
+          if (ocrText && ocrText.trim().length > 20) {
+            extractedText = ocrText.trim();
+            detectedType = "PDF (AI OCR)";
+          }
+        } catch (ocrErr) {
+          console.warn("Automatic scanned PDF OCR failed, keeping diagnostic message:", ocrErr);
+        }
+      }
     } else if (ext === "json" || file.type === "application/json") {
       detectedType = "JSON";
       try {

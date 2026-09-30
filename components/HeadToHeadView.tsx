@@ -1119,7 +1119,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                 Attach Policy Document
               </div>
               <div style={{ fontSize: "0.68rem", color: "var(--text-muted)", marginTop: "4px" }}>
-                PDF, CSV, TXT, JSON, MD
+                PDF, Scans, Images, TXT, CSV
               </div>
             </div>
           )}
@@ -1147,24 +1147,24 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                 className="h2h-upload-btn"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploadingDoc}
-                title="Upload an insurance policy, endorsement, or claim file (PDF, TXT, CSV, JSON, MD)"
+                title="Upload an insurance policy, endorsement, scan, or claim file (PDF, Images, TXT, CSV)"
               >
                 {isUploadingDoc ? (
                   <>
                     <span className="spinner-border" style={{ width: "12px", height: "12px" }} />
-                    <span>Parsing Document...</span>
+                    <span>Parsing & AI OCR...</span>
                   </>
                 ) : (
                   <>
                     <span>📎 Upload Policy / Document</span>
-                    <span className="h2h-upload-pill-tag">PDF, CSV, TXT</span>
+                    <span className="h2h-upload-pill-tag">PDF, SCAN/OCR, TXT</span>
                   </>
                 )}
               </button>
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".pdf,.txt,.md,.json,.csv"
+                accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.md,.json,.csv"
                 onChange={(e) => {
                   const f = e.target.files?.[0];
                   if (f) handleDocUpload(f);
@@ -1310,7 +1310,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                   Drop Insurance Document Here
                 </span>
                 <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
-                  Supports PDF, CSV, TXT, JSON, MD
+                  Supports PDF, Scans (AI OCR), Images, CSV, TXT, JSON, MD
                 </span>
               </div>
             )}
