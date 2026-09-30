@@ -7007,3 +7007,57 @@ body {
   transition: width 0.8s ease;
 }
 
+/* ── Head-to-Head Policy Document Upload Section ── */
+.h2h-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 14px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--cyan-light);
+  background: rgba(0, 212, 255, 0.08);
+  border: 1px solid rgba(0, 212, 255, 0.35);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.h2h-upload-btn:hover {
+  background: rgba(0, 212, 255, 0.18);
+  border-color: var(--cyan);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 0 14px rgba(0, 212, 255, 0.25);
+}
+
+.h2h-upload-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.h2h-upload-pill-tag {
+  font-size: 0.62rem;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(0, 212, 255, 0.15);
+  color: var(--cyan);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.h2h-sidebar-doc-card {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px dashed rgba(0, 212, 255, 0.35);
+  transition: all 0.2s ease;
+}
+
+.h2h-sidebar-doc-card:hover {
+  border-color: var(--cyan);
+  background: rgba(15, 23, 42, 0.95);
+}
+

@@ -11,6 +11,8 @@ import {
   UseCaseEvaluation,
 } from "@/lib/use-case-metrics";
 import { BENCHMARK_GOLD_REGISTRY } from "@/lib/benchmark-gold-data";
+import { DocumentPreviewModal, ParsedDocument } from "./DocumentPreviewModal";
+import { DocumentIngestModal } from "./DocumentIngestModal";
 
 /* ── Use Cases ─────────────────────────────────────────────────────────────── */
 const USE_CASES: { id: InsuranceUseCaseId; icon: string; label: string; prompt: string; goldKey?: string }[] = [
@@ -577,8 +579,15 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
   const [states, setStates] = useState<ModelState[]>([emptyModelState(), emptyModelState()]);
   const [activeUseCase, setActiveUseCase] = useState<InsuranceUseCaseId>("data-extraction");
   const [prompt, setPrompt] = useState(initialPrompt || USE_CASES[0].prompt);
+  const [attachedDoc, setAttachedDoc] = useState<ParsedDocument | null>(null);
+  const [isUploadingDoc, setIsUploadingDoc] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [showDocPreview, setShowDocPreview] = useState(false);
+  const [showDocIngestModal, setShowDocIngestModal] = useState(false);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
 
   const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const abortRefs = useRef<(AbortController | null)[]>([null, null, null, null]);
   const tickerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -818,10 +827,67 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
     []
   );
 
+  const handleDocUpload = async (file: File) => {
+    setIsUploadingDoc(true);
+    setUploadError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/documents/parse", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to parse document");
+      }
+      setAttachedDoc(data.document);
+    } catch (err: any) {
+      setUploadError(err.message || "Failed to upload document");
+    } finally {
+      setIsUploadingDoc(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingFile(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingFile(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingFile(false);
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      handleDocUpload(files[0]);
+    }
+  };
+
+  const getEffectivePrompt = useCallback(
+    (userPrompt: string): string => {
+      if (!attachedDoc) return userPrompt;
+      const docHeader = `[ATTACHED POLICY / DOCUMENT: ${attachedDoc.name} | Type: ${attachedDoc.type} | Size: ${attachedDoc.formattedSize}]\n--- DOCUMENT CONTENT START ---\n${attachedDoc.text}\n--- DOCUMENT CONTENT END ---\n\n`;
+      if (!userPrompt.trim()) {
+        return `${docHeader}[TASK]\nPlease analyse this attached policy document according to standard insurance underwriting, claims assessment, and regulatory review principles. Summarise key findings, coverage limits, exclusions, deductibles, and risk indicators.`;
+      }
+      return `${docHeader}[USER INQUIRY / TASK]\n${userPrompt.trim()}`;
+    },
+    [attachedDoc]
+  );
+
   const handleRunAll = () => {
-    if (!prompt.trim() || isAnyRunning) return;
+    const effectivePrompt = getEffectivePrompt(prompt);
+    if (!effectivePrompt.trim() || isAnyRunning) return;
     models.forEach((modelId, idx) => {
-      streamModel(idx, modelId, prompt.trim());
+      streamModel(idx, modelId, effectivePrompt);
     });
   };
 
@@ -936,6 +1002,128 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
             })}
           </div>
         </div>
+
+        {/* Policy Document Context Card */}
+        <div
+          style={{
+            padding: "16px",
+            borderRadius: "12px",
+            background: "rgba(11, 22, 40, 0.9)",
+            border: "1px solid var(--border)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
+            <span style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", color: "var(--cyan)", letterSpacing: "0.06em" }}>
+              Policy Document Context
+            </span>
+            {attachedDoc ? (
+              <span
+                style={{
+                  fontSize: "0.62rem",
+                  padding: "2px 6px",
+                  borderRadius: "4px",
+                  background: "rgba(16, 185, 129, 0.15)",
+                  color: "var(--emerald)",
+                  border: "1px solid rgba(16, 185, 129, 0.3)",
+                  fontWeight: 700,
+                }}
+              >
+                ATTACHED
+              </span>
+            ) : (
+              <span style={{ fontSize: "0.68rem", color: "var(--text-subtle)" }}>Optional</span>
+            )}
+          </div>
+
+          {attachedDoc ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              <div
+                style={{
+                  padding: "10px",
+                  borderRadius: "8px",
+                  background: "rgba(0, 212, 255, 0.05)",
+                  border: "1px solid rgba(0, 212, 255, 0.2)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
+                  <span className={`doc-badge doc-badge-${attachedDoc.type.toLowerCase()}`} style={{ fontSize: "0.62rem", padding: "1px 5px" }}>
+                    {attachedDoc.type}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: "0.78rem",
+                      fontWeight: 600,
+                      color: "var(--text)",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                    title={attachedDoc.name}
+                  >
+                    {attachedDoc.name}
+                  </span>
+                </div>
+                <div style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>
+                  {attachedDoc.formattedSize} · {attachedDoc.wordCount.toLocaleString()} words · ~{attachedDoc.tokenCount.toLocaleString()} tokens
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: "6px" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowDocPreview(true)}
+                  style={{
+                    flex: 1,
+                    padding: "6px 8px",
+                    borderRadius: "6px",
+                    background: "rgba(255, 255, 255, 0.05)",
+                    border: "1px solid var(--border)",
+                    color: "var(--text-muted)",
+                    fontSize: "0.72rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  👁️ Preview
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAttachedDoc(null)}
+                  style={{
+                    padding: "6px 10px",
+                    borderRadius: "6px",
+                    background: "rgba(244, 63, 94, 0.12)",
+                    border: "1px solid rgba(244, 63, 94, 0.3)",
+                    color: "var(--rose)",
+                    fontSize: "0.72rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                  title="Remove document"
+                >
+                  Detach
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div
+              className="h2h-sidebar-doc-card"
+              onClick={() => fileInputRef.current?.click()}
+              style={{
+                cursor: "pointer",
+                textAlign: "center",
+                padding: "16px 12px",
+              }}
+            >
+              <div style={{ fontSize: "1.5rem", marginBottom: "6px" }}>📑</div>
+              <div style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--cyan)" }}>
+                Attach Policy Document
+              </div>
+              <div style={{ fontSize: "0.68rem", color: "var(--text-muted)", marginTop: "4px" }}>
+                PDF, CSV, TXT, JSON, MD
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── Main Workspace Area ── */}
@@ -949,10 +1137,42 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
             border: "1px solid var(--border)",
           }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-            <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--cyan)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-              Evaluation Prompt & Scenario
-            </span>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px", flexWrap: "wrap", gap: "10px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+              <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--cyan)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                Evaluation Prompt & Scenario
+              </span>
+              <button
+                type="button"
+                className="h2h-upload-btn"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploadingDoc}
+                title="Upload an insurance policy, endorsement, or claim file (PDF, TXT, CSV, JSON, MD)"
+              >
+                {isUploadingDoc ? (
+                  <>
+                    <span className="spinner-border" style={{ width: "12px", height: "12px" }} />
+                    <span>Parsing Document...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>📎 Upload Policy / Document</span>
+                    <span className="h2h-upload-pill-tag">PDF, CSV, TXT</span>
+                  </>
+                )}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.txt,.md,.json,.csv"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleDocUpload(f);
+                  e.target.value = "";
+                }}
+                style={{ display: "none" }}
+              />
+            </div>
             <div style={{ display: "flex", gap: "6px" }}>
               {isAnyRunning ? (
                 <button
@@ -973,7 +1193,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
               ) : (
                 <button
                   onClick={handleRunAll}
-                  disabled={!prompt.trim()}
+                  disabled={(!prompt.trim() && !attachedDoc)}
                   style={{
                     padding: "6px 18px",
                     borderRadius: "6px",
@@ -982,7 +1202,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                     color: "#050b14",
                     fontSize: "0.78rem",
                     fontWeight: 800,
-                    cursor: prompt.trim() ? "pointer" : "not-allowed",
+                    cursor: (prompt.trim() || attachedDoc) ? "pointer" : "not-allowed",
                     boxShadow: "0 0 12px rgba(0, 212, 255, 0.3)",
                   }}
                 >
@@ -992,25 +1212,132 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
             </div>
           </div>
 
-          <textarea
-            ref={promptTextareaRef}
-            rows={3}
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Type insurance prompt or policy clauses to evaluate..."
-            style={{
-              width: "100%",
-              padding: "10px",
-              background: "rgba(0, 0, 0, 0.35)",
-              border: "1px solid var(--border)",
-              borderRadius: "8px",
-              color: "var(--text)",
-              fontSize: "0.82rem",
-              lineHeight: 1.5,
-              resize: "vertical",
-              boxSizing: "border-box",
-            }}
-          />
+          {uploadError && (
+            <div
+              style={{
+                padding: "8px 12px",
+                borderRadius: "6px",
+                background: "rgba(244, 63, 94, 0.15)",
+                border: "1px solid rgba(244, 63, 94, 0.35)",
+                color: "var(--rose)",
+                fontSize: "0.76rem",
+                marginBottom: "10px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <span>⚠️ {uploadError}</span>
+              <button
+                type="button"
+                onClick={() => setUploadError(null)}
+                style={{ background: "none", border: "none", color: "var(--rose)", cursor: "pointer", fontSize: "0.85rem" }}
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {attachedDoc && (
+            <div className="attached-doc-card">
+              <div className="attached-doc-left">
+                <span className={`doc-badge doc-badge-${attachedDoc.type.toLowerCase()}`}>
+                  {attachedDoc.type}
+                </span>
+                <div className="attached-doc-details">
+                  <span className="attached-doc-name" title={attachedDoc.name}>
+                    {attachedDoc.name}
+                  </span>
+                  <span className="attached-doc-sub">
+                    {attachedDoc.formattedSize} · {attachedDoc.wordCount.toLocaleString()} words · ~{attachedDoc.tokenCount.toLocaleString()} LLM tokens
+                  </span>
+                </div>
+              </div>
+              <div className="attached-doc-actions">
+                <button
+                  type="button"
+                  className="attached-action-btn"
+                  onClick={() => setShowDocPreview(true)}
+                  title="Preview extracted document text"
+                >
+                  👁️ Preview Text
+                </button>
+                <button
+                  type="button"
+                  className="attached-action-btn highlight"
+                  onClick={() => setShowDocIngestModal(true)}
+                  title="Ingest document to insurance data lake"
+                >
+                  💾 Ingest to Lake
+                </button>
+                <button
+                  type="button"
+                  className="attached-remove-btn"
+                  onClick={() => setAttachedDoc(null)}
+                  title="Remove document"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            style={{ position: "relative" }}
+          >
+            {isDraggingFile && (
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background: "rgba(11, 22, 40, 0.94)",
+                  border: "2px dashed var(--cyan)",
+                  borderRadius: "8px",
+                  zIndex: 10,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "6px",
+                  backdropFilter: "blur(4px)",
+                }}
+              >
+                <span style={{ fontSize: "2rem" }}>📄</span>
+                <span style={{ fontSize: "0.88rem", fontWeight: 700, color: "var(--cyan)" }}>
+                  Drop Insurance Document Here
+                </span>
+                <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
+                  Supports PDF, CSV, TXT, JSON, MD
+                </span>
+              </div>
+            )}
+            <textarea
+              ref={promptTextareaRef}
+              rows={3}
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder={
+                attachedDoc
+                  ? `Document "${attachedDoc.name}" attached. Type evaluation task or leave as is to evaluate policy terms...`
+                  : "Type insurance prompt or policy clauses to evaluate, or upload a document above..."
+              }
+              style={{
+                width: "100%",
+                padding: "10px",
+                background: "rgba(0, 0, 0, 0.35)",
+                border: "1px solid var(--border)",
+                borderRadius: "8px",
+                color: "var(--text)",
+                fontSize: "0.82rem",
+                lineHeight: 1.5,
+                resize: "vertical",
+                boxSizing: "border-box",
+              }}
+            />
+          </div>
 
           {/* Quick chips */}
           <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "8px" }}>
@@ -1065,6 +1392,25 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
           goldItem={goldItem}
         />
       </div>
+      {/* ── Document Modals ── */}
+      <DocumentPreviewModal
+        document={attachedDoc}
+        isOpen={showDocPreview}
+        onClose={() => setShowDocPreview(false)}
+        onSaveToLake={() => {
+          setShowDocPreview(false);
+          setShowDocIngestModal(true);
+        }}
+      />
+
+      <DocumentIngestModal
+        initialDocument={attachedDoc}
+        isOpen={showDocIngestModal}
+        onClose={() => setShowDocIngestModal(false)}
+        onIngestSuccess={() => {
+          setShowDocIngestModal(false);
+        }}
+      />
     </div>
   );
 }
