@@ -35,6 +35,17 @@ export function DocumentPreviewModal({ document, isOpen, onClose, onSaveToLake }
     setTimeout(() => setCopied(false), 2000);
   }
 
+  function handleDownloadTxt() {
+    if (!document) return;
+    const blob = new Blob([document.text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = window.document.createElement("a");
+    a.href = url;
+    a.download = `${document.name.replace(/\.[^/.]+$/, "")}_extracted_ocr.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   const lines = document.text.split("\n");
   const filteredLines = searchTerm.trim()
     ? lines.filter((l) => l.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -80,6 +91,9 @@ export function DocumentPreviewModal({ document, isOpen, onClose, onSaveToLake }
           </div>
 
           <div className="doc-toolbar-actions">
+            <button className="doc-btn-secondary" onClick={handleDownloadTxt} title="Download stored extracted text file">
+              📥 Download .TXT
+            </button>
             <button className="doc-btn-secondary" onClick={handleCopy}>
               {copied ? "✓ Copied to Clipboard" : "📋 Copy Text"}
             </button>

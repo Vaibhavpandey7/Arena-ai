@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { spawnSync } from "child_process";
-import { writeFileSync, unlinkSync, existsSync, readdirSync, readFileSync } from "fs";
+import { writeFileSync, unlinkSync, existsSync, readdirSync, readFileSync, mkdirSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
-import { randomBytes } from "crypto";
+import { randomBytes, createHash } from "crypto";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -252,6 +252,29 @@ export async function POST(req: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
+    // Compute document hash for caching and deduplication
+    const fileHash = createHash("sha256").update(buffer).digest("hex");
+    const cacheDir = join(process.cwd(), "data", "ocr_cache");
+    const cacheJsonPath = join(cacheDir, `${fileHash}.json`);
+    const cacheTxtPath = join(cacheDir, `${fileHash}.txt`);
+
+    // Check if document was already parsed/OCRed previously
+    if (existsSync(cacheJsonPath)) {
+      try {
+        const cachedDoc = JSON.parse(readFileSync(cacheJsonPath, "utf-8"));
+        return NextResponse.json({
+          success: true,
+          cached: true,
+          document: {
+            ...cachedDoc,
+            name: filename || cachedDoc.name,
+          },
+        });
+      } catch {
+        // proceed with fresh extraction if cache parse fails
+      }
+    }
+
     const ext = filename.split(".").pop()?.toLowerCase() || "";
     let extractedText = "";
     let detectedType = "text";
@@ -321,20 +344,33 @@ export async function POST(req: NextRequest) {
 
     const documentId = `doc_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
+    const documentPayload = {
+      id: documentId,
+      hash: fileHash,
+      name: filename,
+      size: fileSize,
+      formattedSize: formatBytes(fileSize),
+      type: detectedType,
+      text: cleanText,
+      wordCount,
+      charCount,
+      tokenCount,
+      preview: cleanText.slice(0, 350) + (cleanText.length > 350 ? "…" : ""),
+      storedAt: new Date().toISOString(),
+    };
+
+    // Persist parsed & OCR text to disk storage
+    try {
+      if (!existsSync(cacheDir)) mkdirSync(cacheDir, { recursive: true });
+      writeFileSync(cacheJsonPath, JSON.stringify(documentPayload, null, 2), "utf-8");
+      writeFileSync(cacheTxtPath, cleanText, "utf-8");
+    } catch (saveErr) {
+      console.warn("Failed to persist OCR cache to disk:", saveErr);
+    }
+
     return NextResponse.json({
       success: true,
-      document: {
-        id: documentId,
-        name: filename,
-        size: fileSize,
-        formattedSize: formatBytes(fileSize),
-        type: detectedType,
-        text: cleanText,
-        wordCount,
-        charCount,
-        tokenCount,
-        preview: cleanText.slice(0, 350) + (cleanText.length > 350 ? "…" : ""),
-      },
+      document: documentPayload,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to parse document";
