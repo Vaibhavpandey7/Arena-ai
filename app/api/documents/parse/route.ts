@@ -254,12 +254,23 @@ export async function POST(req: NextRequest) {
 
     // Compute document hash for caching and deduplication
     const fileHash = createHash("sha256").update(buffer).digest("hex");
-    const cacheDir = join(process.cwd(), "data", "ocr_cache");
+    const cacheDir = join(tmpdir(), "insurance_ocr_cache");
     const cacheJsonPath = join(cacheDir, `${fileHash}.json`);
     const cacheTxtPath = join(cacheDir, `${fileHash}.txt`);
 
+    // Check if client provided pre-rendered page images (for environments without server-side poppler like Vercel)
+    const pageImagesRaw = formData.get("pageImages") as string | null;
+    let clientPageImages: { b64: string; mimeType: string }[] | null = null;
+    if (pageImagesRaw) {
+      try {
+        clientPageImages = JSON.parse(pageImagesRaw);
+      } catch {
+        // ignore
+      }
+    }
+
     // Check if document was already parsed/OCRed previously
-    if (existsSync(cacheJsonPath)) {
+    if (!clientPageImages && existsSync(cacheJsonPath)) {
       try {
         const cachedDoc = JSON.parse(readFileSync(cacheJsonPath, "utf-8"));
         return NextResponse.json({
@@ -279,45 +290,73 @@ export async function POST(req: NextRequest) {
     let extractedText = "";
     let detectedType = "text";
 
-    const isImage = ["png", "jpg", "jpeg", "webp", "tiff", "bmp"].includes(ext) || file.type.startsWith("image/");
-
-    if (isImage) {
-      detectedType = "IMAGE (AI OCR)";
+    // If client provided page images for OCR (e.g. from browser PDF.js canvas)
+    if (clientPageImages && clientPageImages.length > 0) {
+      detectedType = "PDF (AI OCR)";
       try {
-        const b64 = buffer.toString("base64");
-        let safeMime = "image/png";
-        if (ext === "jpg" || ext === "jpeg") safeMime = "image/jpeg";
-        else if (ext === "webp") safeMime = "image/webp";
-        else if (ext === "gif") safeMime = "image/gif";
-        else if (file.type && file.type.startsWith("image/")) safeMime = file.type;
-        extractedText = await ocrImagesWithVision([{ b64, mimeType: safeMime }]);
+        extractedText = await ocrImagesWithVision(clientPageImages);
       } catch (err: any) {
-        console.warn("Direct image OCR failed:", err);
-        extractedText = `Could not run AI OCR on image: ${err.message}`;
+        console.warn("Client page images OCR failed:", err);
+        extractedText = `Could not run AI OCR on page images: ${err.message}`;
       }
-    } else if (ext === "pdf" || file.type === "application/pdf") {
-      detectedType = "PDF";
-      extractedText = extractTextFromPdfBuffer(buffer);
+    } else {
+      const isImage = ["png", "jpg", "jpeg", "webp", "tiff", "bmp"].includes(ext) || file.type.startsWith("image/");
 
-      // If text extraction yielded nothing or detected a scanned document, automatically invoke AI Vision OCR!
-      const isScannedOrEmpty =
-        !extractedText ||
-        extractedText.length < 30 ||
-        extractedText.includes("Scanned / Image-Only PDF Detected") ||
-        extractedText.includes("Could not extract readable text");
-
-      if (isScannedOrEmpty) {
+      if (isImage) {
+        detectedType = "IMAGE (AI OCR)";
         try {
-          const ocrText = await ocrScannedPdf(buffer);
-          if (ocrText && ocrText.trim().length > 20) {
-            extractedText = ocrText.trim();
-            detectedType = "PDF (AI OCR)";
-          }
-        } catch (ocrErr) {
-          console.warn("Automatic scanned PDF OCR failed, keeping diagnostic message:", ocrErr);
+          const b64 = buffer.toString("base64");
+          let safeMime = "image/png";
+          if (ext === "jpg" || ext === "jpeg") safeMime = "image/jpeg";
+          else if (ext === "webp") safeMime = "image/webp";
+          else if (ext === "gif") safeMime = "image/gif";
+          else if (file.type && file.type.startsWith("image/")) safeMime = file.type;
+          extractedText = await ocrImagesWithVision([{ b64, mimeType: safeMime }]);
+        } catch (err: any) {
+          console.warn("Direct image OCR failed:", err);
+          extractedText = `Could not run AI OCR on image: ${err.message}`;
         }
-      }
-    } else if (ext === "json" || file.type === "application/json") {
+      } else if (ext === "pdf" || file.type === "application/pdf") {
+        detectedType = "PDF";
+        extractedText = extractTextFromPdfBuffer(buffer);
+
+        // If text extraction yielded nothing or detected a scanned document, invoke AI Vision OCR!
+        const isScannedOrEmpty =
+          !extractedText ||
+          extractedText.length < 30 ||
+          extractedText.includes("Scanned / Image-Only PDF Detected") ||
+          extractedText.includes("Could not extract readable text");
+
+        if (isScannedOrEmpty) {
+          try {
+            const ocrText = await ocrScannedPdf(buffer);
+            if (ocrText && ocrText.trim().length > 20) {
+              extractedText = ocrText.trim();
+              detectedType = "PDF (AI OCR)";
+            } else {
+              // Server-side poppler might be absent (Vercel) -> signal client to render pages
+              return NextResponse.json({
+                success: true,
+                needsClientOcr: true,
+                document: {
+                  id: `doc_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+                  name: filename,
+                  size: fileSize,
+                  formattedSize: formatBytes(fileSize),
+                  type: "PDF (Scanned)",
+                  text: extractedText,
+                  wordCount: 0,
+                  charCount: 0,
+                  tokenCount: 0,
+                  preview: "Scanned document detected. Rendering pages in browser for AI OCR...",
+                },
+              });
+            }
+          } catch (ocrErr) {
+            console.warn("Automatic scanned PDF OCR failed, keeping diagnostic message:", ocrErr);
+          }
+        }
+      } else if (ext === "json" || file.type === "application/json") {
       detectedType = "JSON";
       try {
         const parsed = JSON.parse(buffer.toString("utf-8"));
@@ -335,6 +374,7 @@ export async function POST(req: NextRequest) {
       detectedType = ext.toUpperCase() || "Text";
       extractedText = buffer.toString("utf-8");
     }
+  }
 
     // Clean up carriage returns and normalize whitespace
     const cleanText = extractedText.replace(/\r\n/g, "\n").trim();

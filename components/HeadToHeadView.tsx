@@ -841,6 +841,31 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
       if (!res.ok || !data.success) {
         throw new Error(data.error || "Failed to parse document");
       }
+
+      // If server signals that it needs client-side page rendering (e.g. deployed on Vercel without poppler)
+      if (data.needsClientOcr && (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf"))) {
+        try {
+          const { renderPdfPagesToImages } = await import("@/lib/client-pdf-renderer");
+          const renderedPages = await renderPdfPagesToImages(file, 5);
+          if (renderedPages.length > 0) {
+            const ocrFormData = new FormData();
+            ocrFormData.append("file", file);
+            ocrFormData.append("pageImages", JSON.stringify(renderedPages));
+            const ocrRes = await fetch("/api/documents/parse", {
+              method: "POST",
+              body: ocrFormData,
+            });
+            const ocrData = await ocrRes.json();
+            if (ocrData.success && ocrData.document) {
+              setAttachedDoc(ocrData.document);
+              return;
+            }
+          }
+        } catch (clientOcrErr) {
+          console.warn("Client-side PDF rendering fallback failed:", clientOcrErr);
+        }
+      }
+
       setAttachedDoc(data.document);
     } catch (err: any) {
       setUploadError(err.message || "Failed to upload document");
