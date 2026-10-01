@@ -273,12 +273,15 @@ export async function POST(req: NextRequest) {
     if (!clientPageImages && existsSync(cacheJsonPath)) {
       try {
         const cachedDoc = JSON.parse(readFileSync(cacheJsonPath, "utf-8"));
+        const rawType = String(cachedDoc.type || "");
+        const cleanType = (rawType.includes("AI OCR") || rawType.includes("OCR")) ? "OCR" : rawType;
         return NextResponse.json({
           success: true,
           cached: true,
           document: {
             ...cachedDoc,
             name: filename || cachedDoc.name,
+            type: cleanType,
           },
         });
       } catch {
@@ -292,18 +295,18 @@ export async function POST(req: NextRequest) {
 
     // If client provided page images for OCR (e.g. from browser PDF.js canvas)
     if (clientPageImages && clientPageImages.length > 0) {
-      detectedType = "PDF (AI OCR)";
+      detectedType = "OCR";
       try {
         extractedText = await ocrImagesWithVision(clientPageImages);
       } catch (err: any) {
         console.warn("Client page images OCR failed:", err);
-        extractedText = `Could not run AI OCR on page images: ${err.message}`;
+        extractedText = `Could not run OCR on page images: ${err.message}`;
       }
     } else {
       const isImage = ["png", "jpg", "jpeg", "webp", "tiff", "bmp"].includes(ext) || file.type.startsWith("image/");
 
       if (isImage) {
-        detectedType = "IMAGE (AI OCR)";
+        detectedType = "OCR";
         try {
           const b64 = buffer.toString("base64");
           let safeMime = "image/png";
@@ -314,7 +317,7 @@ export async function POST(req: NextRequest) {
           extractedText = await ocrImagesWithVision([{ b64, mimeType: safeMime }]);
         } catch (err: any) {
           console.warn("Direct image OCR failed:", err);
-          extractedText = `Could not run AI OCR on image: ${err.message}`;
+          extractedText = `Could not run OCR on image: ${err.message}`;
         }
       } else if (ext === "pdf" || file.type === "application/pdf") {
         detectedType = "PDF";
@@ -332,7 +335,7 @@ export async function POST(req: NextRequest) {
             const ocrText = await ocrScannedPdf(buffer);
             if (ocrText && ocrText.trim().length > 20) {
               extractedText = ocrText.trim();
-              detectedType = "PDF (AI OCR)";
+              detectedType = "OCR";
             } else {
               // Server-side poppler might be absent (Vercel) -> signal client to render pages
               return NextResponse.json({

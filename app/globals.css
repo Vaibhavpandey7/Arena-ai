@@ -4462,6 +4462,7 @@ body {
   border: 1px solid rgba(244, 63, 94, 0.35);
 }
 
+.doc-badge-ocr,
 .doc-badge-pdf--ai-ocr-,
 .doc-badge-image--ai-ocr- {
   background: rgba(16, 185, 129, 0.18);

@@ -1071,8 +1071,8 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
-                  <span className={`doc-badge doc-badge-${attachedDoc.type.toLowerCase()}`} style={{ fontSize: "0.62rem", padding: "1px 5px" }}>
-                    {attachedDoc.type}
+                  <span className={`doc-badge doc-badge-${(attachedDoc.type?.toUpperCase().includes("OCR") ? "ocr" : attachedDoc.type.toLowerCase())}`} style={{ fontSize: "0.62rem", padding: "1px 5px" }}>
+                    {attachedDoc.type?.toUpperCase().includes("OCR") ? "OCR" : attachedDoc.type}
                   </span>
                   <span
                     style={{
@@ -1177,7 +1177,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                 {isUploadingDoc ? (
                   <>
                     <span className="spinner-border" style={{ width: "12px", height: "12px" }} />
-                    <span>Parsing & AI OCR...</span>
+                    <span>Parsing & OCR...</span>
                   </>
                 ) : (
                   <>
@@ -1266,8 +1266,8 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
           {attachedDoc && (
             <div className="attached-doc-card">
               <div className="attached-doc-left">
-                <span className={`doc-badge doc-badge-${attachedDoc.type.toLowerCase()}`}>
-                  {attachedDoc.type}
+                <span className={`doc-badge doc-badge-${(attachedDoc.type?.toUpperCase().includes("OCR") ? "ocr" : attachedDoc.type.toLowerCase())}`}>
+                  {attachedDoc.type?.toUpperCase().includes("OCR") ? "OCR" : attachedDoc.type}
                 </span>
                 <div className="attached-doc-details">
                   <span className="attached-doc-name" title={attachedDoc.name}>
@@ -1335,7 +1335,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                   Drop Insurance Document Here
                 </span>
                 <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
-                  Supports PDF, Scans (AI OCR), Images, CSV, TXT, JSON, MD
+                  Supports PDF, Scans (OCR), Images, CSV, TXT, JSON, MD
                 </span>
               </div>
             )}

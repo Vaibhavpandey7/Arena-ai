@@ -135,6 +135,13 @@ interface ChatMessage {
   isStreaming?: boolean;
 }
 
+function formatDocType(type?: string): string {
+  if (!type) return "DOC";
+  const upper = type.toUpperCase();
+  if (upper.includes("OCR")) return "OCR";
+  return type.replace(/\bAI\s*OCR\b/gi, "OCR");
+}
+
 /* ── Connection tag component ───────────────────────────────────────────────── */
 const ConnTag = React.memo(function ConnTag({
   type,
@@ -198,11 +205,11 @@ const MessageBubble = React.memo(function MessageBubble({
         {msg.attachedDoc && (
           <div className="arena-msg-doc-pill">
             <span
-              className={`doc-badge doc-badge-${msg.attachedDoc.type
+              className={`doc-badge doc-badge-${formatDocType(msg.attachedDoc.type)
                 .toLowerCase()
                 .replace(/[^a-z0-9_-]/g, "-")}`}
             >
-              {msg.attachedDoc.type}
+              {formatDocType(msg.attachedDoc.type)}
             </span>
             <span className="arena-msg-doc-name" title={msg.attachedDoc.name}>
               {msg.attachedDoc.name}
@@ -333,7 +340,10 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
             });
             const ocrData = await ocrRes.json();
             if (ocrData.success && ocrData.document) {
-              setAttachedDoc(ocrData.document);
+              setAttachedDoc({
+                ...ocrData.document,
+                type: formatDocType(ocrData.document.type),
+              });
               return;
             }
           }
@@ -342,7 +352,10 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
         }
       }
 
-      setAttachedDoc(data.document);
+      setAttachedDoc({
+        ...data.document,
+        type: formatDocType(data.document.type),
+      });
     } catch (err: unknown) {
       setUploadError(err instanceof Error ? err.message : "Failed to upload document");
     } finally {
@@ -665,17 +678,17 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
           {isUploadingDoc ? (
             <div className="arena-context-drop parsing">
               <div className="arena-btn-spinner" />
-              <span>Parsing & running AI OCR...</span>
+              <span>Parsing & running OCR...</span>
             </div>
           ) : attachedDoc ? (
             <div className="arena-context-attached-card">
               <div className="arena-context-attached-header">
                 <span
-                  className={`doc-badge doc-badge-${attachedDoc.type
+                  className={`doc-badge doc-badge-${formatDocType(attachedDoc.type)
                     .toLowerCase()
                     .replace(/[^a-z0-9_-]/g, "-")}`}
                 >
-                  {attachedDoc.type}
+                  {formatDocType(attachedDoc.type)}
                 </span>
                 <button
                   type="button"
@@ -857,7 +870,7 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
             <div className="arena-upload-status">
               <div className="arena-upload-spinner" />
               <div className="arena-upload-status-text">
-                <span className="arena-upload-status-title">Parsing document & running AI OCR...</span>
+                <span className="arena-upload-status-title">Parsing document & running OCR...</span>
                 <span className="arena-upload-status-sub">Extracting policy terms, coverage limits, and clauses</span>
               </div>
             </div>
@@ -888,8 +901,8 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
           {attachedDoc && (
             <div className="attached-doc-card">
               <div className="attached-doc-left">
-                <span className={`doc-badge doc-badge-${attachedDoc.type.toLowerCase().replace(/[^a-z0-9_-]/g, "-")}`}>
-                  {attachedDoc.type}
+                <span className={`doc-badge doc-badge-${formatDocType(attachedDoc.type).toLowerCase().replace(/[^a-z0-9_-]/g, "-")}`}>
+                  {formatDocType(attachedDoc.type)}
                 </span>
                 <div className="attached-doc-details">
                   <span className="attached-doc-name" title={attachedDoc.name}>
