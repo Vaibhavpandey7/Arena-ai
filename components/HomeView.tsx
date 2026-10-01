@@ -68,7 +68,7 @@ export default function HomeView({ onNavigate }: Props) {
         </div>
 
         {/* Eyebrow */}
-        <p className="home-eyebrow">Adrosonic · Insurance AI Division</p>
+        <p className="home-eyebrow">Adrosonic · Digital Innovation Lab</p>
 
         {/* Hero headline */}
         <h1 className="home-hero-title">
