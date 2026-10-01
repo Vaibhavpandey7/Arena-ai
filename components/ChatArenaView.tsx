@@ -2,6 +2,8 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import ModelSelectWidget from "./ModelSelectWidget";
+import { DocumentPreviewModal, ParsedDocument } from "./DocumentPreviewModal";
+import { DocumentIngestModal } from "./DocumentIngestModal";
 
 /* ── Constants ─────────────────────────────────────────────────────────────── */
 
@@ -124,6 +126,7 @@ interface ToolEvent {
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  attachedDoc?: ParsedDocument;
   toolEvents?: ToolEvent[];
   promptTokens?: number;
   completionTokens?: number;
@@ -176,7 +179,13 @@ const ToolCallBlock = React.memo(function ToolCallBlock({ events }: { events: To
 // React.memo prevents re-rendering completed messages when only the last
 // streaming message changes. This is the single biggest re-render win during
 // long AI streaming responses.
-const MessageBubble = React.memo(function MessageBubble({ msg }: { msg: ChatMessage }) {
+const MessageBubble = React.memo(function MessageBubble({
+  msg,
+  onPreviewDoc,
+}: {
+  msg: ChatMessage;
+  onPreviewDoc?: (doc: ParsedDocument) => void;
+}) {
   return (
     <div className={`arena-msg ${msg.role}`}>
       <div className="arena-msg-avatar">
@@ -185,6 +194,33 @@ const MessageBubble = React.memo(function MessageBubble({ msg }: { msg: ChatMess
       <div className="arena-msg-body">
         {msg.toolEvents && msg.toolEvents.length > 0 && (
           <ToolCallBlock events={msg.toolEvents} />
+        )}
+        {msg.attachedDoc && (
+          <div className="arena-msg-doc-pill">
+            <span
+              className={`doc-badge doc-badge-${msg.attachedDoc.type
+                .toLowerCase()
+                .replace(/[^a-z0-9_-]/g, "-")}`}
+            >
+              {msg.attachedDoc.type}
+            </span>
+            <span className="arena-msg-doc-name" title={msg.attachedDoc.name}>
+              {msg.attachedDoc.name}
+            </span>
+            <span className="arena-msg-doc-meta">
+              {msg.attachedDoc.formattedSize} · {msg.attachedDoc.wordCount.toLocaleString()} words
+            </span>
+            {onPreviewDoc && (
+              <button
+                type="button"
+                className="arena-msg-doc-view-btn"
+                onClick={() => onPreviewDoc(msg.attachedDoc!)}
+                title="Preview document content"
+              >
+                👁️ View
+              </button>
+            )}
+          </div>
         )}
         <div className="arena-msg-bubble">
           {msg.isStreaming && !msg.content ? (
@@ -238,7 +274,12 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
-  const [attachedFile, setAttachedFile] = useState<File | null>(null);
+  const [attachedDoc, setAttachedDoc] = useState<ParsedDocument | null>(null);
+  const [isUploadingDoc, setIsUploadingDoc] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [previewDoc, setPreviewDoc] = useState<ParsedDocument | null>(null);
+  const [showIngestModal, setShowIngestModal] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const initialSentRef = useRef(false);
 
   const abortRef = useRef<AbortController | null>(null);
@@ -262,36 +303,106 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
     });
   };
 
-  const handleSend = useCallback(async (overridePrompt?: string) => {
-    let text = (overridePrompt ?? input).trim();
-    if ((!text && !attachedFile) || isStreaming) return;
+  const handleDocUpload = async (file: File) => {
+    setIsUploadingDoc(true);
+    setUploadError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/documents/parse", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to parse document");
+      }
 
-    let effectivePrompt = text;
-    const currentFile = attachedFile;
-    setAttachedFile(null);
-    setInput("");
-
-    if (currentFile) {
-      try {
-        const formData = new FormData();
-        formData.append("file", currentFile);
-        const parseRes = await fetch("/api/documents/parse", {
-          method: "POST",
-          body: formData,
-        });
-        const parseData = await parseRes.json();
-        if (parseData.success && parseData.document) {
-          const doc = parseData.document;
-          const docHeader = `[ATTACHED POLICY / DOCUMENT: ${doc.name} | Type: ${doc.type} | Size: ${doc.formattedSize}]\n--- DOCUMENT CONTENT START ---\n${doc.text}\n--- DOCUMENT CONTENT END ---\n\n`;
-          effectivePrompt = docHeader + (text || "Please analyze this attached insurance document, extract key terms, limits, and exclusions.");
+      // If server signals that it needs client-side page rendering (e.g. deployed on Vercel without poppler)
+      if (data.needsClientOcr && (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf"))) {
+        try {
+          const { renderPdfPagesToImages } = await import("@/lib/client-pdf-renderer");
+          const renderedPages = await renderPdfPagesToImages(file, 5);
+          if (renderedPages.length > 0) {
+            const ocrFormData = new FormData();
+            ocrFormData.append("file", file);
+            ocrFormData.append("pageImages", JSON.stringify(renderedPages));
+            const ocrRes = await fetch("/api/documents/parse", {
+              method: "POST",
+              body: ocrFormData,
+            });
+            const ocrData = await ocrRes.json();
+            if (ocrData.success && ocrData.document) {
+              setAttachedDoc(ocrData.document);
+              return;
+            }
+          }
+        } catch (clientOcrErr) {
+          console.warn("Client-side PDF rendering fallback failed:", clientOcrErr);
         }
-      } catch (err) {
-        console.warn("Failed to parse attached document in chat arena:", err);
+      }
+
+      setAttachedDoc(data.document);
+    } catch (err: unknown) {
+      setUploadError(err instanceof Error ? err.message : "Failed to upload document");
+    } finally {
+      setIsUploadingDoc(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
       }
     }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      handleDocUpload(files[0]);
+    }
+  };
+
+  const handleSend = useCallback(async (overridePrompt?: string) => {
+    let text = (overridePrompt ?? input).trim();
+    if ((!text && !attachedDoc) || isStreaming || isUploadingDoc) return;
+
+    const currentDoc = attachedDoc;
+    let effectivePrompt = text;
+
+    if (currentDoc) {
+      const docHeader = `[ATTACHED POLICY / DOCUMENT: ${currentDoc.name} | Type: ${currentDoc.type} | Size: ${currentDoc.formattedSize}]\n--- DOCUMENT CONTENT START ---\n${currentDoc.text}\n--- DOCUMENT CONTENT END ---\n\n`;
+      effectivePrompt =
+        docHeader +
+        (text ||
+          "Please analyze this attached insurance document, extract key terms, coverage limits, deductibles, conditions, and exclusions.");
+    }
+
+    setAttachedDoc(null);
+    setInput("");
 
     // Add user message
-    const userMsg: ChatMessage = { role: "user", content: text || `[Uploaded: ${currentFile?.name}]` };
+    const userMsg: ChatMessage = {
+      role: "user",
+      content:
+        text ||
+        (currentDoc
+          ? `Please analyze this attached policy document: **${currentDoc.name}**`
+          : ""),
+      attachedDoc: currentDoc ?? undefined,
+    };
     setMessages((prev) => [...prev, userMsg]);
 
     // Add streaming assistant message
@@ -458,7 +569,12 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
       });
       setIsStreaming(false);
     }
-  }, [input, isStreaming, selectedModel, activePluginCount]);
+  }, [input, isStreaming, selectedModel, activePluginCount, attachedDoc, isUploadingDoc]);
+
+  const canSend =
+    (input.trim().length > 0 || attachedDoc !== null) &&
+    !isStreaming &&
+    !isUploadingDoc;
 
   const handleClear = () => {
     abortRef.current?.abort();
@@ -540,53 +656,75 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
             ref={fileInputRef}
             accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.md,.json,.csv"
             style={{ display: "none" }}
-            onChange={(e) => setAttachedFile(e.target.files?.[0] ?? null)}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handleDocUpload(f);
+              e.target.value = "";
+            }}
           />
-          {attachedFile ? (
-            <div
-              className="arena-active-model"
-              style={{ flexDirection: "row", alignItems: "center" }}
-            >
-              <span style={{ fontSize: 18 }}>📎</span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: "var(--text-main)",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
+          {isUploadingDoc ? (
+            <div className="arena-context-drop parsing">
+              <div className="arena-btn-spinner" />
+              <span>Parsing & running AI OCR...</span>
+            </div>
+          ) : attachedDoc ? (
+            <div className="arena-context-attached-card">
+              <div className="arena-context-attached-header">
+                <span
+                  className={`doc-badge doc-badge-${attachedDoc.type
+                    .toLowerCase()
+                    .replace(/[^a-z0-9_-]/g, "-")}`}
                 >
-                  {attachedFile.name}
-                </div>
-                <div style={{ fontSize: 10.5, color: "var(--text-subtle)" }}>
-                  {(attachedFile.size / 1024).toFixed(1)} KB
-                </div>
+                  {attachedDoc.type}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setAttachedDoc(null)}
+                  className="attached-remove-btn"
+                  title="Detach document"
+                >
+                  ✕
+                </button>
               </div>
-              <button
-                onClick={() => setAttachedFile(null)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "var(--text-subtle)",
-                  cursor: "pointer",
-                  fontSize: 14,
-                }}
-              >
-                ✕
-              </button>
+              <div className="arena-context-attached-title" title={attachedDoc.name}>
+                {attachedDoc.name}
+              </div>
+              <div className="arena-context-attached-meta">
+                {attachedDoc.formattedSize} · {attachedDoc.wordCount.toLocaleString()} words · ~{attachedDoc.tokenCount.toLocaleString()} tokens
+              </div>
+              <div className="arena-context-attached-actions">
+                <button
+                  type="button"
+                  className="arena-context-btn"
+                  onClick={() => setPreviewDoc(attachedDoc)}
+                >
+                  👁️ Preview
+                </button>
+                <button
+                  type="button"
+                  className="arena-context-btn highlight"
+                  onClick={() => setShowIngestModal(true)}
+                >
+                  💾 Ingest
+                </button>
+              </div>
             </div>
           ) : (
             <div
-              className="arena-context-drop"
+              className={`arena-context-drop${isDragging ? " dragging" : ""}`}
               onClick={() => fileInputRef.current?.click()}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
             >
               <span style={{ fontSize: 20 }}>🗂</span>
               <span>
                 Attach policy doc,
                 <br />
                 claim form, or report
+              </span>
+              <span style={{ fontSize: "10px", color: "var(--text-subtle)", marginTop: "2px" }}>
+                PDF, OCR, Images, TXT, CSV
               </span>
             </div>
           )}
@@ -682,13 +820,24 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
               </div>
             </div>
           ) : (
-            messages.map((msg, i) => <MessageBubble key={i} msg={msg} />)
+            messages.map((msg, i) => (
+              <MessageBubble
+                key={i}
+                msg={msg}
+                onPreviewDoc={(doc) => setPreviewDoc(doc)}
+              />
+            ))
           )}
           <div ref={messagesEndRef} />
         </div>
 
         {/* Input area */}
-        <div className="arena-input-area">
+        <div
+          className={`arena-input-area${isDragging ? " dragging" : ""}`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
           {/* Quick chips */}
           <div className="arena-quick-chips">
             {QUICK_CHIPS.map((chip) => (
@@ -696,40 +845,145 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
                 key={chip}
                 className="arena-quick-chip"
                 onClick={() => handleSend(chip)}
-                disabled={isStreaming}
+                disabled={isStreaming || isUploadingDoc}
               >
                 {chip}
               </button>
             ))}
           </div>
 
+          {/* Upload progress indicator */}
+          {isUploadingDoc && (
+            <div className="arena-upload-status">
+              <div className="arena-upload-spinner" />
+              <div className="arena-upload-status-text">
+                <span className="arena-upload-status-title">Parsing document & running AI OCR...</span>
+                <span className="arena-upload-status-sub">Extracting policy terms, coverage limits, and clauses</span>
+              </div>
+            </div>
+          )}
+
+          {/* Upload error banner */}
+          {uploadError && (
+            <div className="doc-upload-error-banner">
+              <span>⚠️ {uploadError}</span>
+              <button
+                type="button"
+                onClick={() => setUploadError(null)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "inherit",
+                  cursor: "pointer",
+                  fontSize: 14,
+                  padding: "0 4px",
+                }}
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {/* Attached Document Card above input */}
+          {attachedDoc && (
+            <div className="attached-doc-card">
+              <div className="attached-doc-left">
+                <span className={`doc-badge doc-badge-${attachedDoc.type.toLowerCase().replace(/[^a-z0-9_-]/g, "-")}`}>
+                  {attachedDoc.type}
+                </span>
+                <div className="attached-doc-details">
+                  <span className="attached-doc-name" title={attachedDoc.name}>
+                    {attachedDoc.name}
+                  </span>
+                  <span className="attached-doc-sub">
+                    {attachedDoc.formattedSize} · {attachedDoc.wordCount.toLocaleString()} words · ~{attachedDoc.tokenCount.toLocaleString()} LLM tokens
+                  </span>
+                </div>
+              </div>
+              <div className="attached-doc-actions">
+                <button
+                  type="button"
+                  className="attached-action-btn"
+                  onClick={() => setPreviewDoc(attachedDoc)}
+                  title="Preview extracted document text"
+                >
+                  👁️ Preview Text
+                </button>
+                <button
+                  type="button"
+                  className="attached-action-btn highlight"
+                  onClick={() => setShowIngestModal(true)}
+                  title="Ingest document to insurance data lake"
+                >
+                  💾 Ingest to Lake
+                </button>
+                <button
+                  type="button"
+                  className="attached-remove-btn"
+                  onClick={() => setAttachedDoc(null)}
+                  title="Remove document"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="arena-input-row">
             <button
-              className="arena-attach-btn"
+              type="button"
+              className={`arena-attach-btn${attachedDoc ? " has-doc" : ""}${isUploadingDoc ? " loading" : ""}`}
               onClick={() => fileInputRef.current?.click()}
-              title="Attach document"
+              disabled={isUploadingDoc}
+              title={
+                isUploadingDoc
+                  ? "Parsing document..."
+                  : attachedDoc
+                  ? `Attached: ${attachedDoc.name} (Click to replace)`
+                  : "Attach policy document, claim form, or scan"
+              }
             >
-              📎
+              {isUploadingDoc ? (
+                <div className="arena-btn-spinner" />
+              ) : attachedDoc ? (
+                "📄"
+              ) : (
+                "📎"
+              )}
             </button>
             <textarea
               ref={chatInputRef}
               className="arena-input-textarea"
-              placeholder="Ask an insurance question or describe a task for the agent…"
+              placeholder={
+                attachedDoc
+                  ? `Document "${attachedDoc.name}" attached. Ask any question, or press Send to evaluate policy terms...`
+                  : "Ask an insurance question or describe a task for the agent…"
+              }
               value={input}
               rows={1}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey && !isStreaming) {
+                if (e.key === "Enter" && !e.shiftKey && !isStreaming && !isUploadingDoc) {
                   e.preventDefault();
-                  handleSend();
+                  if (canSend) {
+                    handleSend();
+                  }
                 }
               }}
             />
             <button
               className="arena-send-btn"
               onClick={() => (isStreaming ? abortRef.current?.abort() : handleSend())}
-              disabled={!isStreaming && !input.trim()}
-              title={isStreaming ? "Stop" : "Send"}
+              disabled={!isStreaming && !canSend}
+              title={
+                isStreaming
+                  ? "Stop generation"
+                  : isUploadingDoc
+                  ? "Processing document..."
+                  : attachedDoc && !input.trim()
+                  ? "Send & analyze attached document"
+                  : "Send message"
+              }
             >
               {isStreaming ? (
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -745,6 +999,26 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
           </div>
         </div>
       </div>
+
+      {/* Document Preview Modal */}
+      <DocumentPreviewModal
+        document={previewDoc}
+        isOpen={previewDoc !== null}
+        onClose={() => setPreviewDoc(null)}
+        onSaveToLake={() => {
+          setShowIngestModal(true);
+        }}
+      />
+
+      {/* Document Ingest Modal */}
+      <DocumentIngestModal
+        initialDocument={attachedDoc || previewDoc}
+        isOpen={showIngestModal}
+        onClose={() => setShowIngestModal(false)}
+        onIngestSuccess={() => {
+          setShowIngestModal(false);
+        }}
+      />
     </div>
   );
 }
