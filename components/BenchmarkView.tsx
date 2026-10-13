@@ -114,7 +114,7 @@ function RadarChart({
 }
 
 const FILTER_TABS = ["All", "Actuarial", "Solvency II", "Claims", "Underwriting", "Fraud", "Multimodal"];
-const DATASET_TABS: BenchmarkDatasetId[] = ["INS-MMBench", "CUFE", "InsuranceQA"];
+const DATASET_TABS: BenchmarkDatasetId[] = ["INS-MMBench", "CUFE", "InsuranceQA", "INS-ActBench"];
 
 type Tab = "home" | "head-to-head" | "chat-arena" | "benchmark";
 
@@ -497,7 +497,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
               <div className="benchmark-card-score">
                 {Math.floor(item.score)}
                 <span className="score-decimal">
-                  .{String(item.score.toFixed(1)).split(".")[1]}
+                  .{String(item.score.toFixed(2)).split(".")[1]}
                 </span>
                 <span style={{ fontSize: "0.75rem", marginLeft: "4px", color: "var(--text-muted)", fontWeight: 600 }}>
                   {currentDataset.scoreUnit}
