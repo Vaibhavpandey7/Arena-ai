@@ -17,10 +17,10 @@ function RadarChart({
   dims: string[];
   models: { label: string; color: string; values: number[] }[];
 }) {
-  const size = 380;
+  const size = 310;
   const cx = size / 2;
   const cy = size / 2;
-  const r = 125;
+  const r = 95;
   const n = dims.length;
 
   function polarToCartesian(radiusFactor: number, index: number) {
@@ -44,7 +44,7 @@ function RadarChart({
   const gridRings = [0.25, 0.5, 0.75, 1.0];
 
   return (
-    <div style={{ width: "100%", maxWidth: "390px", margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center" }}>
+    <div style={{ width: "100%", maxWidth: "310px", margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center" }}>
       <svg
         width="100%"
         height="100%"
@@ -148,12 +148,12 @@ function RadarChart({
               y={y}
               textAnchor={textAnchor}
               dominantBaseline="middle"
-              fontSize="9.5"
+              fontSize="8.5"
               fontWeight="600"
-              fill="rgba(226, 232, 240, 0.9)"
+              fill="rgba(226, 232, 240, 0.95)"
             >
               {dim.split("\n").map((line, j) => (
-                <tspan key={j} x={x} dy={j === 0 ? 0 : 11}>
+                <tspan key={j} x={x} dy={j === 0 ? 0 : 10}>
                   {line}
                 </tspan>
               ))}
@@ -360,19 +360,26 @@ export default function BenchmarkView({ onNavigate }: Props) {
               {currentDataset.comparison.subtitle}
             </div>
 
-            {/* Dual bar legend */}
-            <div style={{ display: "flex", gap: "16px", marginBottom: "12px", fontSize: "0.74rem", color: "var(--text-muted)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <span style={{ width: 12, height: 5, background: "var(--cyan)", borderRadius: 2 }} />
-                <span>{currentDataset.comparison.val1Label} (Primary)</span>
-              </div>
-              {currentDataset.comparison.val2Label && (
+            {/* Metric legend */}
+            {currentDataset.comparison.val2Label ? (
+              <div style={{ display: "flex", gap: "16px", marginBottom: "12px", fontSize: "0.74rem", color: "var(--text-muted)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <span style={{ width: 12, height: 5, background: "var(--cyan)", borderRadius: 2 }} />
+                  <span>{currentDataset.comparison.val1Label}</span>
+                </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                   <span style={{ width: 12, height: 5, background: "rgba(0, 212, 255, 0.45)", borderRadius: 2 }} />
-                  <span>{currentDataset.comparison.val2Label} (Secondary)</span>
+                  <span>{currentDataset.comparison.val2Label}</span>
                 </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div style={{ display: "flex", gap: "16px", marginBottom: "12px", fontSize: "0.74rem", color: "var(--text-muted)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <span style={{ width: 12, height: 5, background: "var(--cyan)", borderRadius: 2 }} />
+                  <span>{currentDataset.comparison.val1Label}</span>
+                </div>
+              </div>
+            )}
 
             <div className="benchmark-bar-list">
               {currentDataset.comparison.rows.map((row) => (
@@ -380,8 +387,9 @@ export default function BenchmarkView({ onNavigate }: Props) {
                   <div className="benchmark-bar-header">
                     <span className="benchmark-bar-label">{row.model}</span>
                     <span className="benchmark-bar-value">
-                      {currentDataset.comparison.val1Label}: {row.val1Formatted}
-                      {row.val2Formatted && ` · ${currentDataset.comparison.val2Label}: ${row.val2Formatted}`}
+                      {row.val2Formatted
+                        ? `${row.val1Formatted} · ${currentDataset.comparison.val2Label}: ${row.val2Formatted}`
+                        : row.val1Formatted}
                     </span>
                   </div>
                   <div className="benchmark-bar-track">

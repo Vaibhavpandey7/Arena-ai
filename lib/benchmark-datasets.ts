@@ -174,21 +174,20 @@ export const BENCHMARK_DATASETS: Record<BenchmarkDatasetId, BenchmarkDatasetConf
       },
     ],
     comparison: {
-      title: "Multimodal Accuracy by Insurance Sector (Table 4)",
-      subtitle: "Published Table 4 Accuracy (%) Across LVLMs in INS-MMBench",
-      val1Label: "Overall Acc",
-      val2Label: "Auto Insurance",
+      title: "Multimodal Model Accuracy",
+      subtitle: "Published Accuracy (%) Across LVLMs in INS-MMBench",
+      val1Label: "Overall Accuracy",
       rows: [
-        { model: "GPT-4o", val1: 69.70, val1Formatted: "69.7%", val2: 86.00, val2Formatted: "86.0%", color: "#f59e0b" },
-        { model: "Qwen-VL-Max", val1: 65.33, val1Formatted: "65.3%", val2: 80.86, val2Formatted: "80.9%", color: "#0ea5e9" },
-        { model: "Gemini 1.5 Flash", val1: 64.21, val1Formatted: "64.2%", val2: 79.40, val2Formatted: "79.4%", color: "#10b981" },
-        { model: "Qwen-2.5-VL-32B", val1: 64.10, val1Formatted: "64.1%", val2: 79.34, val2Formatted: "79.3%", color: "#8b5cf6" },
-        { model: "GLM4V-Plus-0111", val1: 63.51, val1Formatted: "63.5%", val2: 81.79, val2Formatted: "81.8%", color: "#06b6d4" },
-        { model: "GPT-4V", val1: 62.79, val1Formatted: "62.8%", val2: 77.35, val2Formatted: "77.4%", color: "#ec4899" },
-        { model: "GPT-4o-mini", val1: 60.66, val1Formatted: "60.7%", val2: 77.77, val2Formatted: "77.8%", color: "#38bdf8" },
-        { model: "Human Baseline", val1: 60.45, val1Formatted: "60.5%", val2: 62.22, val2Formatted: "62.2%", color: "#22c55e" },
-        { model: "Claude3V-Haiku", val1: 48.95, val1Formatted: "49.0%", val2: 59.95, val2Formatted: "60.0%", color: "#a855f7" },
-        { model: "LLaVA", val1: 46.99, val1Formatted: "47.0%", val2: 45.47, val2Formatted: "45.5%", color: "#64748b" },
+        { model: "GPT-4o", val1: 69.70, val1Formatted: "69.7%", color: "#f59e0b" },
+        { model: "Qwen-VL-Max", val1: 65.33, val1Formatted: "65.3%", color: "#0ea5e9" },
+        { model: "Gemini 1.5 Flash", val1: 64.21, val1Formatted: "64.2%", color: "#10b981" },
+        { model: "Qwen-2.5-VL-32B", val1: 64.10, val1Formatted: "64.1%", color: "#8b5cf6" },
+        { model: "GLM4V-Plus-0111", val1: 63.51, val1Formatted: "63.5%", color: "#06b6d4" },
+        { model: "GPT-4V", val1: 62.79, val1Formatted: "62.8%", color: "#ec4899" },
+        { model: "GPT-4o-mini", val1: 60.66, val1Formatted: "60.7%", color: "#38bdf8" },
+        { model: "Human Baseline", val1: 60.45, val1Formatted: "60.5%", color: "#22c55e" },
+        { model: "Claude3V-Haiku", val1: 48.95, val1Formatted: "49.0%", color: "#a855f7" },
+        { model: "LLaVA", val1: 46.99, val1Formatted: "47.0%", color: "#64748b" },
       ],
     },
     radar: {
@@ -222,7 +221,7 @@ export const BENCHMARK_DATASETS: Record<BenchmarkDatasetId, BenchmarkDatasetConf
     },
     domainBreakdown: {
       title: "INS-MMBench Domain Average Accuracy",
-      subtitle: "Verified Task Accuracy from ICCV 2025 Paper (Table 4)",
+      subtitle: "Verified Task Accuracy from ICCV 2025 Paper",
       rows: [
         { domain: "Auto Insurance (Overall)", score: 86.0, color: "#f59e0b" },
         { domain: "Health Risk Monitoring", score: 76.7, color: "#0ea5e9" },
@@ -233,7 +232,7 @@ export const BENCHMARK_DATASETS: Record<BenchmarkDatasetId, BenchmarkDatasetConf
       ],
     },
     domainWiseAccuracy: {
-      title: "Domain-Wise Accuracy Across Leading Models (Table 4)",
+      title: "Domain-Wise Accuracy Across Leading Models",
       subtitle: "Verified Task Accuracy (%) Across 4 Core Sectors from ICCV 2025 Paper",
       domains: [
         {
@@ -700,26 +699,25 @@ export const BENCHMARK_DATASETS: Record<BenchmarkDatasetId, BenchmarkDatasetConf
       },
     ],
     comparison: {
-      title: "Actuarial Knowledge vs. Tool-Driven Practice (Table 3 & 11)",
-      subtitle: "Comparing Standardized Knowledge (INS-Act-Know) vs. Spreadsheet/R Practice (INS-Act-Practice)",
+      title: "Actuarial Model Performance",
+      subtitle: "Total Accuracy (%) Across International Actuarial Tasks",
       val1Label: "Final Total",
-      val2Label: "Tool Practice",
       rows: [
-        { model: "Human Experts", val1: 82.97, val1Formatted: "83.0%", val2: 84.92, val2Formatted: "84.9%", color: "#10b981" },
-        { model: "GPT-5.5", val1: 72.94, val1Formatted: "72.9%", val2: 69.24, val2Formatted: "69.2%", color: "#f59e0b" },
-        { model: "Gemini-3.1-Pro", val1: 72.66, val1Formatted: "72.7%", val2: 67.91, val2Formatted: "67.9%", color: "#0ea5e9" },
-        { model: "DeepSeek-V4-Pro", val1: 65.59, val1Formatted: "65.6%", val2: 61.67, val2Formatted: "61.7%", color: "#8b5cf6" },
-        { model: "Claude-Opus-4.7", val1: 63.27, val1Formatted: "63.3%", val2: 65.38, val2Formatted: "65.4%", color: "#ec4899" },
-        { model: "Qwen3.6-Plus", val1: 63.27, val1Formatted: "63.3%", val2: 57.43, val2Formatted: "57.4%", color: "#06b6d4" },
-        { model: "Kimi-K2.6", val1: 47.64, val1Formatted: "47.6%", val2: 47.21, val2Formatted: "47.2%", color: "#d97706" },
-        { model: "Qwen3.5-35B-A3B", val1: 31.99, val1Formatted: "32.0%", val2: 37.67, val2Formatted: "37.7%", color: "#64748b" },
-        { model: "Qwen3-14B", val1: 29.14, val1Formatted: "29.1%", val2: 26.04, val2Formatted: "26.0%", color: "#475569" },
-        { model: "Gemma-3-12B-IT", val1: 23.95, val1Formatted: "24.0%", val2: 20.45, val2Formatted: "20.5%", color: "#334155" },
+        { model: "Human Experts", val1: 82.97, val1Formatted: "83.0%", color: "#10b981" },
+        { model: "GPT-5.5", val1: 72.94, val1Formatted: "72.9%", color: "#f59e0b" },
+        { model: "Gemini-3.1-Pro", val1: 72.66, val1Formatted: "72.7%", color: "#0ea5e9" },
+        { model: "DeepSeek-V4-Pro", val1: 65.59, val1Formatted: "65.6%", color: "#8b5cf6" },
+        { model: "Claude-Opus-4.7", val1: 63.27, val1Formatted: "63.3%", color: "#ec4899" },
+        { model: "Qwen3.6-Plus", val1: 63.27, val1Formatted: "63.3%", color: "#06b6d4" },
+        { model: "Kimi-K2.6", val1: 47.64, val1Formatted: "47.6%", color: "#d97706" },
+        { model: "Qwen3.5-35B", val1: 31.99, val1Formatted: "32.0%", color: "#64748b" },
+        { model: "Qwen3-14B", val1: 29.14, val1Formatted: "29.1%", color: "#475569" },
+        { model: "Gemma-3-12B-IT", val1: 23.95, val1Formatted: "24.0%", color: "#334155" },
       ],
     },
     radar: {
       title: "Actuarial Core Competencies Radar",
-      subtitle: "Accuracy across 5 Syllabus Areas + Practical Tool Execution (Table 3)",
+      subtitle: "Accuracy across 5 Syllabus Areas + Practical Tool Execution",
       dims: [
         "Prob & Stats\n(PS)",
         "Econ & Finance\n(EF)",
@@ -748,7 +746,7 @@ export const BENCHMARK_DATASETS: Record<BenchmarkDatasetId, BenchmarkDatasetConf
     },
     domainBreakdown: {
       title: "INS-ActBench Task Subject Accuracies",
-      subtitle: "Average Accuracy across 16 International Actuarial Associations (Table 3)",
+      subtitle: "Average Accuracy across 16 International Actuarial Associations",
       rows: [
         { domain: "Probability and Statistics (PS)", score: 94.2, color: "#f59e0b" },
         { domain: "Economics and Finance (EF)", score: 92.8, color: "#0ea5e9" },
@@ -760,7 +758,7 @@ export const BENCHMARK_DATASETS: Record<BenchmarkDatasetId, BenchmarkDatasetConf
       ],
     },
     domainWiseAccuracy: {
-      title: "Actuarial Syllabus Accuracies (Table 3 & 11)",
+      title: "Actuarial Syllabus Accuracies",
       subtitle: "Accuracy (%) Across 16 Global Actuarial Bodies vs. Human Expert Baseline",
       domains: [
         {
