@@ -132,12 +132,147 @@ export interface HumanBoundaryRow {
   color: string;
 }
 
+export type MetaTaskKey = "vie" | "var" | "dbd" | "vdd" | "hpad" | "hpdd" | "hpra" | "hrm" | "mir" | "cgsi" | "cti" | "fdd";
+
+export interface MetaTaskDefinition {
+  code: string;
+  key: MetaTaskKey;
+  name: string;
+  domain: "Auto Insurance" | "Property Insurance" | "Health Insurance" | "Agricultural Insurance";
+  domainShort: "Auto" | "Property" | "Health" | "Agriculture";
+  description: string;
+  operationalImpact: string;
+  leaderModel: string;
+  leaderScore: number;
+  secondModel: string;
+  secondScore: number;
+  humanScore: number;
+  color: string;
+}
+
+export interface Table3ModelRow {
+  model: string;
+  category: "Proprietary" | "Open-Source" | "Human Expert";
+  color: string;
+  scores: Record<MetaTaskKey, number>;
+  average: number;
+}
+
+export interface Table3MatrixData {
+  tasks: MetaTaskDefinition[];
+  rows: Table3ModelRow[];
+}
+
+// ── CUFE 5D Competency Matrix Types ──
+export type CufePillarKey = "theory" | "industry" | "compliance" | "agent" | "rigor";
+
+export interface CufePillarDefinition {
+  key: CufePillarKey;
+  code: string;
+  name: string;
+  nameZh: string;
+  subIndicatorCount: number;
+  subIndicators: string[];
+  description: string;
+  industryBottleneck: string;
+  leaderModel: string;
+  leaderScore: number;
+  secondModel: string;
+  secondScore: number;
+  color: string;
+}
+
+export interface CufeModelRow {
+  model: string;
+  tier: "Tier 1" | "Tier 2" | "Tier 3";
+  category: "Domain Model" | "Proprietary" | "Open-Source";
+  color: string;
+  scores: Record<CufePillarKey, number>;
+  totalScore: number;
+}
+
+export interface CufeMatrixData {
+  pillars: CufePillarDefinition[];
+  rows: CufeModelRow[];
+}
+
+// ── InsuranceQA Table 2 & 3 Deep Architecture Types ──
+export interface IbmArchitectureRow {
+  idx: number;
+  architecture: string;
+  shortName: string;
+  category: "Baseline IR" | "Siamese CNN" | "Deep / Multilayer" | "Skip-Bigram CNN" | "Metric Learning";
+  devAcc: number;
+  test1Acc: number;
+  test2Acc: number;
+  formulation: string;
+  details: string;
+  isBestPaperBaseline?: boolean;
+  isBestTable2?: boolean;
+  color: string;
+}
+
+export interface IbmMetricLearningItem {
+  metric: string;
+  type: string;
+  devAcc: number;
+  test1Acc: number;
+  test2Acc: number;
+  formula: string;
+  gainVsCosine: string;
+}
+
+export interface IbmArchitectureMatrixData {
+  rows: IbmArchitectureRow[];
+  candidatePoolSize: number;
+  metrics: IbmMetricLearningItem[];
+}
+
+// ── INS-ActBench Table 3 Actuarial Matrix Types ──
+export type ActBenchTaskKey = "ps" | "ef" | "ama" | "li" | "nli" | "amo" | "case_total" | "ca" | "ss" | "r";
+
+export interface ActBenchTaskDefinition {
+  key: ActBenchTaskKey;
+  code: string;
+  name: string;
+  subset: "INS-Act-Know" | "INS-Act-Case" | "INS-Act-Practice";
+  subsetShort: "Knowledge" | "Case" | "Practice";
+  associationMapping: string;
+  description: string;
+  operationalImpact: string;
+  leaderModel: string;
+  leaderScore: number;
+  secondModel: string;
+  secondScore: number;
+  humanScore: number;
+  color: string;
+}
+
+export interface ActBenchModelRow {
+  model: string;
+  category: "Proprietary" | "Open-Source" | "Human Expert";
+  color: string;
+  scores: Record<ActBenchTaskKey, number>;
+  knowTotal: number;
+  practiceTotal: number;
+  finalTotal: number;
+}
+
+export interface ActBenchMatrixData {
+  tasks: ActBenchTaskDefinition[];
+  rows: ActBenchModelRow[];
+}
+
 export interface UniquePaperInsight {
-  type: "scenario_workflows" | "reasoning_architecture" | "deep_architecture" | "human_boundary";
+  type: "table3_matrix" | "cufe_5d_matrix" | "ibm_architecture_matrix" | "actbench_table3_matrix" | "scenario_workflows" | "reasoning_architecture" | "deep_architecture" | "human_boundary";
   title: string;
   subtitle: string;
   paperRef: string;
   keyTakeaway: string;
+  table3Data?: Table3MatrixData;
+  cufeData?: CufeMatrixData;
+  ibmData?: IbmArchitectureMatrixData;
+  actBenchData?: ActBenchMatrixData;
   scenarioRows?: ScenarioWorkflowRow[];
   reasoningRows?: ReasoningComparisonRow[];
   architectureRows?: ArchitectureEvolutionRow[];
@@ -357,58 +492,341 @@ export const BENCHMARK_DATASETS: Record<BenchmarkDatasetId, BenchmarkDatasetConf
       ],
     },
     uniquePaperInsight: {
-      type: "scenario_workflows",
-      title: "5 Real-World Scenario Workflow Tasks & Decision Accuracy",
-      subtitle: "Multi-Step Workflow Accuracy (%) from ICCV 2025 Paper Table 5 (Stage-2 Evaluation)",
-      paperRef: "ICCV 2025 Table 5 & Section 4.2 · FDU-INS Official Evaluation Suite",
-      keyTakeaway: "While LVLMs reach ~86% on single vehicle damage detection, accuracy drops dramatically in multi-step workflows like Agricultural Disaster (36.4%) and Property Underwriting (63.8%). Human insurance adjusters maintain 60.5% across unstructured claims.",
-      scenarioRows: [
-        {
-          scenario: "Auto Claims Settlement",
-          category: "Damage Severity ➔ Repair Cost ➔ Payout Determination",
-          gpt4o: 74.2,
-          geminiFlash: 67.5,
-          qwenVlMax: 68.0,
-          humanBaseline: 68.5,
-          difficulty: "Medium",
-        },
-        {
-          scenario: "Commercial Property Underwriting",
-          category: "Structure Assessment ➔ Environmental Risk ➔ Premium Tier",
-          gpt4o: 68.5,
-          geminiFlash: 62.0,
-          qwenVlMax: 63.5,
-          humanBaseline: 64.0,
-          difficulty: "Medium",
-        },
-        {
-          scenario: "Health Risk Appraisal",
-          category: "Medical Records + Diagnostic Imaging ➔ Mortality Assessment",
-          gpt4o: 76.7,
-          geminiFlash: 70.3,
-          qwenVlMax: 70.6,
-          humanBaseline: 75.0,
-          difficulty: "High",
-        },
-        {
-          scenario: "Agricultural Disaster Assessment",
-          category: "Drone Crop Inspection ➔ Flood/Hail Area ➔ Payout %",
-          gpt4o: 42.5,
-          geminiFlash: 38.0,
-          qwenVlMax: 37.5,
-          humanBaseline: 52.0,
-          difficulty: "Critical",
-        },
-        {
-          scenario: "Multimodal Fraud Detection",
-          category: "Staged Accident Images ➔ Cross-Claim Inconsistency",
-          gpt4o: 66.8,
-          geminiFlash: 61.2,
-          qwenVlMax: 62.4,
-          humanBaseline: 71.0,
-          difficulty: "Critical",
-        },
-      ],
+      type: "table3_matrix",
+      title: "Table 3: LVLM Performance Across 12 Fundamental Meta-Tasks",
+      subtitle: "Verified Average Accuracy (%) Matrix Across All 12 Meta-Tasks from ICCV 2025 Paper Table 3",
+      paperRef: "ICCV 2025 Paper Table 3 · FDU-INS Official Evaluation Suite",
+      keyTakeaway: "Across all 12 fundamental meta-tasks, GPT-4o leads 7 of 12 matrices (Overall 68.73%). Visual Appearance Recognition (VAR) is the easiest task across all models (98.50%), while Agricultural Farmland Damage Detection (FDD, 34.60%) and Crop Growth Identification (CGSI, 30.80%) remain major industry failure points where human adjusters lead by a wide margin (40.00% and 60.00%).",
+      table3Data: {
+        tasks: [
+          {
+            code: "VIE",
+            key: "vie",
+            name: "Vehicle Information Extraction",
+            domain: "Auto Insurance",
+            domainShort: "Auto",
+            description: "Extracts vehicle license plates, registration attributes, and numerical vehicle tags from incident scenes.",
+            operationalImpact: "Automates claim document intake and policyholder vehicle verification.",
+            leaderModel: "GPT-4o",
+            leaderScore: 81.12,
+            secondModel: "GLM4V-Plus-0111",
+            secondScore: 77.68,
+            humanScore: 79.50,
+            color: "#f59e0b",
+          },
+          {
+            code: "VAR",
+            key: "var",
+            name: "Vehicle Appearance Recognition",
+            domain: "Auto Insurance",
+            domainShort: "Auto",
+            description: "Classifies vehicle make, body type, vehicle color, and exterior integrity.",
+            operationalImpact: "Verifies policy vehicle consistency against reported incident photographs.",
+            leaderModel: "GPT-4o",
+            leaderScore: 98.50,
+            secondModel: "Qwen-VL-Max",
+            secondScore: 98.20,
+            humanScore: 59.50,
+            color: "#f59e0b",
+          },
+          {
+            code: "DBD",
+            key: "dbd",
+            name: "Driving Behavior Detection",
+            domain: "Auto Insurance",
+            domainShort: "Auto",
+            description: "Detects driver inattention, mobile phone usage, seatbelt status, and fatigue from in-cabin dashcam images.",
+            operationalImpact: "Assesses driver culpability and policy exclusion factors in accident underwriting.",
+            leaderModel: "Human baseline",
+            leaderScore: 98.67,
+            secondModel: "GPT-4o",
+            secondScore: 88.60,
+            humanScore: 98.67,
+            color: "#f59e0b",
+          },
+          {
+            code: "VDD",
+            key: "vdd",
+            name: "Vehicle Damage Detection",
+            domain: "Auto Insurance",
+            domainShort: "Auto",
+            description: "Identifies dent severity, scratch location, paint damage, and structural collision impact.",
+            operationalImpact: "Drives automated initial repair estimates and total loss thresholds.",
+            leaderModel: "Gemini 1.5 Flash",
+            leaderScore: 84.40,
+            secondModel: "GPT-4o",
+            secondScore: 83.94,
+            humanScore: 52.78,
+            color: "#f59e0b",
+          },
+          {
+            code: "HPAD",
+            key: "hpad",
+            name: "Property Anomaly Detection",
+            domain: "Property Insurance",
+            domainShort: "Property",
+            description: "Pinpoints water seepage stains, foundation wall cracks, and electrical wiring anomalies.",
+            operationalImpact: "Underwriting pre-inspection and preventative commercial risk appraisal.",
+            leaderModel: "GPT-4o",
+            leaderScore: 91.16,
+            secondModel: "GPT-4o-mini",
+            secondScore: 89.56,
+            humanScore: 73.33,
+            color: "#8b5cf6",
+          },
+          {
+            code: "HPDD",
+            key: "hpdd",
+            name: "Property Damage Detection",
+            domain: "Property Insurance",
+            domainShort: "Property",
+            description: "Classifies severe fire devastation, hurricane roof detachment, and flood structural damage.",
+            operationalImpact: "Guides rapid catastrophe response payouts and temporary housing authorizations.",
+            leaderModel: "GPT-4o",
+            leaderScore: 47.04,
+            secondModel: "Human baseline",
+            secondScore: 46.67,
+            humanScore: 46.67,
+            color: "#8b5cf6",
+          },
+          {
+            code: "HPRA",
+            key: "hpra",
+            name: "Property Risk Assessment",
+            domain: "Property Insurance",
+            domainShort: "Property",
+            description: "Evaluates surrounding wildfire brush exposure, roof material hazard, and building fire spread rating.",
+            operationalImpact: "Determines property coverage terms, deductibles, and reinsurance requirements.",
+            leaderModel: "Qwen-VL-Max",
+            leaderScore: 71.80,
+            secondModel: "Gemini 1.5 Flash",
+            secondScore: 70.40,
+            humanScore: 63.33,
+            color: "#8b5cf6",
+          },
+          {
+            code: "HRM",
+            key: "hrm",
+            name: "Health Risk Monitoring",
+            domain: "Health Insurance",
+            domainShort: "Health",
+            description: "Analyzes biometric monitor readings, physical indicators, and patient mobility constraints.",
+            operationalImpact: "Supports life/health policy health score appraisal and premium tiering.",
+            leaderModel: "GPT-4o",
+            leaderScore: 95.72,
+            secondModel: "GPT-4o-mini",
+            secondScore: 94.39,
+            humanScore: 85.00,
+            color: "#0ea5e9",
+          },
+          {
+            code: "MIR",
+            key: "mir",
+            name: "Medical Image Recognition",
+            domain: "Health Insurance",
+            domainShort: "Health",
+            description: "Interprets bone fractures on trauma X-rays, diagnostic CT scans, and tissue lesion anomalies.",
+            operationalImpact: "Validates medical claim necessity and trauma treatment billing accuracy.",
+            leaderModel: "Qwen-2.5-VL-32B",
+            leaderScore: 70.40,
+            secondModel: "GPT-4o",
+            secondScore: 66.50,
+            humanScore: 65.00,
+            color: "#0ea5e9",
+          },
+          {
+            code: "CGSI",
+            key: "cgsi",
+            name: "Crop Growth Stage Identification",
+            domain: "Agricultural Insurance",
+            domainShort: "Agriculture",
+            description: "Identifies vegetative, flowering, grain-fill, and ripening stages from aerial drone photography.",
+            operationalImpact: "Validates insured crop growth timeline for seasonal policy binding.",
+            leaderModel: "Human baseline",
+            leaderScore: 60.00,
+            secondModel: "Gemini 1.5 Flash",
+            secondScore: 36.60,
+            humanScore: 60.00,
+            color: "#10b981",
+          },
+          {
+            code: "CTI",
+            key: "cti",
+            name: "Crop Type Identification",
+            domain: "Agricultural Insurance",
+            domainShort: "Agriculture",
+            description: "Classifies multispectral farmland imagery into corn, winter wheat, rice, sorghum, and soybean.",
+            operationalImpact: "Prevents fraudulent crop acreage declarations across multi-peril crop policies.",
+            leaderModel: "GPT-4o",
+            leaderScore: 41.31,
+            secondModel: "Qwen-VL-Max",
+            secondScore: 40.37,
+            humanScore: 35.00,
+            color: "#10b981",
+          },
+          {
+            code: "FDD",
+            key: "fdd",
+            name: "Farmland Damage Detection",
+            domain: "Agricultural Insurance",
+            domainShort: "Agriculture",
+            description: "Pinpoints drought soil desiccation, hail stripping, flood ponding, and pest destruction percentage.",
+            operationalImpact: "Calculates automated index insurance payouts following severe climate events.",
+            leaderModel: "Human baseline",
+            leaderScore: 40.00,
+            secondModel: "GPT-4o",
+            secondScore: 34.60,
+            humanScore: 40.00,
+            color: "#10b981",
+          },
+        ],
+        rows: [
+          {
+            model: "GPT-4o",
+            category: "Proprietary",
+            color: "#f59e0b",
+            average: 68.73,
+            scores: {
+              vie: 81.12, var: 98.50, dbd: 88.60, vdd: 83.94,
+              hpad: 91.16, hpdd: 47.04, hpra: 65.50,
+              hrm: 95.72, mir: 66.50,
+              cgsi: 30.80, cti: 41.31, fdd: 34.60,
+            },
+          },
+          {
+            model: "Qwen-VL-Max",
+            category: "Proprietary",
+            color: "#0ea5e9",
+            average: 64.72,
+            scores: {
+              vie: 75.28, var: 98.20, dbd: 74.80, vdd: 81.88,
+              hpad: 80.72, hpdd: 45.79, hpra: 71.80,
+              hrm: 88.24, mir: 64.00,
+              cgsi: 29.60, cti: 40.37, fdd: 26.00,
+            },
+          },
+          {
+            model: "Gemini 1.5 Flash",
+            category: "Proprietary",
+            color: "#10b981",
+            average: 63.54,
+            scores: {
+              vie: 67.28, var: 96.80, dbd: 79.20, vdd: 84.40,
+              hpad: 74.30, hpdd: 46.36, hpra: 70.40,
+              hrm: 81.82, mir: 66.00,
+              cgsi: 36.60, cti: 38.10, fdd: 21.20,
+            },
+          },
+          {
+            model: "GLM4V-Plus-0111",
+            category: "Proprietary",
+            color: "#06b6d4",
+            average: 62.33,
+            scores: {
+              vie: 77.68, var: 92.60, dbd: 84.40, vdd: 80.58,
+              hpad: 58.84, hpdd: 42.94, hpra: 67.00,
+              hrm: 90.11, mir: 65.90,
+              cgsi: 28.80, cti: 33.56, fdd: 25.60,
+            },
+          },
+          {
+            model: "GPT-4V",
+            category: "Proprietary",
+            color: "#ec4899",
+            average: 62.27,
+            scores: {
+              vie: 72.16, var: 93.60, dbd: 66.20, vdd: 80.35,
+              hpad: 88.35, hpdd: 41.80, hpra: 65.80,
+              hrm: 94.12, mir: 62.10,
+              cgsi: 23.60, cti: 39.17, fdd: 20.00,
+            },
+          },
+          {
+            model: "GPT-4o-mini",
+            category: "Proprietary",
+            color: "#f97316",
+            average: 61.34,
+            scores: {
+              vie: 70.24, var: 95.20, dbd: 85.80, vdd: 75.23,
+              hpad: 89.56, hpdd: 39.75, hpra: 60.60,
+              hrm: 94.39, mir: 52.10,
+              cgsi: 23.80, cti: 34.36, fdd: 15.00,
+            },
+          },
+          {
+            model: "Qwen-VL-Plus",
+            category: "Proprietary",
+            color: "#38bdf8",
+            average: 54.52,
+            scores: {
+              vie: 63.84, var: 96.20, dbd: 69.60, vdd: 69.88,
+              hpad: 57.03, hpdd: 39.18, hpra: 56.40,
+              hrm: 86.10, mir: 57.00,
+              cgsi: 15.40, cti: 25.40, fdd: 18.20,
+            },
+          },
+          {
+            model: "Claude3V-Haiku",
+            category: "Proprietary",
+            color: "#d97706",
+            average: 50.12,
+            scores: {
+              vie: 45.76, var: 86.80, dbd: 52.40, vdd: 66.13,
+              hpad: 75.10, hpdd: 27.90, hpra: 62.40,
+              hrm: 84.49, mir: 49.50,
+              cgsi: 19.80, cti: 23.53, fdd: 7.60,
+            },
+          },
+          {
+            model: "Qwen-2.5-VL-32B",
+            category: "Open-Source",
+            color: "#8b5cf6",
+            average: 63.44,
+            scores: {
+              vie: 76.48, var: 94.80, dbd: 75.00, vdd: 77.83,
+              hpad: 73.69, hpdd: 38.04, hpra: 64.60,
+              hrm: 91.98, mir: 70.40,
+              cgsi: 27.60, cti: 38.90, fdd: 32.00,
+            },
+          },
+          {
+            model: "Qwen-VL-Chat",
+            category: "Open-Source",
+            color: "#a855f7",
+            average: 50.24,
+            scores: {
+              vie: 44.32, var: 94.60, dbd: 59.60, vdd: 55.50,
+              hpad: 59.04, hpdd: 30.41, hpra: 60.00,
+              hrm: 80.75, mir: 59.30,
+              cgsi: 15.80, cti: 30.62, fdd: 13.00,
+            },
+          },
+          {
+            model: "LLaVA",
+            category: "Open-Source",
+            color: "#64748b",
+            average: 49.66,
+            scores: {
+              vie: 32.64, var: 60.20, dbd: 51.80, vdd: 49.69,
+              hpad: 87.35, hpdd: 34.85, hpra: 65.00,
+              hrm: 83.69, mir: 57.54,
+              cgsi: 21.40, cti: 37.57, fdd: 14.20,
+            },
+          },
+          {
+            model: "Human baseline",
+            category: "Human Expert",
+            color: "#22c55e",
+            average: 63.23,
+            scores: {
+              vie: 79.50, var: 59.50, dbd: 98.67, vdd: 52.78,
+              hpad: 73.33, hpdd: 46.67, hpra: 63.33,
+              hrm: 85.00, mir: 65.00,
+              cgsi: 60.00, cti: 35.00, fdd: 40.00,
+            },
+          },
+        ],
+      },
     },
   },
 
@@ -590,48 +1008,239 @@ export const BENCHMARK_DATASETS: Record<BenchmarkDatasetId, BenchmarkDatasetConf
       ],
     },
     uniquePaperInsight: {
-      type: "reasoning_architecture",
-      title: "Reasoning Architecture Impact: Thinking (CoT) vs Non-Thinking & Domain Specialization",
-      subtitle: "Progression Scores (0–100 pts) from CUFE Official March 2026 Evaluation Suite",
-      paperRef: "CUFEInse v2.0 Official Report Section 3.1 & Section 5.1/5.2",
-      keyTakeaway: "Chain-of-thought reasoning yields up to +6.63 pts surge in insurance disciplines. Meanwhile, vertical domain model AntGroup Finix-S1 leads all general frontier models in Regulatory Compliance (85.69 pts) and Numerical Rigor (93.25 pts).",
-      reasoningRows: [
-        {
-          model: "Doubao-Seed-2.0-Lite",
-          thinkingScore: 85.01,
-          nonThinkingScore: 78.38,
-          gainFormatted: "+6.63 pts (+8.5% reasoning surge)",
-          color: "#0ea5e9",
-        },
-        {
-          model: "Qwen3.5-Plus",
-          thinkingScore: 84.43,
-          nonThinkingScore: 83.24,
-          gainFormatted: "+1.19 pts (+1.4% gain)",
-          color: "#06b6d4",
-        },
-        {
-          model: "Gemini-3.1-Pro-Preview",
-          thinkingScore: 87.36,
-          nonThinkingScore: 85.10,
-          gainFormatted: "+2.26 pts (+2.7% gain)",
-          color: "#38bdf8",
-        },
-        {
-          model: "DeepSeek-R1-0528",
-          thinkingScore: 83.51,
-          nonThinkingScore: 81.20,
-          gainFormatted: "+2.31 pts (+2.8% gain)",
-          color: "#8b5cf6",
-        },
-        {
-          model: "AntGroup Finix-S1 (Vertical Model)",
-          thinkingScore: 87.23,
-          isSpecialized: true,
-          specialtyBadge: "Domain SOTA: #1 in Compliance (85.7 pts) & Numerical Rigor (93.3 pts)",
-          color: "#10b981",
-        },
-      ],
+      type: "cufe_5d_matrix",
+      title: "CUFEInse Official 5-Dimensional Competency Matrix",
+      subtitle: "Verified Evaluation Scores (0–100 pts) Across All 5 Dimensions & 54 Sub-Indicators (Official CUFE Report Table 1)",
+      paperRef: "CUFE Official Evaluation Report Table 1 (p. 8) & March 2026 Evaluation Suite",
+      keyTakeaway: "Domain-specific model AntGroup Finix-S1 leads 4 of 5 core pillars (Overall 89.51 pts), dominating Calculation Rigor (96.15 pts) and Industry Understanding (92.47 pts). Meanwhile, Marketing Copy Compliance is the #1 industry bottleneck where over 70% of evaluated models score under 80 pts.",
+      cufeData: {
+        pillars: [
+          {
+            key: "theory",
+            code: "THY",
+            name: "Insurance Theoretical Knowledge",
+            nameZh: "Theoretical Knowledge",
+            subIndicatorCount: 14,
+            subIndicators: [
+              "Fundamentals of Insurance Science",
+              "Insurance Contract Law & Commercial Law",
+              "Insurance Market Operating Mechanisms",
+              "Principles of Actuarial Mathematics",
+              "Professional Qualification Standards",
+              "Risk Management & Underwriting Theory",
+              "Property & Casualty Principles",
+              "Life & Health Insurance Theory",
+              "Reinsurance Treaties & Conventions",
+              "Solvency & Capital Adequacy Regulations",
+              "Foundations of Underwriting Theory",
+              "Foundations of Claims Adjudication",
+              "Marine & Cargo Insurance Regulations",
+              "Social Insurance & Enterprise Annuities",
+            ],
+            description: "Evaluates comprehensive mastery of academic insurance principles, insurance contract law, actuarial foundations, and regulatory solvency doctrines.",
+            industryBottleneck: "General frontier models excel in foundational breadth, but struggle with core actuarial mathematics where GPT-4o scores only 29.83 pts.",
+            leaderModel: "Gemini-2.5-pro-0617",
+            leaderScore: 88.00,
+            secondModel: "Qwen3-235B-A22B-think",
+            secondScore: 85.42,
+            color: "#8b5cf6",
+          },
+          {
+            key: "industry",
+            code: "IND",
+            name: "Insurance Industry Understanding",
+            nameZh: "Industry Understanding",
+            subIndicatorCount: 18,
+            subIndicators: [
+              "Insurable Population & Target Profiling",
+              "Coverage Scope & Policy Wording Analysis",
+              "Underwriting Rule Extraction",
+              "Claims Triage & First-Pass Adjudication",
+              "Policy Endorsement & Policyholder Servicing",
+              "ICD Diagnostic Code Normalization",
+              "Surgical Procedure Standardization",
+              "Laboratory Diagnostic Interpretation",
+              "Critical Illness Morbidity Risk Scoring",
+              "Commercial General Liability Scope",
+              "Motor Collision Damage Boundaries",
+              "Reinsurance Treaty Cession Terms",
+              "Health Deductible & Benefit Schedules",
+              "Policy Exclusions & Disclaimers",
+              "Subrogation Rights Determination",
+              "Insurable Interest Verification",
+              "Surrender Cash Value Calculations",
+              "Field Inspection & Loss Adjustment Standards",
+            ],
+            description: "Assesses comprehension of real-world insurer workflows: policy issuance, underwriting rule extraction, medical terminology normalization, and claim adjudication.",
+            industryBottleneck: "Cross-domain medical-insurance interpretation is a severe barrier; over 60% of models fail on health risk profiling and lab test parsing.",
+            leaderModel: "AntGroup Finix-S1",
+            leaderScore: 92.47,
+            secondModel: "Qwen3-235B-A22B-instruct",
+            secondScore: 82.75,
+            color: "#0ea5e9",
+          },
+          {
+            key: "compliance",
+            code: "CMP",
+            name: "Insurance Safety & Compliance",
+            nameZh: "Safety & Compliance",
+            subIndicatorCount: 5,
+            subIndicators: [
+              "Marketing Collateral Regulatory Compliance",
+              "Financial Regulatory Baseline Directives",
+              "Insurance Ethics & Public Interest",
+              "Consumer Privacy & Data Protection",
+              "Misleading Sales & Over-Promising Prevention",
+            ],
+            description: "Evaluates strict adherence to financial regulatory directives, ethical sales standards, marketing veracity, and policyholder privacy boundaries.",
+            industryBottleneck: "Marketing copy compliance is the highest industry risk point: over 70% of evaluated models score under 80 pts due to promotional hallucination.",
+            leaderModel: "AntGroup Finix-S1",
+            leaderScore: 86.78,
+            secondModel: "Gemini-2.5-pro-0617",
+            secondScore: 78.80,
+            color: "#ec4899",
+          },
+          {
+            key: "agent",
+            code: "AGT",
+            name: "Insurance Agentic Applications",
+            nameZh: "Agentic Applications",
+            subIndicatorCount: 8,
+            subIndicators: [
+              "Condition-Based Product Selection",
+              "Multi-Dimensional Policy Comparison",
+              "Personalized Multi-Line Coverage Structuring",
+              "Complex Underwriting Decision Reasoning",
+              "Complex Claim Adjudication Reasoning",
+              "Actuarial & Underwriting Tool Invocation",
+              "Ambiguous User Intent Disambiguation",
+              "Family Portfolio Coverage Gap Diagnosis",
+            ],
+            description: "Assesses end-to-end agentic capabilities: understanding client needs, analyzing product matrices, calling external underwriting tools, and generating auditable recommendations.",
+            industryBottleneck: "Automated underwriting & claims decision reasoning scores lowest (<71 pts); models easily invoke tools but falter on binding decision paths.",
+            leaderModel: "AntGroup Finix-S1",
+            leaderScore: 86.86,
+            secondModel: "Qwen3-235B-A22B-instruct",
+            secondScore: 85.52,
+            color: "#10b981",
+          },
+          {
+            key: "rigor",
+            code: "RGR",
+            name: "Logical & Calculation Rigor",
+            nameZh: "Calculation Rigor",
+            subIndicatorCount: 9,
+            subIndicators: [
+              "Multi-Step Comprehensive Yield Calculations",
+              "Actuarial Embedded Value Derivations",
+              "Cash Surrender Value Amortization",
+              "Short-Rate Proration & Premium Refunds",
+              "Aggregate Policy Limits & Sub-Limits Summation",
+              "Deductible Pro-Rata Allocation Logic",
+              "Coinsurance & Double Insurance Contribution",
+              "Rigorous Exclusion Boundary Demarcation",
+              "Problem Ambiguity & Trap Identification",
+            ],
+            description: "Measures computational precision in multi-step policy cash surrender values, compound investment yields, actuarial premium rates, and exclusion bounds.",
+            industryBottleneck: "Massive 40+ point score spread between frontier reasoning models and non-reasoning models in compound financial math.",
+            leaderModel: "AntGroup Finix-S1",
+            leaderScore: 96.15,
+            secondModel: "DeepSeek-R1-0528",
+            secondScore: 95.07,
+            color: "#f59e0b",
+          },
+        ],
+        rows: [
+          {
+            model: "AntGroup Finix-S1",
+            tier: "Tier 1",
+            category: "Domain Model",
+            color: "#0ea5e9",
+            totalScore: 89.51,
+            scores: { theory: 85.28, industry: 92.47, compliance: 86.78, agent: 86.86, rigor: 96.15 },
+          },
+          {
+            model: "Gemini-2.5-pro-0617",
+            tier: "Tier 1",
+            category: "Proprietary",
+            color: "#f59e0b",
+            totalScore: 85.11,
+            scores: { theory: 88.00, industry: 84.52, compliance: 78.80, agent: 82.55, rigor: 91.69 },
+          },
+          {
+            model: "DeepSeek-R1-0528",
+            tier: "Tier 2",
+            category: "Open-Source",
+            color: "#ec4899",
+            totalScore: 84.20,
+            scores: { theory: 84.75, industry: 82.27, compliance: 75.17, agent: 83.75, rigor: 95.07 },
+          },
+          {
+            model: "Qwen3-235B-A22B-think",
+            tier: "Tier 2",
+            category: "Open-Source",
+            color: "#8b5cf6",
+            totalScore: 83.03,
+            scores: { theory: 85.42, industry: 80.30, compliance: 78.23, agent: 83.69, rigor: 87.52 },
+          },
+          {
+            model: "Qwen3-235B-A22B-instruct",
+            tier: "Tier 2",
+            category: "Open-Source",
+            color: "#a855f7",
+            totalScore: 82.66,
+            scores: { theory: 79.07, industry: 82.75, compliance: 73.93, agent: 85.52, rigor: 92.04 },
+          },
+          {
+            model: "DianJin-R1",
+            tier: "Tier 2",
+            category: "Domain Model",
+            color: "#10b981",
+            totalScore: 80.35,
+            scores: { theory: 79.88, industry: 80.47, compliance: 69.82, agent: 78.25, rigor: 93.30 },
+          },
+          {
+            model: "Qwen3-32B-think",
+            tier: "Tier 2",
+            category: "Open-Source",
+            color: "#6366f1",
+            totalScore: 80.34,
+            scores: { theory: 80.62, industry: 82.48, compliance: 65.63, agent: 82.68, rigor: 90.28 },
+          },
+          {
+            model: "Qwen3-32B-instruct",
+            tier: "Tier 3",
+            category: "Open-Source",
+            color: "#06b6d4",
+            totalScore: 79.87,
+            scores: { theory: 76.61, industry: 82.37, compliance: 70.80, agent: 79.90, rigor: 89.65 },
+          },
+          {
+            model: "GPT-4o-1120",
+            tier: "Tier 3",
+            category: "Proprietary",
+            color: "#f97316",
+            totalScore: 79.71,
+            scores: { theory: 72.42, industry: 82.28, compliance: 69.33, agent: 84.58, rigor: 89.92 },
+          },
+          {
+            model: "gpt-oss-120b",
+            tier: "Tier 3",
+            category: "Open-Source",
+            color: "#64748b",
+            totalScore: 79.41,
+            scores: { theory: 75.47, industry: 78.16, compliance: 70.82, agent: 79.14, rigor: 93.46 },
+          },
+          {
+            model: "Fin-R1",
+            tier: "Tier 3",
+            category: "Domain Model",
+            color: "#d97706",
+            totalScore: 71.46,
+            scores: { theory: 66.77, industry: 74.76, compliance: 67.09, agent: 66.52, rigor: 82.16 },
+          },
+        ],
+      },
     },
   },
 
@@ -802,71 +1411,257 @@ export const BENCHMARK_DATASETS: Record<BenchmarkDatasetId, BenchmarkDatasetConf
       ],
     },
     uniquePaperInsight: {
-      type: "deep_architecture",
-      title: "Deep Architecture Evolution & Similarity Metric Impact (IBM Watson Study)",
-      subtitle: "Top-1 Precision P@1 (%) Across 500-Candidate Ranking Pools (ACL / IEEE ASRU 2015)",
-      paperRef: "IBM Watson Research Table 2, Table 3 (GESD) & Modern NLP Progression",
-      keyTakeaway: "Scaling CNN filters from 1000 to 4000 boosted precision from 61.4% to 63.8%. Replacing Cosine similarity with the proposed GESD metric reached 65.3% (Table 3 best). Modern cross-encoders establish the current ceiling at 81.4%.",
-      architectureRows: [
-        {
-          architecture: "Lexical IR Baseline (BM25 / Metzler)",
-          era: "2014 Classic IR",
-          metric: "BM25 Term Match",
-          top1Accuracy: 55.1,
-          details: "Word count matching without semantic knowledge representation",
-          color: "#64748b",
-        },
-        {
-          architecture: "Architecture II (CNN 1000 Filters)",
-          era: "ACL 2015",
-          metric: "Cosine Similarity",
-          top1Accuracy: 61.4,
-          details: "Shared latent CNN representations with max-pooling",
-          color: "#0284c7",
-        },
-        {
-          architecture: "Architecture II (CNN 2000 Filters)",
-          era: "ACL 2015",
-          metric: "Cosine Similarity",
-          top1Accuracy: 63.2,
-          details: "Expanded filter capacity to capture insurance phrases",
-          color: "#0ea5e9",
-        },
-        {
-          architecture: "Architecture II (CNN 4000 Filters)",
-          era: "ACL 2015",
-          metric: "Cosine Similarity",
-          top1Accuracy: 63.8,
-          details: "Max-capacity CNN representation under standard Cosine metric",
-          color: "#38bdf8",
-        },
-        {
-          architecture: "Architecture II + GESD Metric",
-          era: "ACL 2015 Best",
-          metric: "GESD Metric (Geometric Euclidean + Sigmoid)",
-          top1Accuracy: 65.3,
-          isBenchmarkBaseline: true,
-          details: "Original Paper #1 Architecture (Table 3 Best Result)",
-          color: "#10b981",
-        },
-        {
-          architecture: "Modern RAG (GPT-4o + Vector)",
-          era: "Modern Frontier",
-          metric: "Dense Bi-Encoder",
-          top1Accuracy: 79.2,
-          details: "Dense embedding retrieval with generative synthesis",
-          color: "#f59e0b",
-        },
-        {
-          architecture: "Cross-Encoder SOTA (RoBERTa-Large)",
-          era: "Modern SOTA",
-          metric: "Joint Cross-Attention",
-          top1Accuracy: 81.4,
-          isSOTA: true,
-          details: "All-to-all cross-attention scoring across candidate pairs",
-          color: "#ec4899",
-        },
-      ],
+      type: "ibm_architecture_matrix",
+      title: "Table 2 & 3: Deep Neural Architecture & Metric Learning Evaluation Matrix",
+      subtitle: "Verified Top-1 Precision P@1 (%) Across 500-Candidate Ranking Pools (IBM Watson Research ACL / IEEE ASRU 2015)",
+      paperRef: "IBM Watson Research Paper Table 2 (Architectures) & Table 3 (Similarity Metrics)",
+      keyTakeaway: "Siamese CNN with parameter sharing (Architecture II) outperforms unshared weights by +16.1% (57.8% vs 41.7%). Scaling CNN capacity to 4000 filters reaches 62.8% Top-1 Precision on Test-1, while replacing Cosine similarity with the proposed GESD/AESD metric establishes the highest benchmark score at 63.4% Dev / 62.1% Test-1.",
+      ibmData: {
+        candidatePoolSize: 500,
+        rows: [
+          {
+            idx: 1,
+            architecture: "Baseline: Bag-of-Words",
+            shortName: "BOW Baseline",
+            category: "Baseline IR",
+            devAcc: 31.9,
+            test1Acc: 32.1,
+            test2Acc: 32.2,
+            formulation: "Cosine(v_q, v_a) over Term Frequency Vectors",
+            details: "Classic non-deep IR baseline matching word unigram frequencies without latent semantic representations.",
+            color: "#64748b",
+          },
+          {
+            idx: 2,
+            architecture: "Baseline: Metzler-Bendersky IR Model",
+            shortName: "Metzler-Bendersky MRF",
+            category: "Baseline IR",
+            devAcc: 52.7,
+            test1Acc: 55.1,
+            test2Acc: 50.8,
+            formulation: "Markov Random Field over Term + Bigram Features",
+            details: "State-of-the-art classical IR baseline using learned importance weighting over unigrams and bigrams.",
+            color: "#94a3b8",
+          },
+          {
+            idx: 3,
+            architecture: "Architecture I: Unshared Weights",
+            shortName: "Arch I (Unshared)",
+            category: "Siamese CNN",
+            devAcc: 44.2,
+            test1Acc: 41.7,
+            test2Acc: 39.5,
+            formulation: "HL_Q(200) + HL_A(200) -> CNN_Q(1000) + CNN_A(1000) -> 1-Max -> Tanh",
+            details: "Independent hidden layers and separate CNN filters for questions and candidate answers; severe overfitting.",
+            color: "#f87171",
+          },
+          {
+            idx: 4,
+            architecture: "Architecture II: Shared HLQA (200) + CNNQA (1000)",
+            shortName: "Arch II (1000 Filters)",
+            category: "Siamese CNN",
+            devAcc: 58.2,
+            test1Acc: 57.8,
+            test2Acc: 53.6,
+            formulation: "Shared HL_QA(200) -> Shared CNN_QA(1000) -> 1-MaxPooling -> Tanh",
+            details: "Core parameter-shared Siamese network mapping questions and candidate answers into an identical semantic subspace.",
+            color: "#0284c7",
+          },
+          {
+            idx: 5,
+            architecture: "Architecture III: Unshared Post-CNN Layers",
+            shortName: "Arch III (Post HL)",
+            category: "Deep / Multilayer",
+            devAcc: 36.1,
+            test1Acc: 33.6,
+            test2Acc: 32.7,
+            formulation: "Shared HL_QA(200) -> CNN_QA(1000) -> Post HL_Q(1000) + HL_A(1000)",
+            details: "Adds separate unshared feedforward layers after convolution; drastically degraded ranking accuracy.",
+            color: "#fb7185",
+          },
+          {
+            idx: 6,
+            architecture: "Architecture IV: Shared Pre/Post HLQA (1000)",
+            shortName: "Arch IV (Post HL 1000)",
+            category: "Deep / Multilayer",
+            devAcc: 51.4,
+            test1Acc: 50.5,
+            test2Acc: 46.1,
+            formulation: "Shared HL_QA(200) -> CNN_QA(1000) -> Shared Post HL_QA(1000)",
+            details: "Shared post-CNN hidden representation of size 1000 units.",
+            color: "#a855f7",
+          },
+          {
+            idx: 7,
+            architecture: "Architecture IV: Shared Pre/Post HLQA (500)",
+            shortName: "Arch IV (Post HL 500)",
+            category: "Deep / Multilayer",
+            devAcc: 47.0,
+            test1Acc: 46.7,
+            test2Acc: 43.0,
+            formulation: "Shared HL_QA(200) -> CNN_QA(1000) -> Shared Post HL_QA(500)",
+            details: "Shared post-CNN hidden representation with reduced bottleneck size of 500 units.",
+            color: "#c084fc",
+          },
+          {
+            idx: 8,
+            architecture: "Architecture II: Scaled CNNQA (2000 Filters)",
+            shortName: "Arch II (2000 Filters)",
+            category: "Siamese CNN",
+            devAcc: 60.6,
+            test1Acc: 59.2,
+            test2Acc: 55.1,
+            formulation: "Shared HL_QA(200) -> Shared CNN_QA(2000) -> 1-MaxPooling -> Tanh",
+            details: "Doubled filter quantity to extract wider vocabulary of insurance jargon and multi-word n-gram patterns.",
+            color: "#0ea5e9",
+          },
+          {
+            idx: 9,
+            architecture: "Architecture II: Scaled CNNQA (3000 Filters)",
+            shortName: "Arch II (3000 Filters)",
+            category: "Siamese CNN",
+            devAcc: 61.5,
+            test1Acc: 61.3,
+            test2Acc: 57.8,
+            formulation: "Shared HL_QA(200) -> Shared CNN_QA(3000) -> 1-MaxPooling -> Tanh",
+            details: "Tripled filter capacity; crosses 61% accuracy on 500-candidate answer pool.",
+            color: "#38bdf8",
+          },
+          {
+            idx: 10,
+            architecture: "Architecture II: Scaled CNNQA (4000 Filters)",
+            shortName: "Arch II (4000 Filters) [Table 2 Best]",
+            category: "Siamese CNN",
+            devAcc: 61.8,
+            test1Acc: 62.8,
+            test2Acc: 59.2,
+            formulation: "Shared HL_QA(200) -> Shared CNN_QA(4000) -> 1-MaxPooling -> Tanh",
+            details: "Optimal convolutional capacity in Table 2; achieves 62.8% Top-1 Precision on Test-1 and 59.2% on Test-2.",
+            isBestTable2: true,
+            color: "#10b981",
+          },
+          {
+            idx: 11,
+            architecture: "Architecture V: Deep 2-Layer CNNQA",
+            shortName: "Arch V (2-Layer CNN)",
+            category: "Deep / Multilayer",
+            devAcc: 59.7,
+            test1Acc: 59.3,
+            test2Acc: 55.6,
+            formulation: "Shared HL_QA(200) -> CNN_QA(1000) -> 2nd CNN_QA(1000) -> 1-Max",
+            details: "Hierarchical convolution where second CNN treats output bigrams of first layer as input word embeddings.",
+            color: "#6366f1",
+          },
+          {
+            idx: 12,
+            architecture: "Architecture VI: Layer-Wise Supervised CNN (2COST)",
+            shortName: "Arch VI (2-Layer 2COST)",
+            category: "Deep / Multilayer",
+            devAcc: 59.9,
+            test1Acc: 60.6,
+            test2Acc: 55.9,
+            formulation: "Shared HL_QA(200) -> CNN1(1000) [Loss 1] -> CNN2(1000) [Loss 2]",
+            details: "Deep 2-layer CNN with layer-wise supervision backpropagating ranking loss from both convolution levels.",
+            color: "#818cf8",
+          },
+          {
+            idx: 13,
+            architecture: "Architecture II: Augmented Skip-Bigram (1000)",
+            shortName: "Arch II Skip-Bigram (1000)",
+            category: "Skip-Bigram CNN",
+            devAcc: 59.9,
+            test1Acc: 58.7,
+            test2Acc: 53.8,
+            formulation: "Augmented Discontinuous Convolution (1000 Filters) -> 1-Max",
+            details: "Receptive field expanded to match discontinuous bigram pairs (w1..w3, w2..w4) across policy clauses.",
+            color: "#f59e0b",
+          },
+          {
+            idx: 14,
+            architecture: "Architecture II: Augmented Skip-Bigram (2000)",
+            shortName: "Arch II Skip-Bigram (2000)",
+            category: "Skip-Bigram CNN",
+            devAcc: 60.0,
+            test1Acc: 60.3,
+            test2Acc: 54.3,
+            formulation: "Augmented Discontinuous Convolution (2000 Filters) -> 1-Max",
+            details: "Skip-bigram convolution with 2000 filter capacity.",
+            color: "#fbbf24",
+          },
+          {
+            idx: 15,
+            architecture: "Architecture II: Augmented Skip-Bigram (3000)",
+            shortName: "Arch II Skip-Bigram (3000)",
+            category: "Skip-Bigram CNN",
+            devAcc: 61.7,
+            test1Acc: 62.2,
+            test2Acc: 56.3,
+            formulation: "Augmented Discontinuous Convolution (3000 Filters) -> 1-Max",
+            details: "Highest-performing skip-bigram architecture matching 4000-filter standard convolution efficiency.",
+            color: "#fde047",
+          },
+          {
+            idx: 16,
+            architecture: "Table 3 SOTA: Arch II + GESD/AESD Metric Learning",
+            shortName: "Arch II + GESD Metric [Paper SOTA]",
+            category: "Metric Learning",
+            devAcc: 63.4,
+            test1Acc: 62.1,
+            test2Acc: 59.3,
+            formulation: "k(x, y) = 1 / (1 + ||x - y||) * 1 / (1 + exp(-γ(x^T y + c)))",
+            details: "Novel Geometric Euclidean + Sigmoid Dot-Product metric proposed in Table 3; establishes highest official paper score.",
+            isBestPaperBaseline: true,
+            color: "#34d399",
+          },
+        ],
+        metrics: [
+          {
+            metric: "GESD Metric (Proposed Table 3)",
+            type: "Geometric Euclidean + Sigmoid",
+            devAcc: 63.4,
+            test1Acc: 62.1,
+            test2Acc: 59.3,
+            formula: "k(x,y) = 1/(1 + ||x-y||) * 1/(1 + exp(-γ(xy + c)))",
+            gainVsCosine: "+4.3% vs Standard Cosine",
+          },
+          {
+            metric: "AESD Metric (Proposed Table 3)",
+            type: "Arithmetic Euclidean + Sigmoid",
+            devAcc: 63.1,
+            test1Acc: 61.9,
+            test2Acc: 58.2,
+            formula: "k(x,y) = 0.5/(1 + ||x-y||) + 0.5/(1 + exp(-γ(xy + c)))",
+            gainVsCosine: "+4.1% vs Standard Cosine",
+          },
+          {
+            metric: "RBF Radial Basis Kernel",
+            type: "Nonlinear Gaussian Kernel",
+            devAcc: 60.2,
+            test1Acc: 60.3,
+            test2Acc: 54.4,
+            formula: "k(x,y) = exp(-γ||x - y||^2)",
+            gainVsCosine: "+2.5% vs Standard Cosine",
+          },
+          {
+            metric: "Sigmoid Kernel",
+            type: "Hyperbolic Tangent",
+            devAcc: 61.3,
+            test1Acc: 59.9,
+            test2Acc: 57.0,
+            formula: "k(x,y) = tanh(γ(xy) + c)",
+            gainVsCosine: "+2.1% vs Standard Cosine",
+          },
+          {
+            metric: "Standard Cosine Similarity",
+            type: "Normalized Vector Dot Product",
+            devAcc: 58.2,
+            test1Acc: 57.8,
+            test2Acc: 53.6,
+            formula: "k(x,y) = (xy) / (||x|| * ||y||)",
+            gainVsCosine: "Baseline Similarity (0.0%)",
+          },
+        ],
+      },
     },
   },
 
@@ -1078,68 +1873,267 @@ export const BENCHMARK_DATASETS: Record<BenchmarkDatasetId, BenchmarkDatasetConf
       ],
     },
     uniquePaperInsight: {
-      type: "human_boundary",
-      title: "Human Actuarial Expert Boundary: Knowledge vs Case Analysis vs Tool Practice",
-      subtitle: "Accuracy (%) Across 3 Distinct Operational Subsets (INS-ActBench Paper Table 3 & Table 8)",
-      paperRef: "arXiv:2607.24273 Table 3 & Individual Human Expert Trials (Table 8)",
-      keyTakeaway: "Frontier LLMs outperform certified actuaries on standardized exam knowledge (+10.1%), but collapse below human experts on long-context case reasoning (-24.1%) and executable spreadsheet/R tools (-17.0%).",
-      humanBoundaryRows: [
-        {
-          model: "Certified Human Actuaries (Baseline)",
-          knowledgeScore: 84.40,
-          caseReasoningScore: 79.60,
-          toolPracticeScore: 84.92,
-          isHuman: true,
-          statusBadge: "Gold Standard Actuarial Baseline",
-          deltaVsHuman: "Balanced: 84.4% Know · 79.6% Case · 84.9% Practice",
-          color: "#10b981",
-        },
-        {
-          model: "Gemini-3.1-Pro",
-          knowledgeScore: 94.53,
-          caseReasoningScore: 55.53,
-          toolPracticeScore: 67.91,
-          statusBadge: "#1 in Actuarial Knowledge (94.5%)",
-          deltaVsHuman: "+10.1% Know · -24.1% Case · -17.0% Practice",
-          color: "#0ea5e9",
-        },
-        {
-          model: "GPT-5.5 / Frontier GPT",
-          knowledgeScore: 93.26,
-          caseReasoningScore: 56.31,
-          toolPracticeScore: 69.24,
-          statusBadge: "#1 LLM Overall (72.9%)",
-          deltaVsHuman: "+8.9% Know · -23.3% Case · -15.7% Practice",
-          color: "#f59e0b",
-        },
-        {
-          model: "DeepSeek-V4-Pro",
-          knowledgeScore: 91.25,
-          caseReasoningScore: 43.86,
-          toolPracticeScore: 61.67,
-          statusBadge: "#3 LLM Overall (65.6%)",
-          deltaVsHuman: "+6.8% Know · -35.7% Case · -23.2% Practice",
-          color: "#8b5cf6",
-        },
-        {
-          model: "Claude-Opus-4.7",
-          knowledgeScore: 89.80,
-          caseReasoningScore: 41.20,
-          toolPracticeScore: 58.80,
-          statusBadge: "Proprietary Frontier",
-          deltaVsHuman: "+5.4% Know · -38.4% Case · -26.1% Practice",
-          color: "#ec4899",
-        },
-        {
-          model: "Qwen3.6-Plus",
-          knowledgeScore: 88.90,
-          caseReasoningScore: 42.10,
-          toolPracticeScore: 58.80,
-          statusBadge: "Open Weights Leader",
-          deltaVsHuman: "+4.5% Know · -37.5% Case · -26.1% Practice",
-          color: "#06b6d4",
-        },
-      ],
+      type: "actbench_table3_matrix",
+      title: "Table 3: Actuarial Capability Matrix Across Knowledge, Case Analysis & Tool Practice",
+      subtitle: "Verified Accuracy (%) Matrix Across All 10 Actuarial Meta-Matrices & 3 Operational Subsets (FDU-INS Official Paper Table 3)",
+      paperRef: "arXiv:2607.24273 Table 3 (ICCV/FDU-INS Official Actuarial Suite)",
+      keyTakeaway: "Certified Human Actuaries dominate overall with 83.0% Final Total, crushing all AI models on Long-Context Case Analysis (79.6% vs GPT-5.5's 56.3%) and Practical Tool Execution (84.9% vs GPT-5.5's 69.2%, with open-source models crashing to 2.7% on spreadsheets). Leading LLMs only lead on standardized exam knowledge (Gemini 94.5%).",
+      actBenchData: {
+        tasks: [
+          {
+            key: "ps",
+            code: "PS",
+            name: "Probability and Statistics",
+            subset: "INS-Act-Know",
+            subsetShort: "Knowledge",
+            associationMapping: "SOA Exam P / IFoA CS1 / CAS Exam 1",
+            description: "Covers probability axioms, conditional expectations, joint density integration, and actuarial limit theorems.",
+            operationalImpact: "Essential mathematical backbone for loss frequency modeling and catastrophe simulation.",
+            leaderModel: "Gemini-3.1-Pro",
+            leaderScore: 97.5,
+            secondModel: "GPT-5.5",
+            secondScore: 97.0,
+            humanScore: 84.7,
+            color: "#f59e0b",
+          },
+          {
+            key: "ef",
+            code: "EF",
+            name: "Economics and Financial Mathematics",
+            subset: "INS-Act-Know",
+            subsetShort: "Knowledge",
+            associationMapping: "SOA Exam FM / IFoA CM1 / CAS Exam 2",
+            description: "Covers compound interest rate theory, annuity valuation, bond amortization schedules, and cash flow discounting.",
+            operationalImpact: "Drives asset-liability matching (ALM), interest rate sensitivity hedging, and guaranteed rate pricing.",
+            leaderModel: "Gemini-3.1-Pro",
+            leaderScore: 95.4,
+            secondModel: "GPT-5.5",
+            secondScore: 95.4,
+            humanScore: 84.7,
+            color: "#f59e0b",
+          },
+          {
+            key: "ama",
+            code: "AMA",
+            name: "Advanced Actuarial Models",
+            subset: "INS-Act-Know",
+            subsetShort: "Knowledge",
+            associationMapping: "SOA FAM / CAS Exam 3F / IFoA CS2",
+            description: "Covers survival models, Markov transitions, life table decrement calculations, and extreme value theory.",
+            operationalImpact: "Underpins mortality table adjustments and capital adequacy calculations under risk-based regimes.",
+            leaderModel: "Human Experts",
+            leaderScore: 97.7,
+            secondModel: "Gemini-3.1-Pro",
+            secondScore: 94.8,
+            humanScore: 97.7,
+            color: "#f59e0b",
+          },
+          {
+            key: "li",
+            code: "LI",
+            name: "Life Insurance Contingencies",
+            subset: "INS-Act-Know",
+            subsetShort: "Knowledge",
+            associationMapping: "SOA FAM-L / IFoA CM1 / DAV Leben",
+            description: "Covers whole life, endowment, continuous annuity reserves, net premium reserves, and surrender value bounds.",
+            operationalImpact: "Directly determines life insurer statutory reserve sufficiency and policyholder dividend allocation.",
+            leaderModel: "Gemini-3.1-Pro",
+            leaderScore: 90.6,
+            secondModel: "GPT-5.5",
+            secondScore: 87.2,
+            humanScore: 81.2,
+            color: "#f59e0b",
+          },
+          {
+            key: "nli",
+            code: "NLI",
+            name: "Non-Life Insurance Mathematics",
+            subset: "INS-Act-Know",
+            subsetShort: "Knowledge",
+            associationMapping: "CAS Exam 5 / IFoA CS2 / DAV Schaden",
+            description: "Covers compound Poisson loss distributions, severity Pareto fittings, stop-loss reinsurance pricing, and credibility theory.",
+            operationalImpact: "Governs P&C pure premium calculation, reinsurance attachment points, and IBNR reserving.",
+            leaderModel: "Gemini-3.1-Pro",
+            leaderScore: 94.0,
+            secondModel: "GPT-5.5",
+            secondScore: 93.2,
+            humanScore: 84.7,
+            color: "#f59e0b",
+          },
+          {
+            key: "amo",
+            code: "AMO",
+            name: "Actuarial Modeling & Optimization",
+            subset: "INS-Act-Know",
+            subsetShort: "Knowledge",
+            associationMapping: "SOA Advanced Modeling / IFoA CP1",
+            description: "Covers portfolio solvency optimization, ruined probability minimization, and Monte Carlo capital projection.",
+            operationalImpact: "Guides internal capital models, dynamic solvency testing, and ORSA statutory submissions.",
+            leaderModel: "Gemini-3.1-Pro",
+            leaderScore: 94.0,
+            secondModel: "GPT-5.5",
+            secondScore: 92.5,
+            humanScore: 72.0,
+            color: "#f59e0b",
+          },
+          {
+            key: "case_total",
+            code: "CASE",
+            name: "Long-Context Case Analysis",
+            subset: "INS-Act-Case",
+            subsetShort: "Case",
+            associationMapping: "Fellowship Capstone / Real Insurer Treaty Filing",
+            description: "Evaluates multi-page real-world actuarial memoranda, multi-table assumption tracking, and reinsurance treaty valuation.",
+            operationalImpact: "The core cognitive work of credentialed actuaries in evaluating commercial portfolios and complex claims.",
+            leaderModel: "Human Experts",
+            leaderScore: 79.6,
+            secondModel: "GPT-5.5",
+            secondScore: 56.3,
+            humanScore: 79.6,
+            color: "#ec4899",
+          },
+          {
+            key: "ca",
+            code: "CA",
+            name: "Actuarial Coding Practice",
+            subset: "INS-Act-Practice",
+            subsetShort: "Practice",
+            associationMapping: "Actuarial Data Engineering & Scripting",
+            description: "Tests code synthesis for actuarial data pipelines, policy cohort bucketing, and automated mortality tables.",
+            operationalImpact: "Automates actuarial extraction from production databases and policy administrative systems.",
+            leaderModel: "Human Experts",
+            leaderScore: 79.1,
+            secondModel: "GPT-5.5",
+            secondScore: 67.7,
+            humanScore: 79.1,
+            color: "#0ea5e9",
+          },
+          {
+            key: "ss",
+            code: "SS",
+            name: "Spreadsheet Actuarial Modeling",
+            subset: "INS-Act-Practice",
+            subsetShort: "Practice",
+            associationMapping: "Excel Loss Reserving & Development Triangles",
+            description: "Executes multi-tab spreadsheet tasks: Chain Ladder triangles, Bornhuetter-Ferguson reserving, and macro logic.",
+            operationalImpact: "The universal day-to-day medium of insurance actuaries globally; failure causes massive pricing errors.",
+            leaderModel: "Human Experts",
+            leaderScore: 90.7,
+            secondModel: "Claude-Opus-4.7",
+            secondScore: 71.3,
+            humanScore: 90.7,
+            color: "#0ea5e9",
+          },
+          {
+            key: "r",
+            code: "R",
+            name: "R-Code Actuarial Modeling",
+            subset: "INS-Act-Practice",
+            subsetShort: "Practice",
+            associationMapping: "R Actuarial Packages (ChainLadder, actuar, CASdatasets)",
+            description: "Executes verified R scripts for generalized linear models (GLMs), copula dependence modeling, and claims simulation.",
+            operationalImpact: "Advanced ratemaking, commercial auto fleet modeling, and catastrophe reinsurance pricing.",
+            leaderModel: "Human Experts",
+            leaderScore: 84.9,
+            secondModel: "Claude-Opus-4.7",
+            secondScore: 71.3,
+            humanScore: 84.9,
+            color: "#0ea5e9",
+          },
+        ],
+        rows: [
+          {
+            model: "Human Experts (Baseline)",
+            category: "Human Expert",
+            color: "#10b981",
+            scores: { ps: 84.7, ef: 84.7, ama: 97.7, li: 81.2, nli: 84.7, amo: 72.0, case_total: 79.6, ca: 79.1, ss: 90.7, r: 84.9 },
+            knowTotal: 84.4,
+            practiceTotal: 84.9,
+            finalTotal: 83.0,
+          },
+          {
+            model: "GPT-5.5 / Frontier GPT",
+            category: "Proprietary",
+            color: "#f59e0b",
+            scores: { ps: 97.0, ef: 95.4, ama: 93.1, li: 87.2, nli: 93.2, amo: 92.5, case_total: 56.3, ca: 67.7, ss: 71.1, r: 69.2 },
+            knowTotal: 93.3,
+            practiceTotal: 69.2,
+            finalTotal: 72.9,
+          },
+          {
+            model: "Gemini-3.1-Pro",
+            category: "Proprietary",
+            color: "#0ea5e9",
+            scores: { ps: 97.5, ef: 95.4, ama: 94.8, li: 90.6, nli: 94.0, amo: 94.0, case_total: 55.5, ca: 67.0, ss: 69.0, r: 67.9 },
+            knowTotal: 94.5,
+            practiceTotal: 67.9,
+            finalTotal: 72.7,
+          },
+          {
+            model: "DeepSeek-V4-Pro",
+            category: "Proprietary",
+            color: "#8b5cf6",
+            scores: { ps: 96.5, ef: 93.1, ama: 92.2, li: 83.3, nli: 90.2, amo: 91.0, case_total: 43.9, ca: 55.2, ss: 69.6, r: 61.7 },
+            knowTotal: 91.3,
+            practiceTotal: 61.7,
+            finalTotal: 65.6,
+          },
+          {
+            model: "Claude-Opus-4.7",
+            category: "Proprietary",
+            color: "#ec4899",
+            scores: { ps: 84.7, ef: 85.5, ama: 76.6, li: 72.9, nli: 83.5, amo: 81.8, case_total: 43.3, ca: 60.6, ss: 71.3, r: 65.4 },
+            knowTotal: 81.1,
+            practiceTotal: 65.4,
+            finalTotal: 63.3,
+          },
+          {
+            model: "Qwen3.6-Plus",
+            category: "Proprietary",
+            color: "#06b6d4",
+            scores: { ps: 95.1, ef: 90.7, ama: 89.9, li: 73.5, nli: 89.2, amo: 88.7, case_total: 44.6, ca: 47.4, ss: 69.8, r: 57.4 },
+            knowTotal: 87.8,
+            practiceTotal: 57.4,
+            finalTotal: 63.3,
+          },
+          {
+            model: "Kimi-K2.6",
+            category: "Proprietary",
+            color: "#d97706",
+            scores: { ps: 78.7, ef: 75.8, ama: 64.7, li: 57.2, nli: 76.2, amo: 70.5, case_total: 24.8, ca: 29.5, ss: 69.0, r: 47.2 },
+            knowTotal: 70.9,
+            practiceTotal: 47.2,
+            finalTotal: 47.6,
+          },
+          {
+            model: "Qwen3.5-35B-A3B",
+            category: "Open-Source",
+            color: "#64748b",
+            scores: { ps: 43.4, ef: 43.5, ama: 33.8, li: 29.9, nli: 37.9, amo: 36.8, case_total: 20.2, ca: 16.3, ss: 64.0, r: 37.7 },
+            knowTotal: 38.1,
+            practiceTotal: 37.7,
+            finalTotal: 32.0,
+          },
+          {
+            model: "Qwen3-14B",
+            category: "Open-Source",
+            color: "#475569",
+            scores: { ps: 42.2, ef: 44.3, ama: 38.2, li: 34.6, nli: 40.9, amo: 41.0, case_total: 21.0, ca: 2.7, ss: 54.8, r: 26.0 },
+            knowTotal: 40.4,
+            practiceTotal: 26.0,
+            finalTotal: 29.1,
+          },
+          {
+            model: "Gemma-3-12B-IT",
+            category: "Open-Source",
+            color: "#334155",
+            scores: { ps: 33.6, ef: 42.0, ama: 32.2, li: 27.3, nli: 36.4, amo: 36.1, case_total: 16.7, ca: 1.0, ss: 44.4, r: 20.4 },
+            knowTotal: 34.7,
+            practiceTotal: 20.4,
+            finalTotal: 24.0,
+          },
+        ],
+      },
     },
   },
 };
