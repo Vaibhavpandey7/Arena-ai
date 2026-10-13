@@ -6,104 +6,26 @@ import GroundTruthPanel from "./GroundTruthPanel";
 import { BENCHMARK_GOLD_REGISTRY, BenchmarkGoldItem } from "@/lib/benchmark-gold-data";
 import { evaluateUseCaseMetrics } from "@/lib/use-case-metrics";
 import { getModel } from "@/lib/model-registry";
-
-/* ── Leaderboard data ───────────────────────────────────────────────────── */
-const LEADERBOARD = [
-  {
-    model: "Claude Sonnet 4.5",
-    score: 87.4,
-    delta: "+3.2%",
-    deltaDir: "up",
-    label: "Top in EIOPA Solvency II & Policy Analysis",
-    badge: "premium",
-  },
-  {
-    model: "DeepSeek R1",
-    score: 83.7,
-    delta: "+5.1%",
-    deltaDir: "up",
-    label: "Leader in Actuarial Reasoning & Math",
-    badge: "reasoning",
-  },
-  {
-    model: "GPT-4o",
-    score: 81.2,
-    delta: "-0.8%",
-    deltaDir: "down",
-    label: "Strong in Multimodal & Claims Extraction",
-    badge: "fast",
-  },
-  {
-    model: "Mistral Large",
-    score: 78.9,
-    delta: "+1.4%",
-    deltaDir: "up",
-    label: "Consistent in Trilingual Policy Wording",
-    badge: "fast",
-  },
-];
-
-/* ── ROUGE-L & BLEU data ──────────────────────────────────────────────────── */
-const ROUGE_BLEU_DATA = [
-  { model: "Claude Sonnet 4.5", rouge: 0.812, bleu: 0.674, color: "#f59e0b" },
-  { model: "DeepSeek R1", rouge: 0.791, bleu: 0.658, color: "#0ea5e9" },
-  { model: "GPT-4o", rouge: 0.768, bleu: 0.631, color: "#10b981" },
-  { model: "Mistral Large", rouge: 0.743, bleu: 0.612, color: "#8b5cf6" },
-  { model: "Gemini 2.0 Flash", rouge: 0.729, bleu: 0.598, color: "#06b6d4" },
-];
-
-/* ── Domain radar dimensions ──────────────────────────────────────────────── */
-const RADAR_DIMS = [
-  "Policy\nTranslation",
-  "Actuarial\nReasoning",
-  "Regulatory\nCompliance",
-  "Claims\nProcessing",
-  "Underwriting\nRisk",
-  "Fraud\nDetection",
-];
-
-const RADAR_MODELS = [
-  {
-    label: "Claude Sonnet 4.5",
-    color: "#f59e0b",
-    values: [0.92, 0.88, 0.95, 0.85, 0.78, 0.84],
-  },
-  {
-    label: "DeepSeek R1",
-    color: "#0ea5e9",
-    values: [0.85, 0.96, 0.84, 0.80, 0.75, 0.82],
-  },
-];
-
-/* ── Domain performance ────────────────────────────────────────────────────── */
-const DOMAIN_PERF = [
-  { domain: "Policy Translation", score: 91.2, color: "#f59e0b" },
-  { domain: "Actuarial Reasoning", score: 88.4, color: "#0ea5e9" },
-  { domain: "Regulatory Compliance", score: 86.7, color: "#10b981" },
-  { domain: "Claims Processing", score: 83.9, color: "#8b5cf6" },
-  { domain: "Underwriting Risk", score: 80.3, color: "#f59e0b" },
-  { domain: "Fraud Detection", score: 82.5, color: "#0ea5e9" },
-];
-
-/* ── Latency tradeoff ──────────────────────────────────────────────────────── */
-const LATENCY_DATA = [
-  { model: "GPT-4o Mini", latency: 1.8, accuracy: 74, color: "#10b981" },
-  { model: "DeepSeek V3", latency: 2.4, accuracy: 79, color: "#0ea5e9" },
-  { model: "GPT-4o", latency: 3.6, accuracy: 81, color: "#f59e0b" },
-  { model: "Mistral Large", latency: 4.2, accuracy: 79, color: "#8b5cf6" },
-  { model: "DeepSeek R1", latency: 6.8, accuracy: 84, color: "#0ea5e9" },
-  { model: "Claude Sonnet 4.5", latency: 5.1, accuracy: 87, color: "#f59e0b" },
-];
+import {
+  BENCHMARK_DATASETS,
+  BenchmarkDatasetId,
+} from "@/lib/benchmark-datasets";
 
 /* ── All 13 Benchmark Questions from Gold Registry ─────────────────────────── */
 const ALL_BENCHMARK_ITEMS: BenchmarkGoldItem[] = Object.values(BENCHMARK_GOLD_REGISTRY);
 
-function RadarChart() {
+function RadarChart({
+  dims,
+  models,
+}: {
+  dims: string[];
+  models: { label: string; color: string; values: number[] }[];
+}) {
   const size = 220;
   const cx = size / 2;
   const cy = size / 2;
-  const r = 80;
-  const n = RADAR_DIMS.length;
+  const r = 72;
+  const n = dims.length;
 
   function polarToCartesian(radiusFactor: number, index: number) {
     const angle = (Math.PI * 2 * index) / n - Math.PI / 2;
@@ -157,7 +79,7 @@ function RadarChart() {
         );
       })}
 
-      {RADAR_MODELS.map((m) => (
+      {models.map((m) => (
         <polygon
           key={m.label}
           points={pointsForModel(m.values)}
@@ -167,8 +89,8 @@ function RadarChart() {
         />
       ))}
 
-      {RADAR_DIMS.map((dim, i) => {
-        const { x, y } = polarToCartesian(1.28, i);
+      {dims.map((dim, i) => {
+        const { x, y } = polarToCartesian(1.30, i);
         return (
           <text
             key={i}
@@ -176,11 +98,11 @@ function RadarChart() {
             y={y}
             textAnchor="middle"
             dominantBaseline="middle"
-            fontSize="7.5"
+            fontSize="7"
             fill="rgba(148,163,184,0.9)"
           >
             {dim.split("\n").map((line, j) => (
-              <tspan key={j} x={x} dy={j === 0 ? 0 : 9}>
+              <tspan key={j} x={x} dy={j === 0 ? 0 : 8.5}>
                 {line}
               </tspan>
             ))}
@@ -192,7 +114,7 @@ function RadarChart() {
 }
 
 const FILTER_TABS = ["All", "Actuarial", "Solvency II", "Claims", "Underwriting", "Fraud", "Multimodal"];
-const DATASET_TABS = ["INS-MMBench", "CuFE", "InsuranceQA", "EIOPA Fine-Tuner", "30-Domain Suite"];
+const DATASET_TABS: BenchmarkDatasetId[] = ["INS-MMBench", "CUFE", "InsuranceQA"];
 
 type Tab = "home" | "head-to-head" | "chat-arena" | "benchmark";
 
@@ -211,9 +133,11 @@ interface QuestionResult {
 }
 
 export default function BenchmarkView({ onNavigate }: Props) {
-  const [activeDataset, setActiveDataset] = useState("INS-MMBench");
+  const [activeDataset, setActiveDataset] = useState<BenchmarkDatasetId>("INS-MMBench");
   const [activeFilter, setActiveFilter] = useState("All");
   const [animated, setAnimated] = useState(false);
+
+  const currentDataset = BENCHMARK_DATASETS[activeDataset] || BENCHMARK_DATASETS["INS-MMBench"];
 
   // Model selection for benchmark runs (defaulted to 100% free models to preserve user credits)
   const [selectedModels, setSelectedModels] = useState<string[]>([
@@ -478,15 +402,96 @@ export default function BenchmarkView({ onNavigate }: Props) {
           </div>
         </div>
 
+        {/* Academic Benchmark Paper Citation Banner */}
+        <div
+          style={{
+            padding: "16px 20px",
+            borderRadius: "10px",
+            background: "linear-gradient(135deg, rgba(11, 22, 40, 0.95), rgba(6, 11, 20, 0.95))",
+            border: "1px solid rgba(0, 212, 255, 0.22)",
+            marginBottom: "20px",
+            boxShadow: "0 4px 20px rgba(0, 0, 0, 0.35)",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "12px", marginBottom: "8px" }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                <span style={{ fontSize: "1.05rem", fontWeight: 800, color: "var(--cyan)", letterSpacing: "0.02em" }}>
+                  {currentDataset.name}
+                </span>
+                <span
+                  style={{
+                    fontSize: "0.7rem",
+                    padding: "2px 8px",
+                    borderRadius: "12px",
+                    background: "rgba(0, 212, 255, 0.12)",
+                    border: "1px solid rgba(0, 212, 255, 0.3)",
+                    color: "var(--cyan)",
+                    fontWeight: 700,
+                  }}
+                >
+                  Verified Academic Benchmark
+                </span>
+                <span
+                  style={{
+                    fontSize: "0.7rem",
+                    padding: "2px 8px",
+                    borderRadius: "12px",
+                    background: "rgba(16, 185, 129, 0.12)",
+                    border: "1px solid rgba(16, 185, 129, 0.3)",
+                    color: "var(--emerald)",
+                    fontWeight: 700,
+                  }}
+                >
+                  {currentDataset.venue}
+                </span>
+              </div>
+              <div style={{ fontSize: "0.82rem", color: "var(--text-dim)", marginTop: "4px", fontWeight: 500 }}>
+                📄 <strong style={{ color: "var(--text)" }}>{currentDataset.paperTitle}</strong> — {currentDataset.authors}
+              </div>
+            </div>
+
+            <a
+              href={currentDataset.arxivUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                fontSize: "0.75rem",
+                padding: "5px 12px",
+                borderRadius: "6px",
+                background: "rgba(255, 255, 255, 0.05)",
+                border: "1px solid rgba(255, 255, 255, 0.15)",
+                color: "var(--cyan)",
+                textDecoration: "none",
+                fontWeight: 600,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+            >
+              <span>🔗 {currentDataset.arxivId}</span>
+              <span>↗</span>
+            </a>
+          </div>
+
+          <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", fontSize: "0.74rem", color: "var(--text-muted)", borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "8px", marginTop: "6px" }}>
+            <span><strong>Dataset Scope:</strong> {currentDataset.scaleDescription}</span>
+            <span>•</span>
+            <span><strong>Primary Metric:</strong> <span style={{ color: "var(--emerald)", fontWeight: 700 }}>{currentDataset.primaryMetric}</span></span>
+            <span>•</span>
+            <span style={{ color: "rgba(203, 213, 225, 0.9)" }}><strong>Key Finding:</strong> {currentDataset.keyFinding}</span>
+          </div>
+        </div>
+
         {/* Score cards */}
         <div className="benchmark-score-cards">
-          {LEADERBOARD.map((item, i) => (
+          {currentDataset.leaderboard.map((item, i) => (
             <div
               key={item.model}
               className={`benchmark-score-card${i === 0 ? " rank-1" : ""}`}
             >
               <div className="benchmark-card-model">
-                {i === 0 ? "🥇 " : i === 1 ? "🥈 " : i === 2 ? "🥉 " : ""}
+                {i === 0 ? "🥇 " : i === 1 ? "🥈 " : i === 2 ? "🥉 " : `#${i + 1} `}
                 {item.model}
               </div>
               <div className="benchmark-card-score">
@@ -494,50 +499,61 @@ export default function BenchmarkView({ onNavigate }: Props) {
                 <span className="score-decimal">
                   .{String(item.score.toFixed(1)).split(".")[1]}
                 </span>
+                <span style={{ fontSize: "0.75rem", marginLeft: "4px", color: "var(--text-muted)", fontWeight: 600 }}>
+                  {currentDataset.scoreUnit}
+                </span>
               </div>
               <div className={`benchmark-card-delta ${item.deltaDir}`}>
                 {item.deltaDir === "up" ? "▲" : "▼"} {item.delta}
               </div>
               <div className="benchmark-card-label">{item.label}</div>
+              {item.breakdown && (
+                <div style={{ fontSize: "0.68rem", color: "var(--text-subtle)", marginTop: "6px", borderTop: "1px dashed rgba(255,255,255,0.08)", paddingTop: "5px" }}>
+                  {item.breakdown}
+                </div>
+              )}
             </div>
           ))}
         </div>
 
         {/* Charts grid */}
         <div className="benchmark-charts-grid">
-          {/* ROUGE-L / BLEU chart */}
+          {/* Detailed Model Comparison Metric chart */}
           <div className="benchmark-chart-card">
-            <div className="benchmark-chart-title">ROUGE-L / BLEU Score by Model</div>
+            <div className="benchmark-chart-title">{currentDataset.comparison.title}</div>
             <div className="benchmark-chart-subtitle">
-              Across InsuranceQA · INS-MMBench · {activeDataset}
+              {currentDataset.comparison.subtitle}
             </div>
             <div className="benchmark-bar-list">
-              {ROUGE_BLEU_DATA.map((row) => (
+              {currentDataset.comparison.rows.map((row) => (
                 <div key={row.model} className="benchmark-bar-item">
                   <div className="benchmark-bar-header">
                     <span className="benchmark-bar-label">{row.model}</span>
                     <span className="benchmark-bar-value">
-                      R {row.rouge.toFixed(3)} · B {row.bleu.toFixed(3)}
+                      {currentDataset.comparison.val1Label}: {row.val1Formatted}
+                      {row.val2Formatted && ` · ${currentDataset.comparison.val2Label}: ${row.val2Formatted}`}
                     </span>
                   </div>
                   <div className="benchmark-bar-track">
                     <div
                       className="benchmark-bar-fill"
                       style={{
-                        width: animated ? `${row.rouge * 100}%` : "0%",
+                        width: animated ? `${Math.min(100, row.val1)}%` : "0%",
                         background: row.color,
                       }}
                     />
                   </div>
-                  <div className="benchmark-bar-track" style={{ marginTop: 3 }}>
-                    <div
-                      className="benchmark-bar-fill"
-                      style={{
-                        width: animated ? `${row.bleu * 100}%` : "0%",
-                        background: `${row.color}88`,
-                      }}
-                    />
-                  </div>
+                  {row.val2 !== undefined && (
+                    <div className="benchmark-bar-track" style={{ marginTop: 3 }}>
+                      <div
+                        className="benchmark-bar-fill"
+                        style={{
+                          width: animated ? `${Math.min(100, row.val2)}%` : "0%",
+                          background: `${row.color}88`,
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -546,14 +562,14 @@ export default function BenchmarkView({ onNavigate }: Props) {
           {/* Domain Capability Radar */}
           <div className="benchmark-chart-card" style={{ alignItems: "center" }}>
             <div className="benchmark-chart-title" style={{ width: "100%" }}>
-              Domain Capability Profile
+              {currentDataset.radar.title}
             </div>
             <div className="benchmark-chart-subtitle" style={{ width: "100%" }}>
-              6 Core Insurance Competencies
+              {currentDataset.radar.subtitle}
             </div>
-            <RadarChart />
-            <div style={{ display: "flex", gap: 16, marginTop: 8 }}>
-              {RADAR_MODELS.map((m) => (
+            <RadarChart dims={currentDataset.radar.dims} models={currentDataset.radar.models} />
+            <div style={{ display: "flex", gap: 16, marginTop: 8, flexWrap: "wrap", justifyContent: "center" }}>
+              {currentDataset.radar.models.map((m) => (
                 <div
                   key={m.label}
                   style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11 }}
@@ -574,12 +590,12 @@ export default function BenchmarkView({ onNavigate }: Props) {
 
           {/* Domain Performance breakdown */}
           <div className="benchmark-chart-card">
-            <div className="benchmark-chart-title">Domain Benchmark Pass Rates</div>
+            <div className="benchmark-chart-title">{currentDataset.domainBreakdown.title}</div>
             <div className="benchmark-chart-subtitle">
-              Verified against European Regulatory Corpus
+              {currentDataset.domainBreakdown.subtitle}
             </div>
             <div className="benchmark-bar-list">
-              {DOMAIN_PERF.map((row) => (
+              {currentDataset.domainBreakdown.rows.map((row) => (
                 <div key={row.domain} className="benchmark-bar-item">
                   <div className="benchmark-bar-header">
                     <span className="benchmark-bar-label">{row.domain}</span>
@@ -603,10 +619,10 @@ export default function BenchmarkView({ onNavigate }: Props) {
           <div className="benchmark-chart-card">
             <div className="benchmark-chart-title">Latency vs. Accuracy Tradeoff</div>
             <div className="benchmark-chart-subtitle">
-              Note: faster models trade some accuracy for reduced response time
+              Measured response latency against {currentDataset.primaryMetric} in {currentDataset.name}
             </div>
             <div className="benchmark-latency-bars">
-              {LATENCY_DATA.map((row) => (
+              {currentDataset.latencyData.map((row) => (
                 <div key={row.model} className="benchmark-latency-item">
                   <span className="benchmark-latency-model">{row.model}</span>
                   <div className="benchmark-latency-bar-track">
@@ -617,7 +633,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                         background: row.color,
                       }}
                     >
-                      {row.latency}s · {row.accuracy}%
+                      {row.latency}s · {row.accuracy}{currentDataset.scoreUnit}
                     </div>
                   </div>
                 </div>
