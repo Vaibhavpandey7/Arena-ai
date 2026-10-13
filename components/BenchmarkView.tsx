@@ -1849,30 +1849,6 @@ export default function BenchmarkView({ onNavigate }: Props) {
                             </div>
                           </div>
 
-                          {/* Sub-Indicators Registry Chips */}
-                          <div style={{ marginBottom: "16px" }}>
-                            <div style={{ fontSize: "0.72rem", color: "var(--text-subtle)", marginBottom: "6px", fontWeight: 700 }}>
-                              Evaluated Sub-Indicators ({activePillar.subIndicators.length}):
-                            </div>
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                              {activePillar.subIndicators.map((sub) => (
-                                <span
-                                  key={sub}
-                                  style={{
-                                    fontSize: "0.68rem",
-                                    padding: "2px 7px",
-                                    borderRadius: "4px",
-                                    background: "rgba(255, 255, 255, 0.04)",
-                                    border: "1px solid rgba(255, 255, 255, 0.07)",
-                                    color: "var(--text-dim)",
-                                  }}
-                                >
-                                  {sub}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-
                           {/* Ranked Models Leaderboard for this Pillar */}
                           <div>
                             <div style={{
