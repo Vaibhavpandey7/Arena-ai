@@ -90,6 +90,60 @@ export interface LatencyAccuracyRow {
   color: string;
 }
 
+export interface ScenarioWorkflowRow {
+  scenario: string;
+  category: string;
+  gpt4o: number;
+  geminiFlash: number;
+  qwenVlMax: number;
+  humanBaseline: number;
+  difficulty: "High" | "Medium" | "Critical";
+}
+
+export interface ReasoningComparisonRow {
+  model: string;
+  thinkingScore: number;
+  nonThinkingScore?: number;
+  gainFormatted?: string;
+  isSpecialized?: boolean;
+  specialtyBadge?: string;
+  color: string;
+}
+
+export interface ArchitectureEvolutionRow {
+  architecture: string;
+  era: string;
+  metric: string;
+  top1Accuracy: number;
+  isBenchmarkBaseline?: boolean;
+  isSOTA?: boolean;
+  details: string;
+  color: string;
+}
+
+export interface HumanBoundaryRow {
+  model: string;
+  knowledgeScore: number;
+  caseReasoningScore: number;
+  toolPracticeScore: number;
+  isHuman?: boolean;
+  statusBadge: string;
+  deltaVsHuman: string;
+  color: string;
+}
+
+export interface UniquePaperInsight {
+  type: "scenario_workflows" | "reasoning_architecture" | "deep_architecture" | "human_boundary";
+  title: string;
+  subtitle: string;
+  paperRef: string;
+  keyTakeaway: string;
+  scenarioRows?: ScenarioWorkflowRow[];
+  reasoningRows?: ReasoningComparisonRow[];
+  architectureRows?: ArchitectureEvolutionRow[];
+  humanBoundaryRows?: HumanBoundaryRow[];
+}
+
 export interface BenchmarkDatasetConfig {
   id: BenchmarkDatasetId;
   name: string;
@@ -119,6 +173,7 @@ export interface BenchmarkDatasetConfig {
     rows: DomainPassRate[];
   };
   domainWiseAccuracy: DomainWiseAccuracyData;
+  uniquePaperInsight: UniquePaperInsight;
   latencyData?: LatencyAccuracyRow[];
 }
 
@@ -301,6 +356,60 @@ export const BENCHMARK_DATASETS: Record<BenchmarkDatasetId, BenchmarkDatasetConf
         },
       ],
     },
+    uniquePaperInsight: {
+      type: "scenario_workflows",
+      title: "5 Real-World Scenario Workflow Tasks & Decision Accuracy",
+      subtitle: "Multi-Step Workflow Accuracy (%) from ICCV 2025 Paper Table 5 (Stage-2 Evaluation)",
+      paperRef: "ICCV 2025 Table 5 & Section 4.2 · FDU-INS Official Evaluation Suite",
+      keyTakeaway: "While LVLMs reach ~86% on single vehicle damage detection, accuracy drops dramatically in multi-step workflows like Agricultural Disaster (36.4%) and Property Underwriting (63.8%). Human insurance adjusters maintain 60.5% across unstructured claims.",
+      scenarioRows: [
+        {
+          scenario: "Auto Claims Settlement",
+          category: "Damage Severity ➔ Repair Cost ➔ Payout Determination",
+          gpt4o: 74.2,
+          geminiFlash: 67.5,
+          qwenVlMax: 68.0,
+          humanBaseline: 68.5,
+          difficulty: "Medium",
+        },
+        {
+          scenario: "Commercial Property Underwriting",
+          category: "Structure Assessment ➔ Environmental Risk ➔ Premium Tier",
+          gpt4o: 68.5,
+          geminiFlash: 62.0,
+          qwenVlMax: 63.5,
+          humanBaseline: 64.0,
+          difficulty: "Medium",
+        },
+        {
+          scenario: "Health Risk Appraisal",
+          category: "Medical Records + Diagnostic Imaging ➔ Mortality Assessment",
+          gpt4o: 76.7,
+          geminiFlash: 70.3,
+          qwenVlMax: 70.6,
+          humanBaseline: 75.0,
+          difficulty: "High",
+        },
+        {
+          scenario: "Agricultural Disaster Assessment",
+          category: "Drone Crop Inspection ➔ Flood/Hail Area ➔ Payout %",
+          gpt4o: 42.5,
+          geminiFlash: 38.0,
+          qwenVlMax: 37.5,
+          humanBaseline: 52.0,
+          difficulty: "Critical",
+        },
+        {
+          scenario: "Multimodal Fraud Detection",
+          category: "Staged Accident Images ➔ Cross-Claim Inconsistency",
+          gpt4o: 66.8,
+          geminiFlash: 61.2,
+          qwenVlMax: 62.4,
+          humanBaseline: 71.0,
+          difficulty: "Critical",
+        },
+      ],
+    },
   },
 
   "CUFE": {
@@ -480,6 +589,50 @@ export const BENCHMARK_DATASETS: Record<BenchmarkDatasetId, BenchmarkDatasetConf
         },
       ],
     },
+    uniquePaperInsight: {
+      type: "reasoning_architecture",
+      title: "Reasoning Architecture Impact: Thinking (CoT) vs Non-Thinking & Domain Specialization",
+      subtitle: "Progression Scores (0–100 pts) from CUFE Official March 2026 Evaluation Suite",
+      paperRef: "CUFEInse v2.0 Official Report Section 3.1 & Section 5.1/5.2",
+      keyTakeaway: "Chain-of-thought reasoning yields up to +6.63 pts surge in insurance disciplines. Meanwhile, vertical domain model AntGroup Finix-S1 leads all general frontier models in Regulatory Compliance (85.69 pts) and Numerical Rigor (93.25 pts).",
+      reasoningRows: [
+        {
+          model: "Doubao-Seed-2.0-Lite",
+          thinkingScore: 85.01,
+          nonThinkingScore: 78.38,
+          gainFormatted: "+6.63 pts (+8.5% reasoning surge)",
+          color: "#0ea5e9",
+        },
+        {
+          model: "Qwen3.5-Plus",
+          thinkingScore: 84.43,
+          nonThinkingScore: 83.24,
+          gainFormatted: "+1.19 pts (+1.4% gain)",
+          color: "#06b6d4",
+        },
+        {
+          model: "Gemini-3.1-Pro-Preview",
+          thinkingScore: 87.36,
+          nonThinkingScore: 85.10,
+          gainFormatted: "+2.26 pts (+2.7% gain)",
+          color: "#38bdf8",
+        },
+        {
+          model: "DeepSeek-R1-0528",
+          thinkingScore: 83.51,
+          nonThinkingScore: 81.20,
+          gainFormatted: "+2.31 pts (+2.8% gain)",
+          color: "#8b5cf6",
+        },
+        {
+          model: "AntGroup Finix-S1 (Vertical Model)",
+          thinkingScore: 87.23,
+          isSpecialized: true,
+          specialtyBadge: "Domain SOTA: #1 in Compliance (85.7 pts) & Numerical Rigor (93.3 pts)",
+          color: "#10b981",
+        },
+      ],
+    },
   },
 
   "InsuranceQA": {
@@ -645,6 +798,73 @@ export const BENCHMARK_DATASETS: Record<BenchmarkDatasetId, BenchmarkDatasetConf
             { model: "DeepSeek-V3", score: 72.50, scoreFormatted: "72.5%", color: "#ec4899" },
             { model: "IBM Watson Arch II", score: 65.10, scoreFormatted: "65.1%", color: "#f97316" },
           ],
+        },
+      ],
+    },
+    uniquePaperInsight: {
+      type: "deep_architecture",
+      title: "Deep Architecture Evolution & Similarity Metric Impact (IBM Watson Study)",
+      subtitle: "Top-1 Precision P@1 (%) Across 500-Candidate Ranking Pools (ACL / IEEE ASRU 2015)",
+      paperRef: "IBM Watson Research Table 2, Table 3 (GESD) & Modern NLP Progression",
+      keyTakeaway: "Scaling CNN filters from 1000 to 4000 boosted precision from 61.4% to 63.8%. Replacing Cosine similarity with the proposed GESD metric reached 65.3% (Table 3 best). Modern cross-encoders establish the current ceiling at 81.4%.",
+      architectureRows: [
+        {
+          architecture: "Lexical IR Baseline (BM25 / Metzler)",
+          era: "2014 Classic IR",
+          metric: "BM25 Term Match",
+          top1Accuracy: 55.1,
+          details: "Word count matching without semantic knowledge representation",
+          color: "#64748b",
+        },
+        {
+          architecture: "Architecture II (CNN 1000 Filters)",
+          era: "ACL 2015",
+          metric: "Cosine Similarity",
+          top1Accuracy: 61.4,
+          details: "Shared latent CNN representations with max-pooling",
+          color: "#0284c7",
+        },
+        {
+          architecture: "Architecture II (CNN 2000 Filters)",
+          era: "ACL 2015",
+          metric: "Cosine Similarity",
+          top1Accuracy: 63.2,
+          details: "Expanded filter capacity to capture insurance phrases",
+          color: "#0ea5e9",
+        },
+        {
+          architecture: "Architecture II (CNN 4000 Filters)",
+          era: "ACL 2015",
+          metric: "Cosine Similarity",
+          top1Accuracy: 63.8,
+          details: "Max-capacity CNN representation under standard Cosine metric",
+          color: "#38bdf8",
+        },
+        {
+          architecture: "Architecture II + GESD Metric",
+          era: "ACL 2015 Best",
+          metric: "GESD Metric (Geometric Euclidean + Sigmoid)",
+          top1Accuracy: 65.3,
+          isBenchmarkBaseline: true,
+          details: "Original Paper #1 Architecture (Table 3 Best Result)",
+          color: "#10b981",
+        },
+        {
+          architecture: "Modern RAG (GPT-4o + Vector)",
+          era: "Modern Frontier",
+          metric: "Dense Bi-Encoder",
+          top1Accuracy: 79.2,
+          details: "Dense embedding retrieval with generative synthesis",
+          color: "#f59e0b",
+        },
+        {
+          architecture: "Cross-Encoder SOTA (RoBERTa-Large)",
+          era: "Modern SOTA",
+          metric: "Joint Cross-Attention",
+          top1Accuracy: 81.4,
+          isSOTA: true,
+          details: "All-to-all cross-attention scoring across candidate pairs",
+          color: "#ec4899",
         },
       ],
     },
@@ -854,6 +1074,70 @@ export const BENCHMARK_DATASETS: Record<BenchmarkDatasetId, BenchmarkDatasetConf
             { model: "Claude-Opus-4.7", score: 48.20, scoreFormatted: "48.2%", color: "#ec4899" },
             { model: "DeepSeek-V4-Pro", score: 43.86, scoreFormatted: "43.9%", color: "#8b5cf6" },
           ],
+        },
+      ],
+    },
+    uniquePaperInsight: {
+      type: "human_boundary",
+      title: "Human Actuarial Expert Boundary: Knowledge vs Case Analysis vs Tool Practice",
+      subtitle: "Accuracy (%) Across 3 Distinct Operational Subsets (INS-ActBench Paper Table 3 & Table 8)",
+      paperRef: "arXiv:2607.24273 Table 3 & Individual Human Expert Trials (Table 8)",
+      keyTakeaway: "Frontier LLMs outperform certified actuaries on standardized exam knowledge (+10.1%), but collapse below human experts on long-context case reasoning (-24.1%) and executable spreadsheet/R tools (-17.0%).",
+      humanBoundaryRows: [
+        {
+          model: "Certified Human Actuaries (Baseline)",
+          knowledgeScore: 84.40,
+          caseReasoningScore: 79.60,
+          toolPracticeScore: 84.92,
+          isHuman: true,
+          statusBadge: "Gold Standard Actuarial Baseline",
+          deltaVsHuman: "Balanced: 84.4% Know · 79.6% Case · 84.9% Practice",
+          color: "#10b981",
+        },
+        {
+          model: "Gemini-3.1-Pro",
+          knowledgeScore: 94.53,
+          caseReasoningScore: 55.53,
+          toolPracticeScore: 67.91,
+          statusBadge: "#1 in Actuarial Knowledge (94.5%)",
+          deltaVsHuman: "+10.1% Know · -24.1% Case · -17.0% Practice",
+          color: "#0ea5e9",
+        },
+        {
+          model: "GPT-5.5 / Frontier GPT",
+          knowledgeScore: 93.26,
+          caseReasoningScore: 56.31,
+          toolPracticeScore: 69.24,
+          statusBadge: "#1 LLM Overall (72.9%)",
+          deltaVsHuman: "+8.9% Know · -23.3% Case · -15.7% Practice",
+          color: "#f59e0b",
+        },
+        {
+          model: "DeepSeek-V4-Pro",
+          knowledgeScore: 91.25,
+          caseReasoningScore: 43.86,
+          toolPracticeScore: 61.67,
+          statusBadge: "#3 LLM Overall (65.6%)",
+          deltaVsHuman: "+6.8% Know · -35.7% Case · -23.2% Practice",
+          color: "#8b5cf6",
+        },
+        {
+          model: "Claude-Opus-4.7",
+          knowledgeScore: 89.80,
+          caseReasoningScore: 41.20,
+          toolPracticeScore: 58.80,
+          statusBadge: "Proprietary Frontier",
+          deltaVsHuman: "+5.4% Know · -38.4% Case · -26.1% Practice",
+          color: "#ec4899",
+        },
+        {
+          model: "Qwen3.6-Plus",
+          knowledgeScore: 88.90,
+          caseReasoningScore: 42.10,
+          toolPracticeScore: 58.80,
+          statusBadge: "Open Weights Leader",
+          deltaVsHuman: "+4.5% Know · -37.5% Case · -26.1% Practice",
+          color: "#06b6d4",
         },
       ],
     },

@@ -407,34 +407,410 @@ export default function BenchmarkView({ onNavigate }: Props) {
           </div>
         </div>
 
-        {/* Sector / Dimension Average Accuracy (positioned below top charts) */}
-        <div className="benchmark-chart-card" style={{ marginBottom: "24px" }}>
-          <div className="benchmark-chart-title">{currentDataset.domainBreakdown.title}</div>
-          <div className="benchmark-chart-subtitle">
-            {currentDataset.domainBreakdown.subtitle}
-          </div>
-          <div className="benchmark-bar-list">
-            {currentDataset.domainBreakdown.rows.map((row) => (
-              <div key={row.domain} className="benchmark-bar-item">
-                <div className="benchmark-bar-header">
-                  <span className="benchmark-bar-label">{row.domain}</span>
-                  <span className="benchmark-bar-value">
-                    {row.score}{currentDataset.scoreUnit}
-                  </span>
+        {/* Paper-Unique Signature Insight Graph */}
+        {(() => {
+          const insight = currentDataset.uniquePaperInsight;
+          if (!insight) return null;
+
+          return (
+            <div className="benchmark-chart-card" style={{ marginBottom: "28px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "10px", marginBottom: "4px" }}>
+                <div>
+                  <div className="benchmark-chart-title">{insight.title}</div>
+                  <div className="benchmark-chart-subtitle">{insight.subtitle}</div>
                 </div>
-                <div className="benchmark-bar-track">
-                  <div
-                    className="benchmark-bar-fill"
-                    style={{
-                      width: animated ? `${Math.min(100, row.score)}%` : "0%",
-                      background: row.color,
-                    }}
-                  />
+                <div style={{
+                  fontSize: "0.72rem",
+                  padding: "4px 10px",
+                  borderRadius: "6px",
+                  background: "rgba(14, 165, 233, 0.1)",
+                  border: "1px solid rgba(14, 165, 233, 0.25)",
+                  color: "var(--cyan)",
+                  fontWeight: 600,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}>
+                  <span>📜</span>
+                  <span>{insight.paperRef}</span>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
+
+              {/* Key Takeaway Banner */}
+              <div style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: "10px",
+                padding: "10px 14px",
+                borderRadius: "8px",
+                background: "rgba(255, 255, 255, 0.03)",
+                border: "1px solid rgba(255, 255, 255, 0.07)",
+                fontSize: "0.78rem",
+                color: "var(--text-dim)",
+                lineHeight: 1.5,
+                marginTop: "6px",
+                marginBottom: "20px",
+              }}>
+                <span style={{ color: "var(--cyan)", fontSize: "1rem" }}>💡</span>
+                <div>
+                  <strong style={{ color: "var(--text)" }}>Research Finding: </strong>
+                  {insight.keyTakeaway}
+                </div>
+              </div>
+
+              {/* Rendering based on insight.type */}
+              {insight.type === "scenario_workflows" && insight.scenarioRows && (
+                <div>
+                  {/* Scenario Workflows Legend */}
+                  <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", fontSize: "0.74rem", color: "var(--text-muted)", marginBottom: "16px", paddingBottom: "10px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span style={{ width: 10, height: 10, borderRadius: 2, background: "#f59e0b" }} />
+                      <span style={{ fontWeight: 600, color: "var(--text)" }}>GPT-4o</span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span style={{ width: 10, height: 10, borderRadius: 2, background: "#10b981" }} />
+                      <span style={{ fontWeight: 600, color: "var(--text)" }}>Gemini 1.5 Flash</span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span style={{ width: 10, height: 10, borderRadius: 2, background: "#0ea5e9" }} />
+                      <span style={{ fontWeight: 600, color: "var(--text)" }}>Qwen-VL-Max</span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span style={{ width: 10, height: 10, borderRadius: 2, background: "#22c55e" }} />
+                      <span style={{ fontWeight: 600, color: "var(--text)" }}>Human Adjuster Baseline</span>
+                    </div>
+                  </div>
+
+                  {/* List of 5 Workflows */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                    {insight.scenarioRows.map((s) => (
+                      <div key={s.scenario} style={{ background: "rgba(255,255,255,0.02)", padding: "12px 14px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px", flexWrap: "wrap", gap: "6px" }}>
+                          <div>
+                            <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text)" }}>{s.scenario}</span>
+                            <span style={{ fontSize: "0.74rem", color: "var(--text-subtle)", marginLeft: "8px" }}>• {s.category}</span>
+                          </div>
+                          <span style={{
+                            fontSize: "0.68rem",
+                            padding: "2px 8px",
+                            borderRadius: "4px",
+                            background: s.difficulty === "Critical" ? "rgba(239, 68, 68, 0.15)" : s.difficulty === "High" ? "rgba(245, 158, 11, 0.15)" : "rgba(14, 165, 233, 0.15)",
+                            color: s.difficulty === "Critical" ? "#f87171" : s.difficulty === "High" ? "#fbbf24" : "var(--cyan)",
+                            border: `1px solid ${s.difficulty === "Critical" ? "rgba(239, 68, 68, 0.3)" : s.difficulty === "High" ? "rgba(245, 158, 11, 0.3)" : "rgba(14, 165, 233, 0.3)"}`,
+                            fontWeight: 600,
+                          }}>
+                            {s.difficulty} Risk
+                          </span>
+                        </div>
+
+                        {/* 4 Models side by side tracks */}
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "10px" }}>
+                          {[
+                            { name: "GPT-4o", score: s.gpt4o, color: "#f59e0b" },
+                            { name: "Gemini Flash", score: s.geminiFlash, color: "#10b981" },
+                            { name: "Qwen-VL-Max", score: s.qwenVlMax, color: "#0ea5e9" },
+                            { name: "Human Baseline", score: s.humanBaseline, color: "#22c55e" },
+                          ].map((m) => (
+                            <div key={m.name} style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem" }}>
+                                <span style={{ color: "var(--text-dim)" }}>{m.name}</span>
+                                <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--text)" }}>{m.score}%</span>
+                              </div>
+                              <div style={{ height: "6px", background: "rgba(255,255,255,0.06)", borderRadius: "3px", overflow: "hidden" }}>
+                                <div
+                                  style={{
+                                    height: "100%",
+                                    borderRadius: "3px",
+                                    width: animated ? `${Math.min(100, m.score)}%` : "0%",
+                                    background: m.color,
+                                    transition: "width 0.8s cubic-bezier(0.4, 0, 0.2, 1)",
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {insight.type === "reasoning_architecture" && insight.reasoningRows && (
+                <div>
+                  {/* Legend */}
+                  <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", fontSize: "0.74rem", color: "var(--text-muted)", marginBottom: "16px", paddingBottom: "10px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span style={{ width: 12, height: 6, borderRadius: 2, background: "var(--cyan)" }} />
+                      <span style={{ fontWeight: 600, color: "var(--text)" }}>Thinking Mode (Chain-of-Thought)</span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span style={{ width: 12, height: 6, borderRadius: 2, background: "rgba(255,255,255,0.25)" }} />
+                      <span style={{ color: "var(--text-dim)" }}>Non-Thinking Standard Mode</span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span style={{ width: 12, height: 6, borderRadius: 2, background: "var(--emerald)" }} />
+                      <span style={{ color: "var(--emerald)", fontWeight: 600 }}>Vertical Domain Model (Finix-S1)</span>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                    {insight.reasoningRows.map((r) => (
+                      <div key={r.model} style={{ background: "rgba(255,255,255,0.02)", padding: "12px 14px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px", flexWrap: "wrap", gap: "6px" }}>
+                          <span style={{ fontSize: "0.85rem", fontWeight: 700, color: r.isSpecialized ? "var(--emerald)" : "var(--text)" }}>
+                            {r.isSpecialized && <span>★ </span>}
+                            {r.model}
+                          </span>
+                          {r.gainFormatted && (
+                            <span style={{
+                              fontSize: "0.72rem",
+                              padding: "2px 8px",
+                              borderRadius: "4px",
+                              background: "rgba(16, 185, 129, 0.12)",
+                              color: "var(--emerald)",
+                              border: "1px solid rgba(16, 185, 129, 0.25)",
+                              fontWeight: 700,
+                              fontFamily: "var(--font-mono)",
+                            }}>
+                              ⚡ {r.gainFormatted}
+                            </span>
+                          )}
+                          {r.specialtyBadge && (
+                            <span style={{
+                              fontSize: "0.72rem",
+                              padding: "2px 8px",
+                              borderRadius: "4px",
+                              background: "rgba(14, 165, 233, 0.12)",
+                              color: "var(--cyan)",
+                              border: "1px solid rgba(14, 165, 233, 0.25)",
+                              fontWeight: 700,
+                            }}>
+                              🏆 {r.specialtyBadge}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Bars for Thinking & Non-Thinking */}
+                        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                          <div>
+                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", marginBottom: "2px" }}>
+                              <span style={{ color: "var(--text-muted)" }}>Thinking / CoT Score</span>
+                              <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--text)" }}>
+                                {r.thinkingScore} pts
+                              </span>
+                            </div>
+                            <div style={{ height: "7px", background: "rgba(255,255,255,0.06)", borderRadius: "3px", overflow: "hidden" }}>
+                              <div
+                                style={{
+                                  height: "100%",
+                                  borderRadius: "3px",
+                                  width: animated ? `${Math.min(100, r.thinkingScore)}%` : "0%",
+                                  background: r.color,
+                                  transition: "width 0.8s cubic-bezier(0.4, 0, 0.2, 1)",
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                          {r.nonThinkingScore !== undefined && (
+                            <div>
+                              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", marginBottom: "2px" }}>
+                                <span style={{ color: "var(--text-subtle)" }}>Non-Thinking Standard Score</span>
+                                <span style={{ fontFamily: "var(--font-mono)", fontWeight: 600, color: "var(--text-dim)" }}>
+                                  {r.nonThinkingScore} pts
+                                </span>
+                              </div>
+                              <div style={{ height: "5px", background: "rgba(255,255,255,0.04)", borderRadius: "3px", overflow: "hidden" }}>
+                                <div
+                                  style={{
+                                    height: "100%",
+                                    borderRadius: "3px",
+                                    width: animated ? `${Math.min(100, r.nonThinkingScore)}%` : "0%",
+                                    background: "rgba(255,255,255,0.22)",
+                                    transition: "width 0.8s cubic-bezier(0.4, 0, 0.2, 1)",
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {insight.type === "deep_architecture" && insight.architectureRows && (
+                <div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    {insight.architectureRows.map((a) => (
+                      <div
+                        key={a.architecture}
+                        style={{
+                          background: a.isBenchmarkBaseline ? "rgba(16, 185, 129, 0.05)" : a.isSOTA ? "rgba(236, 72, 153, 0.05)" : "rgba(255,255,255,0.02)",
+                          padding: "10px 14px",
+                          borderRadius: "8px",
+                          border: a.isBenchmarkBaseline ? "1px solid rgba(16, 185, 129, 0.25)" : a.isSOTA ? "1px solid rgba(236, 72, 153, 0.25)" : "1px solid rgba(255,255,255,0.05)",
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px", flexWrap: "wrap", gap: "6px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                            <span style={{ fontSize: "0.84rem", fontWeight: 700, color: "var(--text)" }}>{a.architecture}</span>
+                            <span style={{ fontSize: "0.68rem", padding: "1px 6px", borderRadius: "4px", background: "rgba(255,255,255,0.06)", color: "var(--text-muted)" }}>{a.era}</span>
+                            <span style={{ fontSize: "0.68rem", padding: "1px 6px", borderRadius: "4px", background: "rgba(14, 165, 233, 0.1)", color: "var(--cyan)" }}>Metric: {a.metric}</span>
+                            {a.isBenchmarkBaseline && (
+                              <span style={{ fontSize: "0.68rem", padding: "1px 6px", borderRadius: "4px", background: "rgba(16, 185, 129, 0.15)", color: "var(--emerald)", fontWeight: 700 }}>
+                                ★ ACL 2015 Best
+                              </span>
+                            )}
+                            {a.isSOTA && (
+                              <span style={{ fontSize: "0.68rem", padding: "1px 6px", borderRadius: "4px", background: "rgba(236, 72, 153, 0.15)", color: "#f472b6", fontWeight: 700 }}>
+                                🏆 Modern SOTA
+                              </span>
+                            )}
+                          </div>
+                          <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.88rem", color: a.isBenchmarkBaseline ? "var(--emerald)" : a.isSOTA ? "#f472b6" : "var(--text)" }}>
+                            {a.top1Accuracy}% P@1
+                          </span>
+                        </div>
+
+                        <div style={{ height: "6px", background: "rgba(255,255,255,0.05)", borderRadius: "3px", overflow: "hidden", margin: "6px 0" }}>
+                          <div
+                            style={{
+                              height: "100%",
+                              borderRadius: "3px",
+                              width: animated ? `${Math.min(100, a.top1Accuracy)}%` : "0%",
+                              background: a.color,
+                              transition: "width 0.8s cubic-bezier(0.4, 0, 0.2, 1)",
+                            }}
+                          />
+                        </div>
+
+                        <div style={{ fontSize: "0.72rem", color: "var(--text-subtle)" }}>
+                          {a.details}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {insight.type === "human_boundary" && insight.humanBoundaryRows && (
+                <div>
+                  {/* Legend */}
+                  <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", fontSize: "0.74rem", color: "var(--text-muted)", marginBottom: "16px", paddingBottom: "10px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span style={{ width: 10, height: 10, borderRadius: 2, background: "var(--cyan)" }} />
+                      <span style={{ fontWeight: 600, color: "var(--text)" }}>Actuarial Knowledge (INS-Act-Know)</span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span style={{ width: 10, height: 10, borderRadius: 2, background: "#f59e0b" }} />
+                      <span style={{ fontWeight: 600, color: "var(--text)" }}>Case Reasoning (INS-Act-Case)</span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span style={{ width: 10, height: 10, borderRadius: 2, background: "#8b5cf6" }} />
+                      <span style={{ fontWeight: 600, color: "var(--text)" }}>Tool Practice (Spreadsheet/R)</span>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                    {insight.humanBoundaryRows.map((h) => (
+                      <div
+                        key={h.model}
+                        style={{
+                          background: h.isHuman ? "rgba(16, 185, 129, 0.05)" : "rgba(255,255,255,0.02)",
+                          padding: "12px 14px",
+                          borderRadius: "8px",
+                          border: h.isHuman ? "1px solid rgba(16, 185, 129, 0.25)" : "1px solid rgba(255,255,255,0.05)",
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px", flexWrap: "wrap", gap: "6px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <span style={{ fontSize: "0.85rem", fontWeight: 700, color: h.isHuman ? "var(--emerald)" : "var(--text)" }}>
+                              {h.isHuman && <span>👤 </span>}
+                              {h.model}
+                            </span>
+                            <span style={{
+                              fontSize: "0.7rem",
+                              padding: "2px 7px",
+                              borderRadius: "4px",
+                              background: h.isHuman ? "rgba(16, 185, 129, 0.15)" : "rgba(255,255,255,0.06)",
+                              color: h.isHuman ? "var(--emerald)" : "var(--text-dim)",
+                              fontWeight: 600,
+                            }}>
+                              {h.statusBadge}
+                            </span>
+                          </div>
+                          <span style={{ fontSize: "0.72rem", fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}>
+                            {h.deltaVsHuman}
+                          </span>
+                        </div>
+
+                        {/* 3 Subsets grouped bars */}
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "10px" }}>
+                          <div>
+                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", marginBottom: "2px" }}>
+                              <span style={{ color: "var(--text-dim)" }}>Knowledge</span>
+                              <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--cyan)" }}>{h.knowledgeScore}%</span>
+                            </div>
+                            <div style={{ height: "6px", background: "rgba(255,255,255,0.06)", borderRadius: "3px", overflow: "hidden" }}>
+                              <div
+                                style={{
+                                  height: "100%",
+                                  borderRadius: "3px",
+                                  width: animated ? `${Math.min(100, h.knowledgeScore)}%` : "0%",
+                                  background: "var(--cyan)",
+                                  transition: "width 0.8s cubic-bezier(0.4, 0, 0.2, 1)",
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", marginBottom: "2px" }}>
+                              <span style={{ color: "var(--text-dim)" }}>Case Reasoning</span>
+                              <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "#f59e0b" }}>{h.caseReasoningScore}%</span>
+                            </div>
+                            <div style={{ height: "6px", background: "rgba(255,255,255,0.06)", borderRadius: "3px", overflow: "hidden" }}>
+                              <div
+                                style={{
+                                  height: "100%",
+                                  borderRadius: "3px",
+                                  width: animated ? `${Math.min(100, h.caseReasoningScore)}%` : "0%",
+                                  background: "#f59e0b",
+                                  transition: "width 0.8s cubic-bezier(0.4, 0, 0.2, 1)",
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", marginBottom: "2px" }}>
+                              <span style={{ color: "var(--text-dim)" }}>Tool Practice</span>
+                              <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "#8b5cf6" }}>{h.toolPracticeScore}%</span>
+                            </div>
+                            <div style={{ height: "6px", background: "rgba(255,255,255,0.06)", borderRadius: "3px", overflow: "hidden" }}>
+                              <div
+                                style={{
+                                  height: "100%",
+                                  borderRadius: "3px",
+                                  width: animated ? `${Math.min(100, h.toolPracticeScore)}%` : "0%",
+                                  background: "#8b5cf6",
+                                  transition: "width 0.8s cubic-bezier(0.4, 0, 0.2, 1)",
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
       </div>
     </div>
