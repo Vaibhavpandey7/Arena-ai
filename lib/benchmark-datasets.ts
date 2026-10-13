@@ -192,47 +192,43 @@ export const BENCHMARK_DATASETS: Record<BenchmarkDatasetId, BenchmarkDatasetConf
     },
     radar: {
       title: "Multimodal Domain Competency Profile",
-      subtitle: "Performance Across 4 Core Sectors & Vision Reasoning Tasks",
+      subtitle: "Accuracy (%) Across 4 Core Sectors (Auto, Property, Health, Agriculture)",
       dims: [
         "Auto\nInsurance",
-        "Health\nInsurance",
         "Property\nInsurance",
-        "Agri\nInsurance",
-        "Damage\nDetection",
-        "Appearance\nRecog",
+        "Health\nInsurance",
+        "Agricultural\nInsurance",
       ],
       models: [
         {
           label: "GPT-4o",
           color: "#f59e0b",
-          values: [0.860, 0.767, 0.638, 0.364, 0.839, 0.985],
+          values: [0.8600, 0.6377, 0.7673, 0.3638],
         },
         {
           label: "Qwen-VL-Max",
           color: "#0ea5e9",
-          values: [0.809, 0.706, 0.620, 0.332, 0.819, 0.982],
+          values: [0.8086, 0.6199, 0.7060, 0.3318],
         },
         {
           label: "Gemini 1.5 Flash",
           color: "#10b981",
-          values: [0.794, 0.703, 0.602, 0.328, 0.844, 0.968],
+          values: [0.7940, 0.6018, 0.7031, 0.3284],
         },
       ],
     },
     domainBreakdown: {
-      title: "INS-MMBench Domain Average Accuracy",
-      subtitle: "Verified Task Accuracy from ICCV 2025 Paper",
+      title: "4 Core Sectors Average Accuracy",
+      subtitle: "Verified Task Accuracy from ICCV 2025 Paper Table",
       rows: [
         { domain: "Auto Insurance (Overall)", score: 86.0, color: "#f59e0b" },
-        { domain: "Health Risk Monitoring", score: 76.7, color: "#0ea5e9" },
-        { domain: "Vehicle Damage Detection (VDD)", score: 83.9, color: "#10b981" },
-        { domain: "Commercial Property Damage", score: 63.8, color: "#8b5cf6" },
-        { domain: "Farmland Damage Assessment", score: 34.6, color: "#ec4899" },
-        { domain: "Agricultural Insurance (Overall)", score: 36.4, color: "#64748b" },
+        { domain: "Household / Commercial Property", score: 63.8, color: "#8b5cf6" },
+        { domain: "Health Insurance", score: 76.7, color: "#0ea5e9" },
+        { domain: "Agricultural Insurance", score: 36.4, color: "#10b981" },
       ],
     },
     domainWiseAccuracy: {
-      title: "Domain-Wise Accuracy Across Leading Models",
+      title: "Pillar-by-Pillar Model Accuracy",
       subtitle: "Verified Task Accuracy (%) Across 4 Core Sectors from ICCV 2025 Paper",
       domains: [
         {
@@ -252,50 +248,53 @@ export const BENCHMARK_DATASETS: Record<BenchmarkDatasetId, BenchmarkDatasetConf
           ],
         },
         {
+          domain: "Household / Commercial Property",
+          discipline: "Building Fire, Water & Structural Risk",
+          leaderModel: "GPT-4o",
+          leaderScore: "63.8%",
+          baselineModel: "Human Baseline",
+          baselineScore: "60.0%",
+          models: [
+            { model: "GPT-4o", score: 63.77, scoreFormatted: "63.8%", isLeader: true, color: "#f59e0b" },
+            { model: "Qwen-VL-Max", score: 61.99, scoreFormatted: "62.0%", color: "#0ea5e9" },
+            { model: "GPT-4V", score: 60.55, scoreFormatted: "60.6%", color: "#ec4899" },
+            { model: "Gemini 1.5 Flash", score: 60.18, scoreFormatted: "60.2%", color: "#10b981" },
+            { model: "Human Baseline", score: 60.00, scoreFormatted: "60.0%", color: "#22c55e" },
+            { model: "Qwen-2.5-VL-32B", score: 54.58, scoreFormatted: "54.6%", color: "#8b5cf6" },
+          ],
+        },
+        {
           domain: "Health Insurance",
           discipline: "Medical Risk, Symptom OCR & Disability",
           leaderModel: "GPT-4o",
           leaderScore: "76.7%",
           baselineModel: "Human Baseline",
-          baselineScore: "64.5%",
+          baselineScore: "75.0%",
           models: [
             { model: "GPT-4o", score: 76.73, scoreFormatted: "76.7%", isLeader: true, color: "#f59e0b" },
+            { model: "Qwen-2.5-VL-32B", score: 76.27, scoreFormatted: "76.3%", color: "#8b5cf6" },
+            { model: "Human Baseline", score: 75.00, scoreFormatted: "75.0%", color: "#22c55e" },
+            { model: "GLM4V-Plus", score: 72.49, scoreFormatted: "72.5%", color: "#06b6d4" },
             { model: "GPT-4V", score: 70.82, scoreFormatted: "70.8%", color: "#ec4899" },
-            { model: "Qwen-VL-Max", score: 70.61, scoreFormatted: "70.6%", color: "#0ea5e9" },
-            { model: "Gemini 1.5 Flash", score: 70.28, scoreFormatted: "70.3%", color: "#10b981" },
-            { model: "GLM4V-Plus", score: 68.42, scoreFormatted: "68.4%", color: "#06b6d4" },
-            { model: "Human Baseline", score: 64.51, scoreFormatted: "64.5%", color: "#22c55e" },
-          ],
-        },
-        {
-          domain: "Commercial Property",
-          discipline: "Building Fire, Water & Structural Risk",
-          leaderModel: "GPT-4o",
-          leaderScore: "63.8%",
-          baselineModel: "Human Baseline",
-          baselineScore: "59.8%",
-          models: [
-            { model: "GPT-4o", score: 63.82, scoreFormatted: "63.8%", isLeader: true, color: "#f59e0b" },
-            { model: "Qwen-VL-Max", score: 62.04, scoreFormatted: "62.0%", color: "#0ea5e9" },
-            { model: "GPT-4V", score: 60.55, scoreFormatted: "60.6%", color: "#ec4899" },
-            { model: "Gemini 1.5 Flash", score: 60.18, scoreFormatted: "60.2%", color: "#10b981" },
-            { model: "Human Baseline", score: 59.80, scoreFormatted: "59.8%", color: "#22c55e" },
+            { model: "Qwen-VL-Max", score: 70.60, scoreFormatted: "70.6%", color: "#0ea5e9" },
+            { model: "Gemini 1.5 Flash", score: 70.31, scoreFormatted: "70.3%", color: "#10b981" },
           ],
         },
         {
           domain: "Agricultural Insurance",
           discipline: "Crop Pest, Drought & Livestock Loss",
           leaderModel: "Human Baseline",
-          leaderScore: "54.3%",
+          leaderScore: "42.5%",
           baselineModel: "Human Baseline",
-          baselineScore: "54.3%",
+          baselineScore: "42.5%",
           models: [
-            { model: "Human Baseline", score: 54.30, scoreFormatted: "54.3%", isLeader: true, color: "#22c55e" },
+            { model: "Human Baseline", score: 42.50, scoreFormatted: "42.5%", isLeader: true, color: "#22c55e" },
             { model: "GPT-4o", score: 36.38, scoreFormatted: "36.4%", color: "#f59e0b" },
-            { model: "Qwen-VL-Max", score: 33.20, scoreFormatted: "33.2%", color: "#0ea5e9" },
+            { model: "Qwen-2.5-VL-32B", score: 33.70, scoreFormatted: "33.7%", color: "#8b5cf6" },
+            { model: "Qwen-VL-Max", score: 33.18, scoreFormatted: "33.2%", color: "#0ea5e9" },
             { model: "Gemini 1.5 Flash", score: 32.84, scoreFormatted: "32.8%", color: "#10b981" },
-            { model: "GLM4V-Plus", score: 31.95, scoreFormatted: "32.0%", color: "#06b6d4" },
-            { model: "GPT-4V", score: 29.20, scoreFormatted: "29.2%", color: "#ec4899" },
+            { model: "GLM4V-Plus", score: 29.92, scoreFormatted: "29.9%", color: "#06b6d4" },
+            { model: "GPT-4V", score: 29.23, scoreFormatted: "29.2%", color: "#ec4899" },
           ],
         },
       ],
@@ -397,7 +396,7 @@ export const BENCHMARK_DATASETS: Record<BenchmarkDatasetId, BenchmarkDatasetConf
       ],
     },
     domainBreakdown: {
-      title: "Dimension Average Pass Rates in CUFEInse v2.0",
+      title: "CUFE 5 Core Pillars Average Pass Rates",
       subtitle: "Average Performance Across 54 Sub-Indicators (17,637 Questions)",
       rows: [
         { domain: "Logical Rigor & Calculation", score: 88.2, color: "#f59e0b" },
@@ -577,7 +576,7 @@ export const BENCHMARK_DATASETS: Record<BenchmarkDatasetId, BenchmarkDatasetConf
       ],
     },
     domainBreakdown: {
-      title: "InsuranceQA Topic Category Accuracy",
+      title: "Insurance Domain Average Accuracy Breakdown",
       subtitle: "Accuracy Across Primary Insurance Product Lines",
       rows: [
         { domain: "Auto & Vehicle Policy QA", score: 82.4, color: "#f59e0b" },
@@ -588,7 +587,7 @@ export const BENCHMARK_DATASETS: Record<BenchmarkDatasetId, BenchmarkDatasetConf
       ],
     },
     domainWiseAccuracy: {
-      title: "Insurance Product Line Top-1 Accuracy (Test-1)",
+      title: "Pillar-by-Pillar QA Retrieval & Answer Accuracy",
       subtitle: "Accuracy (%) Across Major Product Categories in 500-Candidate Ranking",
       domains: [
         {
@@ -745,7 +744,7 @@ export const BENCHMARK_DATASETS: Record<BenchmarkDatasetId, BenchmarkDatasetConf
       ],
     },
     domainBreakdown: {
-      title: "INS-ActBench Task Subject Accuracies",
+      title: "Actuarial Subject Average Pass Rates",
       subtitle: "Average Accuracy across 16 International Actuarial Associations",
       rows: [
         { domain: "Probability and Statistics (PS)", score: 94.2, color: "#f59e0b" },
@@ -758,11 +757,11 @@ export const BENCHMARK_DATASETS: Record<BenchmarkDatasetId, BenchmarkDatasetConf
       ],
     },
     domainWiseAccuracy: {
-      title: "Actuarial Syllabus Accuracies",
+      title: "Pillar-by-Pillar Actuarial Syllabus Accuracies",
       subtitle: "Accuracy (%) Across 16 Global Actuarial Bodies vs. Human Expert Baseline",
       domains: [
         {
-          domain: "Actuarial Mathematics (AMA)",
+          domain: "Actuarial Math (AMA)",
           discipline: "Life Contingencies, Decrement Models & Loss Distribution",
           leaderModel: "Human Experts",
           leaderScore: "97.7%",
@@ -777,7 +776,7 @@ export const BENCHMARK_DATASETS: Record<BenchmarkDatasetId, BenchmarkDatasetConf
           ],
         },
         {
-          domain: "Probability & Statistics (PS)",
+          domain: "Prob & Stats (PS)",
           discipline: "Credibility Theory, Generalized Linear Models & Bayesian Priors",
           leaderModel: "Gemini-3.1-Pro",
           leaderScore: "97.5%",
@@ -792,7 +791,7 @@ export const BENCHMARK_DATASETS: Record<BenchmarkDatasetId, BenchmarkDatasetConf
           ],
         },
         {
-          domain: "Economics & Finance (EF)",
+          domain: "Econ & Finance (EF)",
           discipline: "Asset-Liability Matching, Yield Curves & Solvency II Interest Rates",
           leaderModel: "Gemini-3.1-Pro",
           leaderScore: "95.4%",
@@ -807,7 +806,7 @@ export const BENCHMARK_DATASETS: Record<BenchmarkDatasetId, BenchmarkDatasetConf
           ],
         },
         {
-          domain: "Non-Life Insurance (NLI)",
+          domain: "Non-Life (NLI)",
           discipline: "P&C Underwriting, Loss Frequency & Severity Severity Modeling",
           leaderModel: "Gemini-3.1-Pro",
           leaderScore: "94.0%",
@@ -837,7 +836,7 @@ export const BENCHMARK_DATASETS: Record<BenchmarkDatasetId, BenchmarkDatasetConf
           ],
         },
         {
-          domain: "Long-Context Case Reasoning",
+          domain: "Case Reasoning (CA)",
           discipline: "Complex Treaty Formulation & Reinsurance Negotiation",
           leaderModel: "Human Experts",
           leaderScore: "79.6%",

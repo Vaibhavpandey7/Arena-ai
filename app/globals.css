@@ -6872,9 +6872,10 @@ body {
 /* Charts grid */
 .benchmark-charts-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 16px;
   margin-bottom: 20px;
+  align-items: stretch;
 }
 
 @media (max-width: 900px) {
@@ -6886,6 +6887,9 @@ body {
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   padding: 18px 20px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .benchmark-chart-title {
