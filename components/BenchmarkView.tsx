@@ -1,11 +1,7 @@
 "use client";
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
-import ModelSelectWidget from "./ModelSelectWidget";
-import GroundTruthPanel from "./GroundTruthPanel";
 import { BENCHMARK_GOLD_REGISTRY, BenchmarkGoldItem } from "@/lib/benchmark-gold-data";
-import { evaluateUseCaseMetrics } from "@/lib/use-case-metrics";
-import { getModel } from "@/lib/model-registry";
 import {
   BENCHMARK_DATASETS,
   BenchmarkDatasetId,
@@ -21,10 +17,10 @@ function RadarChart({
   dims: string[];
   models: { label: string; color: string; values: number[] }[];
 }) {
-  const size = 220;
+  const size = 380;
   const cx = size / 2;
   const cy = size / 2;
-  const r = 72;
+  const r = 125;
   const n = dims.length;
 
   function polarToCartesian(radiusFactor: number, index: number) {
@@ -38,7 +34,8 @@ function RadarChart({
   function pointsForModel(values: number[]) {
     return values
       .map((val, i) => {
-        const { x, y } = polarToCartesian(val, i);
+        const clamped = Math.max(0, Math.min(1, val));
+        const { x, y } = polarToCartesian(clamped, i);
         return `${x},${y}`;
       })
       .join(" ");
@@ -47,69 +44,124 @@ function RadarChart({
   const gridRings = [0.25, 0.5, 0.75, 1.0];
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      {gridRings.map((ring) => {
-        const pts = Array.from({ length: n }, (_, i) => {
-          const { x, y } = polarToCartesian(ring, i);
-          return `${x},${y}`;
-        }).join(" ");
-        return (
-          <polygon
-            key={ring}
-            points={pts}
-            fill="none"
-            stroke="rgba(255,255,255,0.08)"
-            strokeWidth="1"
-          />
-        );
-      })}
+    <div style={{ width: "100%", maxWidth: "390px", margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center" }}>
+      <svg
+        width="100%"
+        height="100%"
+        viewBox={`0 0 ${size} ${size}`}
+        style={{ overflow: "visible", display: "block" }}
+      >
+        {/* Concentric grid polygons */}
+        {gridRings.map((ring) => {
+          const pts = Array.from({ length: n }, (_, i) => {
+            const { x, y } = polarToCartesian(ring, i);
+            return `${x},${y}`;
+          }).join(" ");
+          return (
+            <polygon
+              key={ring}
+              points={pts}
+              fill={ring === 1.0 ? "rgba(0, 212, 255, 0.02)" : "none"}
+              stroke="rgba(255, 255, 255, 0.10)"
+              strokeWidth={ring === 1.0 ? "1.5" : "1"}
+              strokeDasharray={ring < 1.0 ? "3 3" : undefined}
+            />
+          );
+        })}
 
-      {Array.from({ length: n }, (_, i) => {
-        const outer = polarToCartesian(1, i);
-        return (
-          <line
-            key={i}
-            x1={cx}
-            y1={cy}
-            x2={outer.x}
-            y2={outer.y}
-            stroke="rgba(255,255,255,0.08)"
-            strokeWidth="1"
-          />
-        );
-      })}
+        {/* Ring scale percentage marks along the vertical axis */}
+        {gridRings.map((ring) => {
+          const pt = polarToCartesian(ring, 0);
+          return (
+            <text
+              key={`scale-${ring}`}
+              x={pt.x + 4}
+              y={pt.y - 2}
+              fontSize="8.5"
+              fontFamily="var(--font-mono)"
+              fontWeight="600"
+              fill="rgba(148, 163, 184, 0.6)"
+            >
+              {Math.round(ring * 100)}%
+            </text>
+          );
+        })}
 
-      {models.map((m) => (
-        <polygon
-          key={m.label}
-          points={pointsForModel(m.values)}
-          fill={`${m.color}22`}
-          stroke={m.color}
-          strokeWidth="1.5"
-        />
-      ))}
+        {/* Axis radial lines */}
+        {Array.from({ length: n }, (_, i) => {
+          const outer = polarToCartesian(1, i);
+          return (
+            <line
+              key={i}
+              x1={cx}
+              y1={cy}
+              x2={outer.x}
+              y2={outer.y}
+              stroke="rgba(255, 255, 255, 0.12)"
+              strokeWidth="1"
+            />
+          );
+        })}
 
-      {dims.map((dim, i) => {
-        const { x, y } = polarToCartesian(1.30, i);
-        return (
-          <text
-            key={i}
-            x={x}
-            y={y}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fontSize="7"
-            fill="rgba(148,163,184,0.9)"
-          >
-            {dim.split("\n").map((line, j) => (
-              <tspan key={j} x={x} dy={j === 0 ? 0 : 8.5}>
-                {line}
-              </tspan>
-            ))}
-          </text>
-        );
-      })}
-    </svg>
+        {/* Model Polygons and vertex dots */}
+        {models.map((m) => {
+          return (
+            <g key={m.label}>
+              <polygon
+                points={pointsForModel(m.values)}
+                fill={`${m.color}26`}
+                stroke={m.color}
+                strokeWidth="2"
+                strokeLinejoin="round"
+              />
+              {/* Vertex nodes */}
+              {m.values.map((val, idx) => {
+                const clamped = Math.max(0, Math.min(1, val));
+                const pt = polarToCartesian(clamped, idx);
+                return (
+                  <circle
+                    key={idx}
+                    cx={pt.x}
+                    cy={pt.y}
+                    r="3.5"
+                    fill={m.color}
+                    stroke="#0b1628"
+                    strokeWidth="1.5"
+                  />
+                );
+              })}
+            </g>
+          );
+        })}
+
+        {/* Dimension labels with quadrant-aware anchors */}
+        {dims.map((dim, i) => {
+          const angle = (Math.PI * 2 * i) / n - Math.PI / 2;
+          const { x, y } = polarToCartesian(1.22, i);
+          const cos = Math.cos(angle);
+          const textAnchor = Math.abs(cos) < 0.25 ? "middle" : cos > 0 ? "start" : "end";
+
+          return (
+            <text
+              key={i}
+              x={x}
+              y={y}
+              textAnchor={textAnchor}
+              dominantBaseline="middle"
+              fontSize="9.5"
+              fontWeight="600"
+              fill="rgba(226, 232, 240, 0.9)"
+            >
+              {dim.split("\n").map((line, j) => (
+                <tspan key={j} x={x} dy={j === 0 ? 0 : 11}>
+                  {line}
+                </tspan>
+              ))}
+            </text>
+          );
+        })}
+      </svg>
+    </div>
   );
 }
 
@@ -122,33 +174,14 @@ interface Props {
   onNavigate?: (tab: Tab, prompt?: string) => void;
 }
 
-interface QuestionResult {
-  modelId: string;
-  answer: string;
-  latencyMs: number;
-  tokens: number;
-  isRunning: boolean;
-  gtScore?: number;
-  useCaseEval?: any;
-}
-
 export default function BenchmarkView({ onNavigate }: Props) {
   const [activeDataset, setActiveDataset] = useState<BenchmarkDatasetId>("INS-MMBench");
   const [activeFilter, setActiveFilter] = useState("All");
   const [animated, setAnimated] = useState(false);
+  const [selectedDomainIdx, setSelectedDomainIdx] = useState(0);
+  const [expandedGroundTruth, setExpandedGroundTruth] = useState<Record<string, boolean>>({});
 
   const currentDataset = BENCHMARK_DATASETS[activeDataset] || BENCHMARK_DATASETS["INS-MMBench"];
-
-  // Model selection for benchmark runs (defaulted to 100% free models to preserve user credits)
-  const [selectedModels, setSelectedModels] = useState<string[]>([
-    "openrouter/free",
-    "qwen/qwen3.8-27b:free",
-  ]);
-
-  // Results cache: questionId -> array of QuestionResult
-  const [resultsByQuestion, setResultsByQuestion] = useState<Record<string, QuestionResult[]>>({});
-  const [expandedResults, setExpandedResults] = useState<Record<string, boolean>>({});
-  const [isBatchRunning, setIsBatchRunning] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setAnimated(true), 100);
@@ -168,137 +201,10 @@ export default function BenchmarkView({ onNavigate }: Props) {
     return ALL_BENCHMARK_ITEMS.filter((q) => (map[activeFilter] ?? []).includes(q.category));
   }, [activeFilter]);
 
-  const handleAddModel = () => {
-    if (selectedModels.length >= 4) return;
-    const pool = [
-      "nvidia/nemotron-3.5-lightning:free",
-      "qwen/qwen3.8-27b:free",
-      "openrouter/free",
-      "openai/gpt-4o-mini",
-    ];
-    const next = pool.find((p) => !selectedModels.includes(p)) || pool[0];
-    setSelectedModels((prev) => [...prev, next]);
-  };
-
-  const handleRemoveModel = (idx: number) => {
-    if (selectedModels.length <= 1) return;
-    setSelectedModels((prev) => prev.filter((_, i) => i !== idx));
-  };
-
-  // Run a single question against all selected models
-  const runQuestion = async (q: BenchmarkGoldItem) => {
-    setExpandedResults((prev) => ({ ...prev, [q.id]: true }));
-
-    // Initialize result slots
-    setResultsByQuestion((prev) => ({
-      ...prev,
-      [q.id]: selectedModels.map((mId) => ({
-        modelId: mId,
-        answer: "",
-        latencyMs: 0,
-        tokens: 0,
-        isRunning: true,
-      })),
-    }));
-
-    // Run parallel queries
-    await Promise.all(
-      selectedModels.map(async (modelId, idx) => {
-        const startTime = Date.now();
-        try {
-          const res = await fetch("/api/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              model: modelId,
-              prompt: q.text,
-              useTools: false,
-            }),
-          });
-
-          if (!res.ok || !res.body) throw new Error("Request failed");
-
-          const reader = res.body.getReader();
-          const decoder = new TextDecoder();
-          let fullText = "";
-          let buffer = "";
-
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split("\n");
-            buffer = lines.pop() ?? "";
-
-            for (const line of lines) {
-              const trimmed = line.trim();
-              if (trimmed.startsWith("data:")) {
-                const dataStr = trimmed.slice(5).trim();
-                if (dataStr === "[DONE]") break;
-                try {
-                  const parsed = JSON.parse(dataStr);
-                  if (parsed.type === "error" || parsed.error) {
-                    fullText = `⚠ ${parsed.error || "Model returned an error"}`;
-                    break;
-                  }
-                  const chunk = (parsed.delta && (parsed.type === "content" || parsed.type === "text"))
-                    ? parsed.delta
-                    : (parsed.t === "text" || parsed.t === "content") ? parsed.c : null;
-                  if (chunk) fullText += chunk;
-                } catch {}
-              }
-            }
-          }
-
-          const latencyMs = Date.now() - startTime;
-          const tokens = fullText.split(/\s+/).length;
-          const evalResult = evaluateUseCaseMetrics(q.useCaseId, fullText, q.goldResponse, q.evidence);
-
-          setResultsByQuestion((prev) => {
-            const list = [...(prev[q.id] || [])];
-            list[idx] = {
-              modelId,
-              answer: fullText,
-              latencyMs,
-              tokens,
-              isRunning: false,
-              gtScore: evalResult.overallScore,
-              useCaseEval: evalResult,
-            };
-            return { ...prev, [q.id]: list };
-          });
-        } catch (err) {
-          setResultsByQuestion((prev) => {
-            const list = [...(prev[q.id] || [])];
-            list[idx] = {
-              modelId,
-              answer: "Error running evaluation. Please verify model availability.",
-              latencyMs: Date.now() - startTime,
-              tokens: 0,
-              isRunning: false,
-              gtScore: 0,
-            };
-            return { ...prev, [q.id]: list };
-          });
-        }
-      })
-    );
-  };
-
-  // Run all visible questions sequentially
-  const handleRunAll = async () => {
-    if (isBatchRunning) return;
-    setIsBatchRunning(true);
-    for (const q of filtered) {
-      await runQuestion(q);
-    }
-    setIsBatchRunning(false);
-  };
-
   return (
     <div className="studio-content" style={{ overflowY: "auto" }}>
       <div className="benchmark-view">
-        {/* Top Control Bar: Dataset Tabs + Selected Models Bar */}
+        {/* Top Control Bar: Dataset Tabs */}
         <div
           style={{
             display: "flex",
@@ -306,99 +212,28 @@ export default function BenchmarkView({ onNavigate }: Props) {
             alignItems: "center",
             flexWrap: "wrap",
             gap: "12px",
-            marginBottom: "16px",
+            marginBottom: "20px",
           }}
         >
-          {/* Dataset filter tabs */}
+          {/* Dataset selection tabs */}
           <div className="benchmark-filter-tabs" style={{ margin: 0 }}>
             {DATASET_TABS.map((t) => (
               <button
                 key={t}
                 className={`benchmark-filter-tab${activeDataset === t ? " active" : ""}`}
-                onClick={() => setActiveDataset(t)}
+                onClick={() => {
+                  setActiveDataset(t);
+                  setSelectedDomainIdx(0);
+                }}
               >
                 {t}
               </button>
             ))}
           </div>
 
-          {/* Batch Run Button */}
-          <button
-            onClick={handleRunAll}
-            disabled={isBatchRunning}
-            style={{
-              padding: "7px 18px",
-              borderRadius: "8px",
-              background: isBatchRunning ? "rgba(245, 158, 11, 0.2)" : "var(--cyan)",
-              border: isBatchRunning ? "1px solid var(--amber)" : "none",
-              color: isBatchRunning ? "var(--amber)" : "#050b14",
-              fontSize: "0.8rem",
-              fontWeight: 800,
-              cursor: isBatchRunning ? "not-allowed" : "pointer",
-              boxShadow: isBatchRunning ? "none" : "0 0 12px rgba(0, 212, 255, 0.25)",
-            }}
-          >
-            {isBatchRunning ? "⏳ Batch Running Questions..." : `▶ Run All (${filtered.length}) on Selected Models`}
-          </button>
-        </div>
-
-        {/* Selected Models Bar */}
-        <div
-          style={{
-            padding: "14px 18px",
-            borderRadius: "10px",
-            background: "rgba(11, 22, 40, 0.8)",
-            border: "1px solid var(--border)",
-            marginBottom: "20px",
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-            <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--cyan)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-              Active Evaluation Models ({selectedModels.length} of 4)
-            </span>
-            {selectedModels.length < 4 && (
-              <button
-                onClick={handleAddModel}
-                style={{
-                  fontSize: "0.72rem",
-                  padding: "3px 8px",
-                  borderRadius: "5px",
-                  background: "rgba(0, 212, 255, 0.12)",
-                  border: "1px solid rgba(0, 212, 255, 0.3)",
-                  color: "var(--cyan)",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                }}
-              >
-                ＋ Add Model
-              </button>
-            )}
-          </div>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: `repeat(${selectedModels.length}, minmax(220px, 1fr))`,
-              gap: "10px",
-            }}
-          >
-            {selectedModels.map((mId, idx) => (
-              <div key={idx} style={{ minWidth: 0 }}>
-                <ModelSelectWidget
-                  label={`Model ${idx + 1}`}
-                  value={mId}
-                  compact
-                  onRemove={selectedModels.length > 1 ? () => handleRemoveModel(idx) : undefined}
-                  onChange={(newId) => {
-                    setSelectedModels((prev) => {
-                      const next = [...prev];
-                      next[idx] = newId;
-                      return next;
-                    });
-                  }}
-                />
-              </div>
-            ))}
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.78rem", color: "var(--cyan)" }}>
+            <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "var(--cyan)", boxShadow: "0 0 8px var(--cyan)" }} />
+            <span>Official Academic Benchmark Ground Truth & Syllabi</span>
           </div>
         </div>
 
@@ -524,6 +359,21 @@ export default function BenchmarkView({ onNavigate }: Props) {
             <div className="benchmark-chart-subtitle">
               {currentDataset.comparison.subtitle}
             </div>
+
+            {/* Dual bar legend */}
+            <div style={{ display: "flex", gap: "16px", marginBottom: "12px", fontSize: "0.74rem", color: "var(--text-muted)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <span style={{ width: 12, height: 5, background: "var(--cyan)", borderRadius: 2 }} />
+                <span>{currentDataset.comparison.val1Label} (Primary)</span>
+              </div>
+              {currentDataset.comparison.val2Label && (
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <span style={{ width: 12, height: 5, background: "rgba(0, 212, 255, 0.45)", borderRadius: 2 }} />
+                  <span>{currentDataset.comparison.val2Label} (Secondary)</span>
+                </div>
+              )}
+            </div>
+
             <div className="benchmark-bar-list">
               {currentDataset.comparison.rows.map((row) => (
                 <div key={row.model} className="benchmark-bar-item">
@@ -559,32 +409,50 @@ export default function BenchmarkView({ onNavigate }: Props) {
             </div>
           </div>
 
-          {/* Domain Capability Radar */}
-          <div className="benchmark-chart-card" style={{ alignItems: "center" }}>
+          {/* Domain Capability Radar (Enlarged) */}
+          <div className="benchmark-chart-card" style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
             <div className="benchmark-chart-title" style={{ width: "100%" }}>
               {currentDataset.radar.title}
             </div>
-            <div className="benchmark-chart-subtitle" style={{ width: "100%" }}>
+            <div className="benchmark-chart-subtitle" style={{ width: "100%", marginBottom: "12px" }}>
               {currentDataset.radar.subtitle}
             </div>
+            
             <RadarChart dims={currentDataset.radar.dims} models={currentDataset.radar.models} />
-            <div style={{ display: "flex", gap: 16, marginTop: 8, flexWrap: "wrap", justifyContent: "center" }}>
-              {currentDataset.radar.models.map((m) => (
-                <div
-                  key={m.label}
-                  style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11 }}
-                >
+            
+            <div style={{ display: "flex", gap: 16, marginTop: 14, flexWrap: "wrap", justifyContent: "center" }}>
+              {currentDataset.radar.models.map((m) => {
+                const avgScore = (m.values.reduce((a, b) => a + b, 0) / m.values.length) * 100;
+                return (
                   <div
+                    key={m.label}
                     style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: 2,
-                      background: m.color,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      fontSize: 11.5,
+                      padding: "3px 8px",
+                      background: "rgba(255, 255, 255, 0.04)",
+                      borderRadius: "6px",
+                      border: "1px solid rgba(255, 255, 255, 0.06)",
                     }}
-                  />
-                  <span style={{ color: "var(--text-muted)" }}>{m.label}</span>
-                </div>
-              ))}
+                  >
+                    <div
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: "50%",
+                        background: m.color,
+                        boxShadow: `0 0 6px ${m.color}`,
+                      }}
+                    />
+                    <span style={{ color: "var(--text)", fontWeight: 600 }}>{m.label}</span>
+                    <span style={{ color: "var(--emerald)", fontFamily: "var(--font-mono)", fontSize: "0.72rem" }}>
+                      ({avgScore.toFixed(1)}%)
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -599,13 +467,15 @@ export default function BenchmarkView({ onNavigate }: Props) {
                 <div key={row.domain} className="benchmark-bar-item">
                   <div className="benchmark-bar-header">
                     <span className="benchmark-bar-label">{row.domain}</span>
-                    <span className="benchmark-bar-value">{row.score}%</span>
+                    <span className="benchmark-bar-value">
+                      {row.score}{currentDataset.scoreUnit}
+                    </span>
                   </div>
                   <div className="benchmark-bar-track">
                     <div
                       className="benchmark-bar-fill"
                       style={{
-                        width: animated ? `${row.score}%` : "0%",
+                        width: animated ? `${Math.min(100, row.score)}%` : "0%",
                         background: row.color,
                       }}
                     />
@@ -615,30 +485,140 @@ export default function BenchmarkView({ onNavigate }: Props) {
             </div>
           </div>
 
-          {/* Latency vs Accuracy */}
+          {/* Domain-Wise Multi-Model Accuracy */}
           <div className="benchmark-chart-card">
-            <div className="benchmark-chart-title">Latency vs. Accuracy Tradeoff</div>
+            <div className="benchmark-chart-title">{currentDataset.domainWiseAccuracy.title}</div>
             <div className="benchmark-chart-subtitle">
-              Measured response latency against {currentDataset.primaryMetric} in {currentDataset.name}
+              {currentDataset.domainWiseAccuracy.subtitle}
             </div>
-            <div className="benchmark-latency-bars">
-              {currentDataset.latencyData.map((row) => (
-                <div key={row.model} className="benchmark-latency-item">
-                  <span className="benchmark-latency-model">{row.model}</span>
-                  <div className="benchmark-latency-bar-track">
-                    <div
-                      className="benchmark-latency-bar-fill"
-                      style={{
-                        width: animated ? `${(row.latency / 8) * 100}%` : "0%",
-                        background: row.color,
-                      }}
-                    >
-                      {row.latency}s · {row.accuracy}{currentDataset.scoreUnit}
-                    </div>
-                  </div>
-                </div>
+
+            {/* Domain Selector Tabs */}
+            <div
+              style={{
+                display: "flex",
+                gap: "6px",
+                overflowX: "auto",
+                paddingBottom: "8px",
+                marginBottom: "14px",
+                borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
+              }}
+            >
+              {currentDataset.domainWiseAccuracy.domains.map((dom, dIdx) => (
+                <button
+                  key={dom.domain}
+                  onClick={() => setSelectedDomainIdx(dIdx)}
+                  style={{
+                    padding: "4px 10px",
+                    fontSize: "0.72rem",
+                    fontWeight: selectedDomainIdx === dIdx ? 700 : 500,
+                    borderRadius: "6px",
+                    background: selectedDomainIdx === dIdx ? "rgba(0, 212, 255, 0.15)" : "rgba(255, 255, 255, 0.04)",
+                    border: selectedDomainIdx === dIdx ? "1px solid rgba(0, 212, 255, 0.4)" : "1px solid rgba(255, 255, 255, 0.08)",
+                    color: selectedDomainIdx === dIdx ? "var(--cyan)" : "var(--text-muted)",
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  {dom.domain}
+                </button>
               ))}
             </div>
+
+            {/* Active Domain Details */}
+            {(() => {
+              const activeDom =
+                currentDataset.domainWiseAccuracy.domains[selectedDomainIdx] ||
+                currentDataset.domainWiseAccuracy.domains[0];
+              if (!activeDom) return null;
+
+              return (
+                <div>
+                  {/* Domain header banner */}
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                      gap: "8px",
+                      padding: "8px 12px",
+                      background: "rgba(0, 0, 0, 0.25)",
+                      borderRadius: "6px",
+                      marginBottom: "12px",
+                      border: "1px solid rgba(255, 255, 255, 0.04)",
+                    }}
+                  >
+                    <div>
+                      <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--text)" }}>
+                        {activeDom.domain}
+                      </span>
+                      <span style={{ fontSize: "0.7rem", color: "var(--text-dim)", marginLeft: "8px" }}>
+                        ({activeDom.discipline})
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                      <span
+                        style={{
+                          fontSize: "0.68rem",
+                          padding: "2px 7px",
+                          borderRadius: "4px",
+                          background: "rgba(245, 158, 11, 0.15)",
+                          color: "#f59e0b",
+                          border: "1px solid rgba(245, 158, 11, 0.3)",
+                          fontWeight: 700,
+                        }}
+                      >
+                        🏆 Leader: {activeDom.leaderModel} ({activeDom.leaderScore})
+                      </span>
+                      {activeDom.baselineScore && (
+                        <span
+                          style={{
+                            fontSize: "0.68rem",
+                            padding: "2px 7px",
+                            borderRadius: "4px",
+                            background: "rgba(16, 185, 129, 0.12)",
+                            color: "var(--emerald)",
+                            border: "1px solid rgba(16, 185, 129, 0.25)",
+                            fontWeight: 600,
+                          }}
+                        >
+                          👤 {activeDom.baselineModel}: {activeDom.baselineScore}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Model comparative bars in this domain */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    {activeDom.models.map((m) => (
+                      <div key={m.model} style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.76rem" }}>
+                          <span style={{ color: m.isLeader ? "var(--cyan)" : "var(--text-muted)", fontWeight: m.isLeader ? 700 : 500, display: "flex", alignItems: "center", gap: "6px" }}>
+                            {m.isLeader && <span>★</span>}
+                            {m.model}
+                          </span>
+                          <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: m.isLeader ? "var(--emerald)" : "var(--text)" }}>
+                            {m.scoreFormatted}
+                          </span>
+                        </div>
+                        <div style={{ height: "6px", background: "var(--bg-surface-elevated)", borderRadius: "3px", overflow: "hidden" }}>
+                          <div
+                            style={{
+                              height: "100%",
+                              borderRadius: "3px",
+                              width: animated ? `${Math.min(100, m.score)}%` : "0%",
+                              background: m.color,
+                              transition: "width 0.8s cubic-bezier(0.4, 0, 0.2, 1)",
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
 
@@ -666,12 +646,10 @@ export default function BenchmarkView({ onNavigate }: Props) {
             ))}
           </div>
 
-          {/* Question cards with live execution and inline results */}
+          {/* Question cards */}
           <div className="benchmark-q-list">
             {filtered.map((q) => {
-              const results = resultsByQuestion[q.id];
-              const isExpanded = Boolean(expandedResults[q.id]);
-              const isRunningThis = results?.some((r) => r.isRunning);
+              const isGtOpen = Boolean(expandedGroundTruth[q.id]);
 
               return (
                 <div key={q.id} className="benchmark-q-card" style={{ display: "flex", flexDirection: "column" }}>
@@ -701,11 +679,9 @@ export default function BenchmarkView({ onNavigate }: Props) {
                     <div className="benchmark-q-actions" style={{ flexShrink: 0 }}>
                       <button
                         className="benchmark-q-btn primary"
-                        disabled={isRunningThis}
-                        onClick={() => runQuestion(q)}
-                        style={{ background: isRunningThis ? "rgba(0, 212, 255, 0.2)" : undefined }}
+                        onClick={() => setExpandedGroundTruth((prev) => ({ ...prev, [q.id]: !isGtOpen }))}
                       >
-                        {isRunningThis ? "⏳ Running..." : `▶ Run (${selectedModels.length} Models)`}
+                        {isGtOpen ? "▲ Hide Ground Truth" : "📖 Ground Truth & Citations"}
                       </button>
                       <button
                         className="benchmark-q-btn secondary"
@@ -722,123 +698,51 @@ export default function BenchmarkView({ onNavigate }: Props) {
                     </div>
                   </div>
 
-                  {/* Collapsible Inline Results Panel */}
-                  {results && results.length > 0 && (
+                  {/* Expandable Ground Truth & Citations Panel */}
+                  {isGtOpen && (
                     <div
                       style={{
                         marginTop: "14px",
-                        padding: "12px 14px",
+                        padding: "14px 16px",
                         borderRadius: "8px",
-                        background: "rgba(0, 0, 0, 0.45)",
-                        border: "1px solid var(--border)",
+                        background: "rgba(6, 11, 20, 0.85)",
+                        border: "1px solid rgba(0, 212, 255, 0.2)",
                       }}
                     >
+                      <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--cyan)", marginBottom: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span>🎯 Gold Standard Benchmark Response & Mathematical Basis</span>
+                      </div>
                       <div
-                        onClick={() => setExpandedResults((prev) => ({ ...prev, [q.id]: !isExpanded }))}
                         style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          cursor: "pointer",
-                          marginBottom: isExpanded ? "12px" : 0,
+                          fontSize: "0.8rem",
+                          lineHeight: 1.6,
+                          color: "var(--text)",
+                          padding: "10px 12px",
+                          background: "rgba(0, 0, 0, 0.3)",
+                          borderRadius: "6px",
+                          borderLeft: "3px solid var(--cyan)",
+                          marginBottom: "12px",
                         }}
                       >
-                        <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--cyan)", display: "flex", alignItems: "center", gap: "8px" }}>
-                          📊 Benchmark Evaluation Results ({results.length} Models)
-                          {isRunningThis && <span className="spinner-border" />}
-                        </span>
-                        <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
-                          {isExpanded ? "▲ Hide Results" : "▼ Show Results"}
-                        </span>
+                        <ReactMarkdown>{q.goldResponse}</ReactMarkdown>
                       </div>
 
-                      {isExpanded && (
-                        <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-                          {results.map((res, rIdx) => {
-                            const modelInfo = getModel(res.modelId);
-                            const name = modelInfo?.label ?? res.modelId.split("/").pop() ?? res.modelId;
-                            return (
-                              <div
-                                key={rIdx}
-                                style={{
-                                  padding: "12px",
-                                  borderRadius: "8px",
-                                  background: "rgba(11, 22, 40, 0.7)",
-                                  border: "1px solid rgba(255, 255, 255, 0.05)",
-                                }}
-                              >
-                                {/* Result Model Header */}
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                    <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--text)" }}>
-                                      {name}
-                                    </span>
-                                    {res.latencyMs > 0 && (
-                                      <span style={{ fontSize: "0.68rem", color: "var(--emerald)", fontFamily: "var(--font-mono)" }}>
-                                        {(res.latencyMs / 1000).toFixed(2)}s
-                                      </span>
-                                    )}
-                                    {res.tokens > 0 && (
-                                      <span style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>
-                                        {res.tokens} words
-                                      </span>
-                                    )}
-                                  </div>
-
-                                  {res.gtScore !== undefined && (
-                                    <span
-                                      style={{
-                                        fontSize: "0.72rem",
-                                        fontWeight: 800,
-                                        padding: "2px 8px",
-                                        borderRadius: "10px",
-                                        background: res.gtScore >= 75 ? "rgba(16, 185, 129, 0.15)" : "rgba(245, 158, 11, 0.15)",
-                                        color: res.gtScore >= 75 ? "var(--emerald)" : "var(--amber)",
-                                        border: `1px solid ${res.gtScore >= 75 ? "rgba(16, 185, 129, 0.3)" : "rgba(245, 158, 11, 0.3)"}`,
-                                        fontFamily: "var(--font-mono)",
-                                      }}
-                                    >
-                                      GT Score: {res.gtScore}%
-                                    </span>
-                                  )}
-                                </div>
-
-                                {/* Answer Content */}
-                                {res.isRunning ? (
-                                  <div style={{ color: "var(--cyan)", fontSize: "0.75rem", padding: "8px 0" }}>
-                                    Generating model response and computing metrics...
-                                  </div>
-                                ) : (
-                                  <>
-                                    <div
-                                      style={{
-                                        maxHeight: "160px",
-                                        overflowY: "auto",
-                                        fontSize: "0.78rem",
-                                        lineHeight: 1.5,
-                                        color: "var(--text-dim)",
-                                        padding: "8px",
-                                        background: "rgba(0,0,0,0.25)",
-                                        borderRadius: "6px",
-                                        marginBottom: "8px",
-                                      }}
-                                    >
-                                      <ReactMarkdown>{res.answer}</ReactMarkdown>
-                                    </div>
-
-                                    {/* Ground Truth Alignment Panel for this result */}
-                                    <GroundTruthPanel
-                                      modelAnswer={res.answer}
-                                      goldResponse={q.goldResponse}
-                                      evidence={q.evidence}
-                                      useCaseId={q.useCaseId}
-                                      modelName={name}
-                                    />
-                                  </>
-                                )}
-                              </div>
-                            );
-                          })}
+                      {q.evidence && (
+                        <div
+                          style={{
+                            padding: "10px 12px",
+                            background: "rgba(16, 185, 129, 0.05)",
+                            border: "1px solid rgba(16, 185, 129, 0.2)",
+                            borderRadius: "6px",
+                            fontSize: "0.74rem",
+                          }}
+                        >
+                          <div style={{ color: "var(--emerald)", fontWeight: 700, marginBottom: "4px" }}>
+                            📜 Verified Regulatory Citation & Standards:
+                          </div>
+                          <div style={{ color: "var(--text-dim)", lineHeight: 1.5 }}>
+                            {q.evidence}
+                          </div>
                         </div>
                       )}
                     </div>

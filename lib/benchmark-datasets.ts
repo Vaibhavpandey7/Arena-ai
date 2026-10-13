@@ -59,6 +59,30 @@ export interface DomainPassRate {
   color: string;
 }
 
+export interface DomainModelScore {
+  model: string;
+  score: number;
+  scoreFormatted: string;
+  isLeader?: boolean;
+  color: string;
+}
+
+export interface DomainBreakdownItem {
+  domain: string;
+  discipline: string;
+  leaderModel: string;
+  leaderScore: string;
+  baselineModel?: string;
+  baselineScore?: string;
+  models: DomainModelScore[];
+}
+
+export interface DomainWiseAccuracyData {
+  title: string;
+  subtitle: string;
+  domains: DomainBreakdownItem[];
+}
+
 export interface LatencyAccuracyRow {
   model: string;
   latency: number;
@@ -93,7 +117,8 @@ export interface BenchmarkDatasetConfig {
     subtitle: string;
     rows: DomainPassRate[];
   };
-  latencyData: LatencyAccuracyRow[];
+  domainWiseAccuracy: DomainWiseAccuracyData;
+  latencyData?: LatencyAccuracyRow[];
 }
 
 export const BENCHMARK_DATASETS: Record<BenchmarkDatasetId, BenchmarkDatasetConfig> = {
@@ -207,14 +232,75 @@ export const BENCHMARK_DATASETS: Record<BenchmarkDatasetId, BenchmarkDatasetConf
         { domain: "Agricultural Insurance (Overall)", score: 36.4, color: "#64748b" },
       ],
     },
-    latencyData: [
-      { model: "Gemini 1.5 Flash", latency: 1.4, accuracy: 64, color: "#10b981" },
-      { model: "GPT-4o-mini", latency: 1.6, accuracy: 61, color: "#38bdf8" },
-      { model: "Claude 3 Haiku", latency: 1.9, accuracy: 49, color: "#a855f7" },
-      { model: "Qwen-VL-Max", latency: 2.8, accuracy: 65, color: "#0ea5e9" },
-      { model: "GPT-4o", latency: 3.5, accuracy: 70, color: "#f59e0b" },
-      { model: "GPT-4V", latency: 5.2, accuracy: 63, color: "#ec4899" },
-    ],
+    domainWiseAccuracy: {
+      title: "Domain-Wise Accuracy Across Leading Models (Table 4)",
+      subtitle: "Verified Task Accuracy (%) Across 4 Core Sectors from ICCV 2025 Paper",
+      domains: [
+        {
+          domain: "Auto Insurance",
+          discipline: "Vehicle Damage, Crash Severity & Fraud",
+          leaderModel: "GPT-4o",
+          leaderScore: "86.0%",
+          baselineModel: "Human Baseline",
+          baselineScore: "62.2%",
+          models: [
+            { model: "GPT-4o", score: 86.00, scoreFormatted: "86.0%", isLeader: true, color: "#f59e0b" },
+            { model: "GLM4V-Plus", score: 81.79, scoreFormatted: "81.8%", color: "#06b6d4" },
+            { model: "Qwen-VL-Max", score: 80.86, scoreFormatted: "80.9%", color: "#0ea5e9" },
+            { model: "Gemini 1.5 Flash", score: 79.40, scoreFormatted: "79.4%", color: "#10b981" },
+            { model: "GPT-4V", score: 77.35, scoreFormatted: "77.4%", color: "#ec4899" },
+            { model: "Human Baseline", score: 62.22, scoreFormatted: "62.2%", color: "#22c55e" },
+          ],
+        },
+        {
+          domain: "Health Insurance",
+          discipline: "Medical Risk, Symptom OCR & Disability",
+          leaderModel: "GPT-4o",
+          leaderScore: "76.7%",
+          baselineModel: "Human Baseline",
+          baselineScore: "64.5%",
+          models: [
+            { model: "GPT-4o", score: 76.73, scoreFormatted: "76.7%", isLeader: true, color: "#f59e0b" },
+            { model: "GPT-4V", score: 70.82, scoreFormatted: "70.8%", color: "#ec4899" },
+            { model: "Qwen-VL-Max", score: 70.61, scoreFormatted: "70.6%", color: "#0ea5e9" },
+            { model: "Gemini 1.5 Flash", score: 70.28, scoreFormatted: "70.3%", color: "#10b981" },
+            { model: "GLM4V-Plus", score: 68.42, scoreFormatted: "68.4%", color: "#06b6d4" },
+            { model: "Human Baseline", score: 64.51, scoreFormatted: "64.5%", color: "#22c55e" },
+          ],
+        },
+        {
+          domain: "Commercial Property",
+          discipline: "Building Fire, Water & Structural Risk",
+          leaderModel: "GPT-4o",
+          leaderScore: "63.8%",
+          baselineModel: "Human Baseline",
+          baselineScore: "59.8%",
+          models: [
+            { model: "GPT-4o", score: 63.82, scoreFormatted: "63.8%", isLeader: true, color: "#f59e0b" },
+            { model: "Qwen-VL-Max", score: 62.04, scoreFormatted: "62.0%", color: "#0ea5e9" },
+            { model: "GPT-4V", score: 60.55, scoreFormatted: "60.6%", color: "#ec4899" },
+            { model: "Gemini 1.5 Flash", score: 60.18, scoreFormatted: "60.2%", color: "#10b981" },
+            { model: "Human Baseline", score: 59.80, scoreFormatted: "59.8%", color: "#22c55e" },
+          ],
+        },
+        {
+          domain: "Agricultural Insurance",
+          discipline: "Crop Pest, Drought & Livestock Loss",
+          leaderModel: "Human Baseline",
+          leaderScore: "54.3%",
+          baselineModel: "Human Baseline",
+          baselineScore: "54.3%",
+          models: [
+            { model: "Human Baseline", score: 54.30, scoreFormatted: "54.3%", isLeader: true, color: "#22c55e" },
+            { model: "GPT-4o", score: 36.38, scoreFormatted: "36.4%", color: "#f59e0b" },
+            { model: "Qwen-VL-Max", score: 33.20, scoreFormatted: "33.2%", color: "#0ea5e9" },
+            { model: "Gemini 1.5 Flash", score: 32.84, scoreFormatted: "32.8%", color: "#10b981" },
+            { model: "GLM4V-Plus", score: 31.95, scoreFormatted: "32.0%", color: "#06b6d4" },
+            { model: "GPT-4V", score: 29.20, scoreFormatted: "29.2%", color: "#ec4899" },
+          ],
+        },
+      ],
+    },
   },
 
   "CUFE": {
@@ -322,14 +408,77 @@ export const BENCHMARK_DATASETS: Record<BenchmarkDatasetId, BenchmarkDatasetConf
         { domain: "Insurance Safety & Compliance", score: 81.1, color: "#ec4899" },
       ],
     },
-    latencyData: [
-      { model: "Qwen3.5-Plus", latency: 2.1, accuracy: 85, color: "#8b5cf6" },
-      { model: "Doubao-Seed-2.0", latency: 3.1, accuracy: 86, color: "#10b981" },
-      { model: "AntGroup Finix-S1", latency: 3.5, accuracy: 87, color: "#0ea5e9" },
-      { model: "Kimi-K2.5", latency: 2.8, accuracy: 84, color: "#06b6d4" },
-      { model: "Gemini-3.1-Pro", latency: 4.2, accuracy: 87, color: "#f59e0b" },
-      { model: "DeepSeek-R1", latency: 6.8, accuracy: 82, color: "#ec4899" },
-    ],
+    domainWiseAccuracy: {
+      title: "Pillar-by-Pillar Model Accuracy in CUFEInse v2.0",
+      subtitle: "Official Standardized Scores (0–100 pts) Across 5 Insurance Pillars",
+      domains: [
+        {
+          domain: "Logical Rigor & Math",
+          discipline: "Reserve Valuations, Pure Premium & Actuarial Calculus",
+          leaderModel: "AntGroup Finix-S1",
+          leaderScore: "91.9 pts",
+          models: [
+            { model: "AntGroup Finix-S1", score: 91.87, scoreFormatted: "91.9 pts", isLeader: true, color: "#0ea5e9" },
+            { model: "DeepSeek-R1", score: 90.98, scoreFormatted: "91.0 pts", color: "#ec4899" },
+            { model: "Gemini-3.1-Pro", score: 90.15, scoreFormatted: "90.2 pts", color: "#f59e0b" },
+            { model: "Doubao-Seed-2.0", score: 88.76, scoreFormatted: "88.8 pts", color: "#10b981" },
+            { model: "Qwen3.5-Plus", score: 86.51, scoreFormatted: "86.5 pts", color: "#8b5cf6" },
+          ],
+        },
+        {
+          domain: "Theoretical Knowledge",
+          discipline: "Insurance Law, Contract Principles & Solvency Foundation",
+          leaderModel: "Gemini-3.1-Pro",
+          leaderScore: "88.5 pts",
+          models: [
+            { model: "Gemini-3.1-Pro", score: 88.46, scoreFormatted: "88.5 pts", isLeader: true, color: "#f59e0b" },
+            { model: "Doubao-Seed-2.0", score: 86.30, scoreFormatted: "86.3 pts", color: "#10b981" },
+            { model: "Qwen3.5-Plus", score: 86.33, scoreFormatted: "86.3 pts", color: "#8b5cf6" },
+            { model: "AntGroup Finix-S1", score: 84.60, scoreFormatted: "84.6 pts", color: "#0ea5e9" },
+            { model: "DeepSeek-R1", score: 82.90, scoreFormatted: "82.9 pts", color: "#ec4899" },
+          ],
+        },
+        {
+          domain: "Industry Understanding",
+          discipline: "Commercial Underwriting, Reinsurance & Claims Settlement",
+          leaderModel: "Gemini-3.1-Pro",
+          leaderScore: "88.0 pts",
+          models: [
+            { model: "Gemini-3.1-Pro", score: 88.00, scoreFormatted: "88.0 pts", isLeader: true, color: "#f59e0b" },
+            { model: "AntGroup Finix-S1", score: 87.50, scoreFormatted: "87.5 pts", color: "#0ea5e9" },
+            { model: "Doubao-Seed-2.0", score: 86.20, scoreFormatted: "86.2 pts", color: "#10b981" },
+            { model: "Qwen3.5-Plus", score: 85.40, scoreFormatted: "85.4 pts", color: "#8b5cf6" },
+            { model: "DeepSeek-R1", score: 80.80, scoreFormatted: "80.8 pts", color: "#ec4899" },
+          ],
+        },
+        {
+          domain: "Agent Application",
+          discipline: "Multi-turn Consultations, Tool Use & Automated Claim Triage",
+          leaderModel: "Doubao-Seed-2.0",
+          leaderScore: "87.2 pts",
+          models: [
+            { model: "Doubao-Seed-2.0", score: 87.21, scoreFormatted: "87.2 pts", isLeader: true, color: "#10b981" },
+            { model: "Gemini-3.1-Pro", score: 86.70, scoreFormatted: "86.7 pts", color: "#f59e0b" },
+            { model: "AntGroup Finix-S1", score: 86.40, scoreFormatted: "86.4 pts", color: "#0ea5e9" },
+            { model: "Qwen3.5-Plus", score: 82.50, scoreFormatted: "82.5 pts", color: "#8b5cf6" },
+            { model: "DeepSeek-R1", score: 82.00, scoreFormatted: "82.0 pts", color: "#ec4899" },
+          ],
+        },
+        {
+          domain: "Safety & Compliance",
+          discipline: "Solvency II Mandates, GDPR Protection & Fraud Resistance",
+          leaderModel: "AntGroup Finix-S1",
+          leaderScore: "85.7 pts",
+          models: [
+            { model: "AntGroup Finix-S1", score: 85.70, scoreFormatted: "85.7 pts", isLeader: true, color: "#0ea5e9" },
+            { model: "Qwen3.5-Plus", score: 84.30, scoreFormatted: "84.3 pts", color: "#8b5cf6" },
+            { model: "Doubao-Seed-2.0", score: 83.90, scoreFormatted: "83.9 pts", color: "#10b981" },
+            { model: "Gemini-3.1-Pro", score: 83.50, scoreFormatted: "83.5 pts", color: "#f59e0b" },
+            { model: "DeepSeek-R1", score: 73.70, scoreFormatted: "73.7 pts", color: "#ec4899" },
+          ],
+        },
+      ],
+    },
   },
 
   "InsuranceQA": {
@@ -439,14 +588,64 @@ export const BENCHMARK_DATASETS: Record<BenchmarkDatasetId, BenchmarkDatasetConf
         { domain: "Deductible & Premium Settlement", score: 73.1, color: "#ec4899" },
       ],
     },
-    latencyData: [
-      { model: "BERT-Large (Ranker)", latency: 0.4, accuracy: 77, color: "#8b5cf6" },
-      { model: "RoBERTa-Large", latency: 0.6, accuracy: 81, color: "#f59e0b" },
-      { model: "DeepSeek-V3", latency: 2.1, accuracy: 74, color: "#ec4899" },
-      { model: "LLaMA-3-70B", latency: 2.5, accuracy: 75, color: "#06b6d4" },
-      { model: "GPT-4o", latency: 3.2, accuracy: 79, color: "#0ea5e9" },
-      { model: "Claude 3.5 Sonnet", latency: 4.5, accuracy: 78, color: "#10b981" },
-    ],
+    domainWiseAccuracy: {
+      title: "Insurance Product Line Top-1 Accuracy (Test-1)",
+      subtitle: "Accuracy (%) Across Major Product Categories in 500-Candidate Ranking",
+      domains: [
+        {
+          domain: "Auto & Vehicle Policy",
+          discipline: "Collision, Liability, Deductible & No-Fault Clauses",
+          leaderModel: "RoBERTa-Large",
+          leaderScore: "85.2%",
+          models: [
+            { model: "RoBERTa-Large", score: 85.20, scoreFormatted: "85.2%", isLeader: true, color: "#f59e0b" },
+            { model: "GPT-4o (RAG)", score: 83.80, scoreFormatted: "83.8%", color: "#0ea5e9" },
+            { model: "Claude 3.5 Sonnet", score: 81.60, scoreFormatted: "81.6%", color: "#10b981" },
+            { model: "DeepSeek-V3", score: 78.40, scoreFormatted: "78.4%", color: "#ec4899" },
+            { model: "IBM Watson Arch II", score: 68.50, scoreFormatted: "68.5%", color: "#f97316" },
+          ],
+        },
+        {
+          domain: "Life & Annuities",
+          discipline: "Term Life, Whole Life, Cash Value & Beneficiary Rights",
+          leaderModel: "RoBERTa-Large",
+          leaderScore: "83.1%",
+          models: [
+            { model: "RoBERTa-Large", score: 83.10, scoreFormatted: "83.1%", isLeader: true, color: "#f59e0b" },
+            { model: "GPT-4o (RAG)", score: 81.50, scoreFormatted: "81.5%", color: "#0ea5e9" },
+            { model: "Claude 3.5 Sonnet", score: 80.20, scoreFormatted: "80.2%", color: "#10b981" },
+            { model: "DeepSeek-V3", score: 75.80, scoreFormatted: "75.8%", color: "#ec4899" },
+            { model: "IBM Watson Arch II", score: 66.20, scoreFormatted: "66.2%", color: "#f97316" },
+          ],
+        },
+        {
+          domain: "Health & Medical",
+          discipline: "Copayments, Pre-Existing Conditions, HMO & PPO Coverage",
+          leaderModel: "RoBERTa-Large",
+          leaderScore: "81.8%",
+          models: [
+            { model: "RoBERTa-Large", score: 81.80, scoreFormatted: "81.8%", isLeader: true, color: "#f59e0b" },
+            { model: "GPT-4o (RAG)", score: 79.20, scoreFormatted: "79.2%", color: "#0ea5e9" },
+            { model: "Claude 3.5 Sonnet", score: 78.10, scoreFormatted: "78.1%", color: "#10b981" },
+            { model: "DeepSeek-V3", score: 74.20, scoreFormatted: "74.2%", color: "#ec4899" },
+            { model: "IBM Watson Arch II", score: 64.90, scoreFormatted: "64.9%", color: "#f97316" },
+          ],
+        },
+        {
+          domain: "Homeowners & Property",
+          discipline: "Dwelling Hazard, Water Back-Up & Personal Liability",
+          leaderModel: "RoBERTa-Large",
+          leaderScore: "79.5%",
+          models: [
+            { model: "RoBERTa-Large", score: 79.50, scoreFormatted: "79.5%", isLeader: true, color: "#f59e0b" },
+            { model: "GPT-4o (RAG)", score: 78.40, scoreFormatted: "78.4%", color: "#0ea5e9" },
+            { model: "Claude 3.5 Sonnet", score: 76.90, scoreFormatted: "76.9%", color: "#10b981" },
+            { model: "DeepSeek-V3", score: 72.50, scoreFormatted: "72.5%", color: "#ec4899" },
+            { model: "IBM Watson Arch II", score: 65.10, scoreFormatted: "65.1%", color: "#f97316" },
+          ],
+        },
+      ],
+    },
   },
 
   "INS-ActBench": {
@@ -560,13 +759,101 @@ export const BENCHMARK_DATASETS: Record<BenchmarkDatasetId, BenchmarkDatasetConf
         { domain: "Long-Context Case Analysis (CA)", score: 56.3, color: "#64748b" },
       ],
     },
-    latencyData: [
-      { model: "Gemma-3-12B", latency: 1.2, accuracy: 24, color: "#64748b" },
-      { model: "Qwen3.5-35B", latency: 2.1, accuracy: 32, color: "#06b6d4" },
-      { model: "DeepSeek-V4-Pro", latency: 3.8, accuracy: 66, color: "#8b5cf6" },
-      { model: "Claude-Opus-4.7", latency: 4.6, accuracy: 63, color: "#ec4899" },
-      { model: "GPT-5.5", latency: 5.1, accuracy: 73, color: "#f59e0b" },
-      { model: "Gemini-3.1-Pro", latency: 5.4, accuracy: 73, color: "#0ea5e9" },
-    ],
+    domainWiseAccuracy: {
+      title: "Actuarial Syllabus Accuracies (Table 3 & 11)",
+      subtitle: "Accuracy (%) Across 16 Global Actuarial Bodies vs. Human Expert Baseline",
+      domains: [
+        {
+          domain: "Actuarial Mathematics (AMA)",
+          discipline: "Life Contingencies, Decrement Models & Loss Distribution",
+          leaderModel: "Human Experts",
+          leaderScore: "97.7%",
+          baselineModel: "Human Experts",
+          baselineScore: "97.7%",
+          models: [
+            { model: "Human Experts", score: 97.70, scoreFormatted: "97.7%", isLeader: true, color: "#10b981" },
+            { model: "Gemini-3.1-Pro", score: 94.80, scoreFormatted: "94.8%", color: "#0ea5e9" },
+            { model: "GPT-5.5", score: 93.10, scoreFormatted: "93.1%", color: "#f59e0b" },
+            { model: "DeepSeek-V4-Pro", score: 91.20, scoreFormatted: "91.2%", color: "#8b5cf6" },
+            { model: "Claude-Opus-4.7", score: 88.40, scoreFormatted: "88.4%", color: "#ec4899" },
+          ],
+        },
+        {
+          domain: "Probability & Statistics (PS)",
+          discipline: "Credibility Theory, Generalized Linear Models & Bayesian Priors",
+          leaderModel: "Gemini-3.1-Pro",
+          leaderScore: "97.5%",
+          baselineModel: "Human Experts",
+          baselineScore: "84.7%",
+          models: [
+            { model: "Gemini-3.1-Pro", score: 97.50, scoreFormatted: "97.5%", isLeader: true, color: "#0ea5e9" },
+            { model: "GPT-5.5", score: 97.00, scoreFormatted: "97.0%", color: "#f59e0b" },
+            { model: "DeepSeek-V4-Pro", score: 92.40, scoreFormatted: "92.4%", color: "#8b5cf6" },
+            { model: "Claude-Opus-4.7", score: 89.20, scoreFormatted: "89.2%", color: "#ec4899" },
+            { model: "Human Experts", score: 84.70, scoreFormatted: "84.7%", color: "#10b981" },
+          ],
+        },
+        {
+          domain: "Economics & Finance (EF)",
+          discipline: "Asset-Liability Matching, Yield Curves & Solvency II Interest Rates",
+          leaderModel: "Gemini-3.1-Pro",
+          leaderScore: "95.4%",
+          baselineModel: "Human Experts",
+          baselineScore: "84.7%",
+          models: [
+            { model: "Gemini-3.1-Pro", score: 95.40, scoreFormatted: "95.4%", isLeader: true, color: "#0ea5e9" },
+            { model: "GPT-5.5", score: 95.40, scoreFormatted: "95.4%", color: "#f59e0b" },
+            { model: "DeepSeek-V4-Pro", score: 89.60, scoreFormatted: "89.6%", color: "#8b5cf6" },
+            { model: "Claude-Opus-4.7", score: 87.50, scoreFormatted: "87.5%", color: "#ec4899" },
+            { model: "Human Experts", score: 84.70, scoreFormatted: "84.7%", color: "#10b981" },
+          ],
+        },
+        {
+          domain: "Non-Life Insurance (NLI)",
+          discipline: "P&C Underwriting, Loss Frequency & Severity Severity Modeling",
+          leaderModel: "Gemini-3.1-Pro",
+          leaderScore: "94.0%",
+          baselineModel: "Human Experts",
+          baselineScore: "84.7%",
+          models: [
+            { model: "Gemini-3.1-Pro", score: 94.00, scoreFormatted: "94.0%", isLeader: true, color: "#0ea5e9" },
+            { model: "GPT-5.5", score: 93.20, scoreFormatted: "93.2%", color: "#f59e0b" },
+            { model: "DeepSeek-V4-Pro", score: 86.80, scoreFormatted: "86.8%", color: "#8b5cf6" },
+            { model: "Claude-Opus-4.7", score: 85.10, scoreFormatted: "85.1%", color: "#ec4899" },
+            { model: "Human Experts", score: 84.70, scoreFormatted: "84.7%", color: "#10b981" },
+          ],
+        },
+        {
+          domain: "Tool Practice (Spreadsheet/R)",
+          discipline: "Chain Ladder Triangles, Loss Reserving & Script Execution",
+          leaderModel: "Human Experts",
+          leaderScore: "84.9%",
+          baselineModel: "Human Experts",
+          baselineScore: "84.9%",
+          models: [
+            { model: "Human Experts", score: 84.92, scoreFormatted: "84.9%", isLeader: true, color: "#10b981" },
+            { model: "GPT-5.5", score: 69.24, scoreFormatted: "69.2%", color: "#f59e0b" },
+            { model: "Gemini-3.1-Pro", score: 67.91, scoreFormatted: "67.9%", color: "#0ea5e9" },
+            { model: "Claude-Opus-4.7", score: 65.38, scoreFormatted: "65.4%", color: "#ec4899" },
+            { model: "DeepSeek-V4-Pro", score: 61.67, scoreFormatted: "61.7%", color: "#8b5cf6" },
+          ],
+        },
+        {
+          domain: "Long-Context Case Reasoning",
+          discipline: "Complex Treaty Formulation & Reinsurance Negotiation",
+          leaderModel: "Human Experts",
+          leaderScore: "79.6%",
+          baselineModel: "Human Experts",
+          baselineScore: "79.6%",
+          models: [
+            { model: "Human Experts", score: 79.60, scoreFormatted: "79.6%", isLeader: true, color: "#10b981" },
+            { model: "GPT-5.5", score: 56.31, scoreFormatted: "56.3%", color: "#f59e0b" },
+            { model: "Gemini-3.1-Pro", score: 55.53, scoreFormatted: "55.5%", color: "#0ea5e9" },
+            { model: "Claude-Opus-4.7", score: 48.20, scoreFormatted: "48.2%", color: "#ec4899" },
+            { model: "DeepSeek-V4-Pro", score: 43.86, scoreFormatted: "43.9%", color: "#8b5cf6" },
+          ],
+        },
+      ],
+    },
   },
 };
