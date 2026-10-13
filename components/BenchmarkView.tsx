@@ -110,27 +110,52 @@ export default function BenchmarkView({ onNavigate }: Props) {
               </div>
             </div>
 
-            <a
-              href={currentDataset.arxivUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                fontSize: "0.75rem",
-                padding: "5px 12px",
-                borderRadius: "6px",
-                background: "rgba(255, 255, 255, 0.05)",
-                border: "1px solid rgba(255, 255, 255, 0.15)",
-                color: "var(--cyan)",
-                textDecoration: "none",
-                fontWeight: 600,
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-              }}
-            >
-              <span>🔗 {currentDataset.arxivId}</span>
-              <span>↗</span>
-            </a>
+            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+              <a
+                href={currentDataset.pdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  fontSize: "0.75rem",
+                  padding: "5px 12px",
+                  borderRadius: "6px",
+                  background: "rgba(14, 165, 233, 0.12)",
+                  border: "1px solid rgba(14, 165, 233, 0.35)",
+                  color: "var(--cyan)",
+                  textDecoration: "none",
+                  fontWeight: 600,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                <span>📥 Paper PDF</span>
+                <span>↗</span>
+              </a>
+
+              <a
+                href={currentDataset.arxivUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  fontSize: "0.75rem",
+                  padding: "5px 12px",
+                  borderRadius: "6px",
+                  background: "rgba(255, 255, 255, 0.05)",
+                  border: "1px solid rgba(255, 255, 255, 0.15)",
+                  color: "var(--text-dim)",
+                  textDecoration: "none",
+                  fontWeight: 600,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
+                <span>🔗 {currentDataset.arxivId}</span>
+                <span>↗</span>
+              </a>
+            </div>
           </div>
 
           <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", fontSize: "0.74rem", color: "var(--text-muted)", borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "8px", marginTop: "6px" }}>

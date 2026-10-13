@@ -99,6 +99,7 @@ export interface BenchmarkDatasetConfig {
   venue: string;
   arxivId: string;
   arxivUrl: string;
+  pdfUrl: string;
   scaleDescription: string;
   primaryMetric: string;
   scoreUnit: string;
@@ -131,6 +132,7 @@ export const BENCHMARK_DATASETS: Record<BenchmarkDatasetId, BenchmarkDatasetConf
     venue: "ICCV 2025 · FDU-INS Official Evaluation Suite",
     arxivId: "arXiv:2406.09105",
     arxivUrl: "https://arxiv.org/abs/2406.09105",
+    pdfUrl: "/papers/INS-MMBench_arXiv-2406.09105.pdf",
     scaleDescription: "12,052 Images · 10,372 Questions · 4 Insurance Domains (Auto, Property, Health, Agriculture)",
     primaryMetric: "Overall Accuracy (%)",
     scoreUnit: "%",
@@ -310,6 +312,7 @@ export const BENCHMARK_DATASETS: Record<BenchmarkDatasetId, BenchmarkDatasetConf
     venue: "Central University of Finance and Economics Official Release (March 2026)",
     arxivId: "CUFEInse/CUFEInse",
     arxivUrl: "https://github.com/CUFEInse/CUFEInse",
+    pdfUrl: "/papers/CUFEInse_v2.0_Evaluation_Report.pdf",
     scaleDescription: "17,637 Professional Questions · 5 Core Dimensions · 54 Sub-Indicators · 17 Evaluated LLMs",
     primaryMetric: "Comprehensive Standardized Score (0–100 pts)",
     scoreUnit: "pts",
@@ -483,11 +486,12 @@ export const BENCHMARK_DATASETS: Record<BenchmarkDatasetId, BenchmarkDatasetConf
     id: "InsuranceQA",
     name: "InsuranceQA",
     subtitle: "Real-World Insurance Question Answering & Ranking",
-    paperTitle: "A Deep Architecture for Non-factoid Question Answering: An Insurance Domain Case Study",
+    paperTitle: "Applying Deep Learning to Answer Selection: A Study and An Open Task (InsuranceQA)",
     authors: "Minwei Feng, Bing Xiang, Michael R. Glass, Lidan Wang, Bowen Zhou (IBM Watson / ACL)",
-    venue: "ACL · Insurance Library Real-World QA Corpus",
+    venue: "ACL / IEEE ASRU 2015 · Insurance Library Real-World QA Corpus",
     arxivId: "arXiv:1508.01585",
     arxivUrl: "https://arxiv.org/abs/1508.01585",
+    pdfUrl: "/papers/InsuranceQA_arXiv-1508.01585.pdf",
     scaleDescription: "25,000+ Insurance QA Pairs · 500 Candidate Answers / Question (Test-1 & Test-2)",
     primaryMetric: "Top-1 Accuracy / P@1 (%) on 500-Candidate Ranking",
     scoreUnit: "%",
@@ -655,6 +659,7 @@ export const BENCHMARK_DATASETS: Record<BenchmarkDatasetId, BenchmarkDatasetConf
     venue: "arXiv:2607.24273 · FDU-INS Official Actuarial Suite",
     arxivId: "arXiv:2607.24273",
     arxivUrl: "https://arxiv.org/abs/2607.24273",
+    pdfUrl: "/papers/INS-ActBench_arXiv-2607.24273.pdf",
     scaleDescription: "12,050 Tasks · 16 Global Actuarial Associations (SOA, CAS, IFoA, DAV) · 3 Subsets",
     primaryMetric: "Final Total Accuracy (%)",
     scoreUnit: "%",
