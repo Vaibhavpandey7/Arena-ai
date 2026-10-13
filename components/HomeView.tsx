@@ -35,10 +35,10 @@ const MODULES = [
     tab: "benchmark" as Tab,
     icon: "📊",
     title: "Insurance Benchmark",
-    desc: "Standardised evaluation across INS-MMBench, CUFE, InsuranceQA, and INS-ActBench datasets. Track verified paper benchmarks, actuarial tool reasoning, ROUGE/BLEU, and domain scores across models.",
+    desc: "Standardised evaluation across INS-MMBench, CUFEInse, InsuranceQA, and INS-ActBench datasets. Track verified paper benchmarks, actuarial tool reasoning, ROUGE/BLEU, and domain scores across models.",
     tags: [
       { label: "INS-MMBench", cyan: false },
-      { label: "CUFE", cyan: false },
+      { label: "CUFEInse", cyan: false },
       { label: "InsuranceQA", cyan: false },
       { label: "INS-ActBench", cyan: true },
       { label: "Leaderboard", cyan: true },

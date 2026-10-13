@@ -73,7 +73,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                   setSelectedDomainIdx(0);
                 }}
               >
-                {t}
+                {t === "CUFE" ? "CUFEInse" : t}
               </button>
             ))}
           </div>

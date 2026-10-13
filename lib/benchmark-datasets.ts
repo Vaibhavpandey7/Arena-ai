@@ -832,9 +832,9 @@ export const BENCHMARK_DATASETS: Record<BenchmarkDatasetId, BenchmarkDatasetConf
 
   "CUFE": {
     id: "CUFE",
-    name: "CUFE (CUFEInse v2.0)",
+    name: "CUFEInse",
     subtitle: "World's 1st Professional Insurance LLM Benchmark",
-    paperTitle: "CUFEInse v2.0: Comprehensive LLM Evaluation Benchmark in the Insurance Domain",
+    paperTitle: "CUFEInse: Comprehensive LLM Evaluation Benchmark in the Insurance Domain",
     authors: "School of Insurance & China Institute for Actuarial Science (CUFE)",
     venue: "Central University of Finance and Economics Official Release (March 2026)",
     arxivId: "CUFEInse/CUFEInse",
@@ -883,18 +883,17 @@ export const BENCHMARK_DATASETS: Record<BenchmarkDatasetId, BenchmarkDatasetConf
       },
     ],
     comparison: {
-      title: "CUFEInse v2.0 Total Score vs. Logical Rigor (54 Indicators)",
-      subtitle: "Official Evaluation Scoreboard (0–100) Across 17 Mainstream LLMs",
-      val1Label: "Total Score",
-      val2Label: "Logical Rigor",
+      title: "CUFEInse Overall Score Across Models",
+      subtitle: "Official Standardized Overall Score (0–100 pts) Across 17 Mainstream LLMs",
+      val1Label: "Overall Score",
       rows: [
-        { model: "Gemini-3.1-Pro", val1: 87.36, val1Formatted: "87.4 pts", val2: 90.15, val2Formatted: "90.2 pts", color: "#f59e0b" },
-        { model: "AntGroup Finix-S1", val1: 87.23, val1Formatted: "87.2 pts", val2: 91.87, val2Formatted: "91.9 pts", color: "#0ea5e9" },
-        { model: "Doubao-Seed-2.0", val1: 86.46, val1Formatted: "86.5 pts", val2: 88.76, val2Formatted: "88.8 pts", color: "#10b981" },
-        { model: "Qwen3.5-Plus", val1: 85.01, val1Formatted: "85.0 pts", val2: 86.51, val2Formatted: "86.5 pts", color: "#8b5cf6" },
-        { model: "Kimi-K2.5", val1: 84.43, val1Formatted: "84.4 pts", val2: 88.99, val2Formatted: "89.0 pts", color: "#06b6d4" },
-        { model: "DeepSeek-R1-0528", val1: 82.08, val1Formatted: "82.1 pts", val2: 90.98, val2Formatted: "91.0 pts", color: "#ec4899" },
-        { model: "GPT-5.4", val1: 80.94, val1Formatted: "80.9 pts", val2: 82.59, val2Formatted: "82.6 pts", color: "#64748b" },
+        { model: "Gemini-3.1-Pro", val1: 87.36, val1Formatted: "87.4 pts", color: "#f59e0b" },
+        { model: "AntGroup Finix-S1", val1: 87.23, val1Formatted: "87.2 pts", color: "#0ea5e9" },
+        { model: "Doubao-Seed-2.0", val1: 86.46, val1Formatted: "86.5 pts", color: "#10b981" },
+        { model: "Qwen3.5-Plus", val1: 85.01, val1Formatted: "85.0 pts", color: "#8b5cf6" },
+        { model: "Kimi-K2.5", val1: 84.43, val1Formatted: "84.4 pts", color: "#06b6d4" },
+        { model: "DeepSeek-R1-0528", val1: 82.08, val1Formatted: "82.1 pts", color: "#ec4899" },
+        { model: "GPT-5.4", val1: 80.94, val1Formatted: "80.9 pts", color: "#64748b" },
       ],
     },
     radar: {
@@ -937,7 +936,7 @@ export const BENCHMARK_DATASETS: Record<BenchmarkDatasetId, BenchmarkDatasetConf
       ],
     },
     domainWiseAccuracy: {
-      title: "Pillar-by-Pillar Model Accuracy in CUFEInse v2.0",
+      title: "Pillar-by-Pillar Model Accuracy in CUFEInse",
       subtitle: "Official Standardized Scores (0–100 pts) Across 5 Insurance Pillars",
       domains: [
         {

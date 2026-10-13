@@ -132,7 +132,7 @@ export default function Page() {
 
           <div className="studio-tag-pills">
             <span className="studio-tag-pill">INS-MMBench</span>
-            <span className="studio-tag-pill">CUFE</span>
+            <span className="studio-tag-pill">CUFEInse</span>
             <span className="studio-tag-pill">INS-ActBench</span>
           </div>
 
