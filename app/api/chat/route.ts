@@ -83,8 +83,8 @@ export async function POST(req: NextRequest) {
 
   if (isRegulatoryCheckActive) {
     try {
-      const { searchRegulatoryCorpus } = await import("@/lib/regulatory-rag");
-      const regMatches = searchRegulatoryCorpus(prompt, { topK: 3 });
+      const { searchRegulatoryHybrid } = await import("@/lib/regulatory-rag");
+      const regMatches = await searchRegulatoryHybrid(prompt, { topK: 3 });
       if (regMatches.length > 0) {
         const regulatoryContext =
           "\n\n[OFFICIAL EU REGULATORY CORPUS — GROUND TRUTH EVIDENCE]\n" +

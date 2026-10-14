@@ -212,6 +212,76 @@ export function searchRegulatoryCorpus(
   });
 }
 
+export async function searchRegulatoryHybrid(
+  query: string,
+  options: {
+    regulation?: "all" | "solvency_ii" | "delegated_reg_2015_35" | "eu_ai_act";
+    topK?: number;
+  } = {}
+): Promise<RegulatorySearchResult[]> {
+  const bm25Matches = searchRegulatoryCorpus(query, options);
+  const topK = options.topK ?? 3;
+
+  const { isPineconeConfigured, queryPineconeVectorDB } = await import("./pinecone-rag");
+  if (!isPineconeConfigured()) {
+    return bm25Matches.slice(0, topK);
+  }
+
+  try {
+    const vectorMatches = await queryPineconeVectorDB(query, options);
+    if (vectorMatches.length === 0) {
+      return bm25Matches.slice(0, topK);
+    }
+
+    // Reciprocal Rank Fusion (RRF) combining BM25 & Dense Vectors
+    const fusedScores = new Map<string, { chunk: RegulatoryChunk; rrfScore: number }>();
+    const RRF_K = 60;
+
+    bm25Matches.forEach((match, rank) => {
+      const id = match.chunk.id;
+      const rrf = 1.0 / (RRF_K + rank + 1);
+      fusedScores.set(id, { chunk: match.chunk, rrfScore: rrf });
+    });
+
+    vectorMatches.forEach((vMatch, rank) => {
+      const id = vMatch.id;
+      const rrf = 1.0 / (RRF_K + rank + 1);
+      const existing = fusedScores.get(id);
+
+      if (existing) {
+        existing.rrfScore += rrf;
+      } else if (vMatch.metadata) {
+        const chunk: RegulatoryChunk = {
+          id: vMatch.id,
+          regulation: (vMatch.metadata.regulation as any) || "solvency_ii",
+          regulationName: vMatch.metadata.regulationName || "EU Regulation",
+          articleNumber: vMatch.metadata.articleNumber || "Article",
+          numericId: vMatch.metadata.numericId,
+          title: vMatch.metadata.title || "",
+          path: vMatch.metadata.path,
+          content: vMatch.metadata.content || "",
+          keywords: [],
+          wordCount: vMatch.metadata.wordCount || 100,
+        };
+        fusedScores.set(id, { chunk, rrfScore: rrf });
+      }
+    });
+
+    const sorted = Array.from(fusedScores.values()).sort((a, b) => b.rrfScore - a.rrfScore);
+    const queryTokens = tokenize(query);
+
+    return sorted.slice(0, topK).map(({ chunk, rrfScore }) => ({
+      chunk,
+      score: parseFloat((rrfScore * 100).toFixed(2)),
+      snippet: generateSnippet(chunk.content, queryTokens),
+      citation: `${chunk.regulationName} — ${chunk.articleNumber} ("${chunk.title}")`,
+    }));
+  } catch (err) {
+    console.warn("Pinecone hybrid search failed, using BM25:", err);
+    return bm25Matches.slice(0, topK);
+  }
+}
+
 function generateSnippet(content: string, queryTokens: string[]): string {
   if (!content) return "";
   if (content.length <= 400) return content;

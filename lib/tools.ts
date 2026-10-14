@@ -350,11 +350,11 @@ const regulatoryCheckRagTool: Tool = {
     const query = String(args.query ?? "").trim();
     if (!query) return "Error: query is required";
 
-    const { searchRegulatoryCorpus } = await import("./regulatory-rag");
+    const { searchRegulatoryHybrid } = await import("./regulatory-rag");
     const regulation = typeof args.regulation === "string" ? (args.regulation as any) : "all";
     const topK = typeof args.top_k === "number" ? args.top_k : 3;
 
-    const results = searchRegulatoryCorpus(query, { regulation, topK });
+    const results = await searchRegulatoryHybrid(query, { regulation, topK });
     if (results.length === 0) {
       return `No regulatory articles found for "${query}"${regulation !== "all" ? ` under ${regulation}` : ""}. Try broadening the query or specifying a particular article number (e.g. 'Article 101').`;
     }
