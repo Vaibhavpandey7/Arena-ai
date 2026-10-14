@@ -163,13 +163,15 @@ function ModelColumn({
       className="h2h-model-col"
       style={{
         flex: 1,
-        minWidth: "320px",
+        minWidth: 0,
+        width: "100%",
         display: "flex",
         flexDirection: "column",
         background: "rgba(11, 22, 40, 0.7)",
         border: "1px solid var(--border)",
         borderRadius: "12px",
         overflow: "hidden",
+        boxSizing: "border-box",
       }}
     >
       {/* Column Header */}
@@ -1481,10 +1483,12 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px", flexWrap: "wrap", gap: "10px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                 <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--cyan)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                   Evaluation Prompt & Scenario
                 </span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                 <button
                   type="button"
                   className="h2h-upload-btn"
@@ -1515,8 +1519,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                   }}
                   style={{ display: "none" }}
                 />
-              </div>
-              <div style={{ display: "flex", gap: "6px" }}>
+
                 {hasAnyResults && (
                   <button
                     onClick={() => setIsPromptCollapsed(true)}
@@ -1534,7 +1537,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                     ▲ Collapse
                   </button>
                 )}
-                {isAnyRunning ? (
+                {isAnyRunning && (
                   <button
                     onClick={handleStopAll}
                     style={{
@@ -1549,24 +1552,6 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                     }}
                   >
                     ⏹ Stop Stream
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleRunAll}
-                    disabled={(!prompt.trim() && !attachedDoc)}
-                    style={{
-                      padding: "6px 18px",
-                      borderRadius: "6px",
-                      background: "var(--cyan)",
-                      border: "none",
-                      color: "#050b14",
-                      fontSize: "0.78rem",
-                      fontWeight: 800,
-                      cursor: (prompt.trim() || attachedDoc) ? "pointer" : "not-allowed",
-                      boxShadow: "0 0 12px rgba(0, 212, 255, 0.3)",
-                    }}
-                  >
-                    ▶ Run Head-to-Head ({models.length} Models)
                   </button>
                 )}
               </div>
@@ -1914,13 +1899,18 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
               </div>
             </div>
 
-            {/* ── Dynamic Multi-Model Grid ── */}
+            {/* ── Dynamic Multi-Model Grid (Prevents 4-model overlap with 2x2 grid) ── */}
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: `repeat(${models.length}, minmax(300px, 1fr))`,
+                gridTemplateColumns:
+                  models.length === 4
+                    ? "repeat(2, minmax(0, 1fr))"
+                    : `repeat(${models.length}, minmax(0, 1fr))`,
                 gap: "16px",
                 alignItems: "stretch",
+                width: "100%",
+                minWidth: 0,
               }}
             >
               {models.map((modelId, idx) => (
