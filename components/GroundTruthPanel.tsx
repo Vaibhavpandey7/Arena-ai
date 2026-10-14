@@ -224,6 +224,47 @@ export default function GroundTruthPanel({
               marginBottom: "14px",
             }}
           >
+            {useCaseEval.recommendedBenchmark && (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px", flexWrap: "wrap", gap: "6px", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: "8px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <span style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>Benchmark:</span>
+                  <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--cyan-light)" }}>
+                    {useCaseEval.recommendedBenchmark.name}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: "0.62rem",
+                      padding: "1px 6px",
+                      borderRadius: "3px",
+                      background: "rgba(168, 85, 247, 0.15)",
+                      color: "#c084fc",
+                      border: "1px solid rgba(168, 85, 247, 0.3)",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {useCaseEval.recommendedBenchmark.source}
+                  </span>
+                </div>
+                <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                  {useCaseEval.primaryMetricsList.map((m, i) => (
+                    <span
+                      key={i}
+                      style={{
+                        fontSize: "0.62rem",
+                        padding: "1px 5px",
+                        borderRadius: "3px",
+                        background: "rgba(255,255,255,0.05)",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        color: "var(--text-dim)",
+                      }}
+                    >
+                      {m}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
               <div>
                 <span style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--cyan)", fontWeight: 700 }}>

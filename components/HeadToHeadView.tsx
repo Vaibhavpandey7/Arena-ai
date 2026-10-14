@@ -425,18 +425,47 @@ function UseCaseScorecard({
         border: "1px solid var(--border)",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px", flexWrap: "wrap", gap: "10px" }}>
         <div>
-          <span style={{ fontSize: "0.72rem", color: "var(--cyan)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>
-            Domain Evaluation Scorecard
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+            <span style={{ fontSize: "0.72rem", color: "var(--cyan)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+              Domain Evaluation Scorecard
+            </span>
+            <span
+              style={{
+                fontSize: "0.65rem",
+                padding: "2px 8px",
+                borderRadius: "4px",
+                background: "rgba(0, 212, 255, 0.12)",
+                color: "var(--cyan-light)",
+                border: "1px solid rgba(0, 212, 255, 0.25)",
+                fontWeight: 600,
+              }}
+            >
+              📚 {config.recommendedBenchmark.name} · {config.recommendedBenchmark.source}
+            </span>
+          </div>
           <h3 style={{ fontSize: "1.05rem", fontWeight: 700, color: "var(--text)", margin: "2px 0 0 0" }}>
             {config.title}
           </h3>
         </div>
-        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-          Comparative evaluation across {models.length} models
-        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+          {config.primaryMetricsList.map((m, idx) => (
+            <span
+              key={idx}
+              style={{
+                fontSize: "0.65rem",
+                padding: "2px 6px",
+                borderRadius: "3px",
+                background: "rgba(255, 255, 255, 0.04)",
+                border: "1px solid var(--border)",
+                color: "var(--text-muted)",
+              }}
+            >
+              {m}
+            </span>
+          ))}
+        </div>
       </div>
 
       {/* Primary Metric Comparison Bars */}
@@ -1001,6 +1030,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
             {USE_CASES.map((uc) => {
               const isSelected = activeUseCase === uc.id;
+              const ucConfig = INSURANCE_USE_CASES[uc.id];
               return (
                 <button
                   key={uc.id}
@@ -1016,12 +1046,31 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                     fontSize: "0.75rem",
                     fontWeight: isSelected ? 700 : 500,
                     display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
+                    flexDirection: "column",
+                    gap: "4px",
                   }}
                 >
-                  <span>{uc.icon}</span>
-                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{uc.label}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span>{uc.icon}</span>
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{uc.label}</span>
+                  </div>
+                  {ucConfig && (
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", paddingLeft: "24px" }}>
+                      <span style={{ fontSize: "0.65rem", color: isSelected ? "var(--cyan)" : "var(--text-muted)", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {ucConfig.recommendedBenchmark.name}
+                      </span>
+                      <span style={{
+                        fontSize: "0.58rem",
+                        padding: "1px 5px",
+                        borderRadius: "3px",
+                        background: isSelected ? "rgba(0, 212, 255, 0.2)" : "rgba(255, 255, 255, 0.05)",
+                        color: isSelected ? "#fff" : "var(--text-subtle)",
+                        flexShrink: 0,
+                      }}>
+                        {ucConfig.recommendedBenchmark.source}
+                      </span>
+                    </div>
+                  )}
                 </button>
               );
             })}
@@ -1153,6 +1202,116 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
 
       {/* ── Main Workspace Area ── */}
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "18px" }}>
+        {/* Recommended Academic Benchmark Grounding Card */}
+        {currentUseCaseConfig && (() => {
+          const cfg = INSURANCE_USE_CASES[currentUseCaseConfig.id];
+          if (!cfg) return null;
+          return (
+            <div
+              style={{
+                padding: "14px 18px",
+                borderRadius: "12px",
+                background: "rgba(11, 22, 40, 0.95)",
+                border: "1px solid rgba(0, 212, 255, 0.25)",
+                boxShadow: "0 4px 20px rgba(0, 0, 0, 0.25)",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "12px", marginBottom: "8px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                  <span style={{ fontSize: "1.3rem" }}>{currentUseCaseConfig.icon}</span>
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                      <span style={{ fontSize: "0.88rem", fontWeight: 800, color: "var(--text)" }}>
+                        {cfg.title}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: "0.68rem",
+                          padding: "2px 8px",
+                          borderRadius: "12px",
+                          background: "rgba(0, 212, 255, 0.15)",
+                          color: "var(--cyan)",
+                          border: "1px solid rgba(0, 212, 255, 0.3)",
+                          fontWeight: 700,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "5px",
+                        }}
+                      >
+                        <span>📚 Recommended Benchmark:</span>
+                        <strong style={{ color: "#fff" }}>{cfg.recommendedBenchmark.name}</strong>
+                      </span>
+                      <span
+                        style={{
+                          fontSize: "0.65rem",
+                          padding: "2px 7px",
+                          borderRadius: "4px",
+                          background: "rgba(168, 85, 247, 0.18)",
+                          color: "#c084fc",
+                          border: "1px solid rgba(168, 85, 247, 0.35)",
+                          fontWeight: 700,
+                        }}
+                      >
+                        {cfg.recommendedBenchmark.source}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: "0.74rem", color: "var(--text-muted)", marginTop: "3px" }}>
+                      {cfg.recommendedBenchmark.description}
+                    </div>
+                  </div>
+                </div>
+
+                {cfg.recommendedBenchmark.url && (
+                  <a
+                    href={cfg.recommendedBenchmark.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      fontSize: "0.7rem",
+                      color: "var(--cyan)",
+                      textDecoration: "none",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      padding: "4px 8px",
+                      borderRadius: "4px",
+                      background: "rgba(0, 212, 255, 0.08)",
+                      border: "1px solid rgba(0, 212, 255, 0.2)",
+                    }}
+                  >
+                    Dataset Source ↗
+                  </a>
+                )}
+              </div>
+
+              {/* Primary Metrics Row */}
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginTop: "8px", paddingTop: "8px", borderTop: "1px solid rgba(255, 255, 255, 0.06)" }}>
+                <span style={{ fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase", color: "var(--cyan)", letterSpacing: "0.06em" }}>
+                  Primary Metrics:
+                </span>
+                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                  {cfg.primaryMetricsList.map((metricName, mIdx) => (
+                    <span
+                      key={mIdx}
+                      style={{
+                        fontSize: "0.7rem",
+                        padding: "2px 8px",
+                        borderRadius: "5px",
+                        background: mIdx === 0 ? "rgba(0, 212, 255, 0.14)" : "rgba(255, 255, 255, 0.04)",
+                        border: mIdx === 0 ? "1px solid rgba(0, 212, 255, 0.4)" : "1px solid var(--border)",
+                        color: mIdx === 0 ? "var(--cyan-light)" : "var(--text-dim)",
+                        fontWeight: mIdx === 0 ? 700 : 500,
+                      }}
+                    >
+                      {metricName}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Prompt Input Card */}
         <div
           style={{
