@@ -17,6 +17,14 @@ function formatBytes(bytes: number, decimals = 1): string {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
 }
 
+const OCR_VISION_MODELS = [
+  "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+  "dots-studio/dots-3-note-preview:free",
+  "google/gemma-4-31b-it:free",
+  "google/gemma-4-26b-a4b-it:free",
+  "openai/gpt-4o-mini",
+];
+
 async function ocrImagesWithVision(images: { b64: string; mimeType: string }[]): Promise<string> {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
@@ -29,51 +37,61 @@ async function ocrImagesWithVision(images: { b64: string; mimeType: string }[]):
   for (let i = 0; i < maxPages; i++) {
     const img = images[i];
     const pageNum = i + 1;
+    let pageTranscribed = false;
 
-    try {
-      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": process.env.OPENROUTER_SITE_URL || "http://localhost:3000",
-          "X-Title": process.env.OPENROUTER_SITE_NAME || "DIL Intelligence Studio",
-        },
-        body: JSON.stringify({
-          model: "openai/gpt-4o-mini",
-          messages: [
-            {
-              role: "user",
-              content: [
-                {
-                  type: "text",
-                  text: `Analyze this insurance policy document image (Page ${pageNum}) and extract all policy terms, coverage amounts, policy numbers, insured info, limits, exclusions, deductibles, tables, and conditions shown into clear structured markdown:`,
-                },
-                {
-                  type: "image_url",
-                  image_url: {
-                    url: `data:${img.mimeType};base64,${img.b64}`,
+    // Try models in cascade until one succeeds
+    for (const model of OCR_VISION_MODELS) {
+      try {
+        const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": process.env.OPENROUTER_SITE_URL || "http://localhost:3000",
+            "X-Title": process.env.OPENROUTER_SITE_NAME || "DIL Intelligence Studio",
+          },
+          body: JSON.stringify({
+            model,
+            messages: [
+              {
+                role: "user",
+                content: [
+                  {
+                    type: "text",
+                    text: `Analyze this insurance policy document image (Page ${pageNum}) and extract all policy terms, coverage amounts, policy numbers, insured info, limits, exclusions, deductibles, tables, and conditions shown into clear structured markdown:`,
                   },
-                },
-              ],
-            },
-          ],
-          max_tokens: 2500,
-        }),
-      });
+                  {
+                    type: "image_url",
+                    image_url: {
+                      url: `data:${img.mimeType};base64,${img.b64}`,
+                    },
+                  },
+                ],
+              },
+            ],
+            max_tokens: 1500,
+          }),
+        });
 
-      if (res.ok) {
-        const data = await res.json();
-        const text = data.choices?.[0]?.message?.content?.trim();
-        if (text && text.length > 10) {
-          results.push(maxPages > 1 ? `### [Page ${pageNum}]\n${text}` : text);
+        if (res.ok) {
+          const data = await res.json();
+          const text = data.choices?.[0]?.message?.content?.trim();
+          if (text && text.length > 5) {
+            results.push(maxPages > 1 ? `### [Page ${pageNum}]\n${text}` : text);
+            pageTranscribed = true;
+            break; // Successfully transcribed this page, proceed to next page
+          }
+        } else {
+          const errBody = await res.text();
+          console.warn(`Vision OCR with ${model} failed on page ${pageNum} (${res.status}):`, errBody.slice(0, 200));
         }
-      } else {
-        const errBody = await res.text();
-        console.warn(`Vision OCR failed on page ${pageNum}:`, res.status, errBody);
+      } catch (e) {
+        console.warn(`Vision OCR network exception with ${model} on page ${pageNum}:`, e);
       }
-    } catch (e) {
-      console.warn(`Vision OCR network exception on page ${pageNum}:`, e);
+    }
+
+    if (!pageTranscribed) {
+      console.warn(`All vision models failed to transcribe page ${pageNum}`);
     }
   }
 
@@ -275,15 +293,19 @@ export async function POST(req: NextRequest) {
         const cachedDoc = JSON.parse(readFileSync(cacheJsonPath, "utf-8"));
         const rawType = String(cachedDoc.type || "");
         const cleanType = (rawType.includes("AI OCR") || rawType.includes("OCR")) ? "OCR" : rawType;
-        return NextResponse.json({
-          success: true,
-          cached: true,
-          document: {
-            ...cachedDoc,
-            name: filename || cachedDoc.name,
-            type: cleanType,
-          },
-        });
+        const cachedText = String(cachedDoc.text || "");
+        // Only return from cache if it was a successful extraction, not an error message
+        if (!cachedText.startsWith("Could not run OCR") && !cachedText.startsWith("Vision AI OCR was unable")) {
+          return NextResponse.json({
+            success: true,
+            cached: true,
+            document: {
+              ...cachedDoc,
+              name: filename || cachedDoc.name,
+              type: cleanType,
+            },
+          });
+        }
       } catch {
         // proceed with fresh extraction if cache parse fails
       }
@@ -402,13 +424,20 @@ export async function POST(req: NextRequest) {
       storedAt: new Date().toISOString(),
     };
 
-    // Persist parsed & OCR text to disk storage
-    try {
-      if (!existsSync(cacheDir)) mkdirSync(cacheDir, { recursive: true });
-      writeFileSync(cacheJsonPath, JSON.stringify(documentPayload, null, 2), "utf-8");
-      writeFileSync(cacheTxtPath, cleanText, "utf-8");
-    } catch (saveErr) {
-      console.warn("Failed to persist OCR cache to disk:", saveErr);
+    // Persist parsed & OCR text to disk storage if not an error message
+    const isFailedOcr =
+      cleanText.startsWith("Could not run OCR") ||
+      cleanText.startsWith("Vision AI OCR was unable") ||
+      cleanText.includes("Scanned / Image-Only PDF Detected");
+
+    if (!isFailedOcr) {
+      try {
+        if (!existsSync(cacheDir)) mkdirSync(cacheDir, { recursive: true });
+        writeFileSync(cacheJsonPath, JSON.stringify(documentPayload, null, 2), "utf-8");
+        writeFileSync(cacheTxtPath, cleanText, "utf-8");
+      } catch (saveErr) {
+        console.warn("Failed to persist OCR cache to disk:", saveErr);
+      }
     }
 
     return NextResponse.json({
