@@ -43,7 +43,7 @@ export interface UseCaseConfig {
 export const INSURANCE_USE_CASES: Record<InsuranceUseCaseId, UseCaseConfig> = {
   "data-extraction": {
     id: "data-extraction",
-    title: "1. Data Extraction",
+    title: "Data Extraction",
     recommendedBenchmark: {
       name: "Policy Extraction Testbench",
       description: "Insurance policy extraction with human-reviewed reference fields.",
@@ -69,7 +69,7 @@ export const INSURANCE_USE_CASES: Record<InsuranceUseCaseId, UseCaseConfig> = {
   },
   "policy-translation": {
     id: "policy-translation",
-    title: "2. Policy Translation / Understanding",
+    title: "Policy Translation / Understanding",
     recommendedBenchmark: {
       name: "InsLogicBench",
       description: "Insurance clause reasoning, exceptions and evidence-linked decisions.",
@@ -93,7 +93,7 @@ export const INSURANCE_USE_CASES: Record<InsuranceUseCaseId, UseCaseConfig> = {
   },
   "ai-triage": {
     id: "ai-triage",
-    title: "3. AI Triage",
+    title: "AI Triage",
     recommendedBenchmark: {
       name: "AgentDS-Insurance",
       description: "Insurance claims-complexity prediction tasks.",
@@ -118,7 +118,7 @@ export const INSURANCE_USE_CASES: Record<InsuranceUseCaseId, UseCaseConfig> = {
   },
   "claim-assessment": {
     id: "claim-assessment",
-    title: "4. Claim Assessment",
+    title: "Claim Assessment",
     recommendedBenchmark: {
       name: "InsClaimBench",
       description: "End-to-end insurance claim adjudication and payout decisions.",
@@ -142,7 +142,7 @@ export const INSURANCE_USE_CASES: Record<InsuranceUseCaseId, UseCaseConfig> = {
   },
   "eiopa-regulatory": {
     id: "eiopa-regulatory",
-    title: "5. EIOPA Regulatory Check",
+    title: "EIOPA Regulatory Check",
     recommendedBenchmark: {
       name: "EIOPA Solvency II Single Rulebook",
       description: "Official, versioned rules as reference corpus for regulatory QA benchmark.",
@@ -167,7 +167,7 @@ export const INSURANCE_USE_CASES: Record<InsuranceUseCaseId, UseCaseConfig> = {
   },
   "underwriting-risk": {
     id: "underwriting-risk",
-    title: "6. Underwriting Risk Assessment",
+    title: "Underwriting Risk Assessment",
     recommendedBenchmark: {
       name: "InsureBench",
       description: "Document-grounded underwriting and coverage workflows.",
@@ -191,7 +191,7 @@ export const INSURANCE_USE_CASES: Record<InsuranceUseCaseId, UseCaseConfig> = {
   },
   "fraud-detection": {
     id: "fraud-detection",
-    title: "7. Fraud Detection",
+    title: "Fraud Detection",
     recommendedBenchmark: {
       name: "Auto Insurance Fraud Detection",
       description: "Public insurance fraud dataset.",
@@ -216,7 +216,7 @@ export const INSURANCE_USE_CASES: Record<InsuranceUseCaseId, UseCaseConfig> = {
   },
   "actuarial-reasoning": {
     id: "actuarial-reasoning",
-    title: "8. Actuarial Reasoning",
+    title: "Actuarial Reasoning",
     recommendedBenchmark: {
       name: "INS-ActBench",
       description: "Actuarial knowledge, case reasoning, and spreadsheet/R-code tasks.",

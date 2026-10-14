@@ -19,56 +19,56 @@ const USE_CASES: { id: InsuranceUseCaseId; icon: string; label: string; prompt: 
   {
     id: "data-extraction",
     icon: "01",
-    label: "1. Data Extraction",
+    label: "Data Extraction",
     prompt: "",
     goldKey: "SC-001",
   },
   {
     id: "policy-translation",
     icon: "02",
-    label: "2. Policy Translation / Understanding",
+    label: "Policy Translation / Understanding",
     prompt: "",
     goldKey: "SC-002",
   },
   {
     id: "ai-triage",
     icon: "03",
-    label: "3. AI Triage",
+    label: "AI Triage",
     prompt: "",
     goldKey: "SC-003",
   },
   {
     id: "claim-assessment",
     icon: "04",
-    label: "4. Claim Assessment",
+    label: "Claim Assessment",
     prompt: "",
     goldKey: "SC-004",
   },
   {
     id: "eiopa-regulatory",
     icon: "05",
-    label: "5. EIOPA Regulatory Check",
+    label: "EIOPA Regulatory Check",
     prompt: "",
     goldKey: "SC-005",
   },
   {
     id: "underwriting-risk",
     icon: "06",
-    label: "6. Underwriting Risk Assessment",
+    label: "Underwriting Risk Assessment",
     prompt: "",
     goldKey: "SC-006",
   },
   {
     id: "fraud-detection",
     icon: "07",
-    label: "7. Fraud Detection",
+    label: "Fraud Detection",
     prompt: "",
     goldKey: "SC-007",
   },
   {
     id: "actuarial-reasoning",
     icon: "08",
-    label: "8. Actuarial Reasoning",
+    label: "Actuarial Reasoning",
     prompt: "",
     goldKey: "SC-008",
   },
@@ -1160,7 +1160,6 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                   onClick={() => handleUseCaseSelect(uc)}
                 >
                   <div className="h2h-usecase-header">
-                    <span className="h2h-usecase-icon">{uc.icon}</span>
                     <span className="h2h-usecase-label">{uc.label}</span>
                   </div>
                   {ucConfig && (
@@ -1274,9 +1273,6 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
         {/* Sticky Header matching arena-header */}
         <div className="arena-header">
           <div className="arena-header-model">
-            <div className="arena-header-model-icon">
-              {currentUseCaseConfig?.icon || "01"}
-            </div>
             <div>
               <div className="arena-header-model-name">
                 {currentUseCaseConfig?.label || "Head-to-Head Comparison"}
@@ -1405,12 +1401,10 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                 }}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                    <span style={{ fontSize: "11px", fontWeight: 700, padding: "2px 6px", borderRadius: "4px", background: "var(--accent-dim)", color: "var(--accent)" }}>{currentUseCaseConfig.icon}</span>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                      <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--text-main)" }}>
-                        {cfg.title}
-                      </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                    <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--text-main)" }}>
+                      {cfg.title}
+                    </span>
                       <span
                         style={{
                           fontSize: "11px",
@@ -1442,7 +1436,6 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                         {cfg.recommendedBenchmark.source}
                       </span>
                     </div>
-                  </div>
 
                   {cfg.recommendedBenchmark.url && (
                     <a

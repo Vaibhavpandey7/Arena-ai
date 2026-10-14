@@ -631,7 +631,6 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
                 className={`arena-plugin-item${isOn ? " active" : ""}`}
               >
                 <div className="arena-plugin-row">
-                  <span className="arena-plugin-icon">{plugin.icon}</span>
                   <div className="arena-plugin-info">
                     <div className="arena-plugin-name">{plugin.name}</div>
                     <div className="arena-plugin-sub">{plugin.sub}</div>
