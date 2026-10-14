@@ -129,6 +129,9 @@ function ModelColumn({
   canRemove,
   showAnalytics = false,
   onToggleAnalytics,
+  layoutMode = "vertical",
+  isCollapsed = false,
+  onToggleCollapse,
 }: {
   index: number;
   modelId: string;
@@ -139,6 +142,9 @@ function ModelColumn({
   canRemove?: boolean;
   showAnalytics?: boolean;
   onToggleAnalytics?: () => void;
+  layoutMode?: "vertical" | "columns";
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }) {
   const [showThinking, setShowThinking] = useState(true);
   const [copied, setCopied] = useState(false);
@@ -160,6 +166,7 @@ function ModelColumn({
 
   return (
     <div
+      id={`model-card-${index}`}
       className="h2h-model-col"
       style={{
         flex: 1,
@@ -167,23 +174,26 @@ function ModelColumn({
         width: "100%",
         display: "flex",
         flexDirection: "column",
-        background: "rgba(11, 22, 40, 0.7)",
+        background: "rgba(11, 22, 40, 0.75)",
         border: "1px solid var(--border)",
         borderRadius: "12px",
         overflow: "hidden",
         boxSizing: "border-box",
+        transition: "all 0.2s ease",
       }}
     >
       {/* Column Header */}
       <div
         className="h2h-col-header"
         style={{
-          padding: "12px 16px",
+          padding: layoutMode === "vertical" ? "12px 20px" : "12px 16px",
           background: "rgba(15, 30, 54, 0.95)",
-          borderBottom: "1px solid var(--border)",
+          borderBottom: isCollapsed ? "none" : "1px solid var(--border)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: "10px",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0, flexWrap: "wrap" }}>
@@ -242,7 +252,23 @@ function ModelColumn({
               🧠 REASONING
             </span>
           )}
-          {state.latencyMs > 0 && (
+          {state.isRunning && (
+            <span
+              style={{
+                fontSize: "0.68rem",
+                padding: "2px 7px",
+                borderRadius: "4px",
+                background: "rgba(0, 212, 255, 0.15)",
+                color: "var(--cyan)",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px",
+              }}
+            >
+              <span className="spinner-border" style={{ width: "9px", height: "9px" }} /> Streaming...
+            </span>
+          )}
+          {state.latencyMs > 0 && !state.isRunning && (
             <span
               style={{
                 fontSize: "0.65rem",
@@ -258,6 +284,22 @@ function ModelColumn({
             </span>
           )}
         </div>
+
+        {/* Live Quick Stats Strip (especially prominent in Vertical Stack) */}
+        {layoutMode === "vertical" && (state.promptTokens > 0 || state.completionTokens > 0 || state.estCostUsd !== undefined) && (
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", fontSize: "0.72rem", color: "var(--text-muted)" }}>
+            {(state.promptTokens > 0 || state.completionTokens > 0) && (
+              <span style={{ fontFamily: "var(--font-mono)" }}>
+                Tokens: <strong style={{ color: "var(--cyan)" }}>{state.promptTokens || 0}</strong> in / <strong style={{ color: "var(--cyan)" }}>{state.completionTokens || 0}</strong> out
+              </span>
+            )}
+            {state.estCostUsd !== undefined && (
+              <span style={{ fontFamily: "var(--font-mono)" }}>
+                Cost: <strong style={{ color: isFree ? "var(--emerald)" : "var(--amber)" }}>{isFree ? "FREE" : `$${state.estCostUsd.toFixed(4)}`}</strong>
+              </span>
+            )}
+          </div>
+        )}
 
         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
           {state.answer && (
@@ -281,6 +323,25 @@ function ModelColumn({
             </button>
           )}
 
+          {hasContent && onToggleCollapse && (
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              style={{
+                background: "rgba(255, 255, 255, 0.04)",
+                border: "1px solid var(--border)",
+                color: "var(--text-muted)",
+                cursor: "pointer",
+                fontSize: "0.72rem",
+                padding: "3px 8px",
+                borderRadius: "4px",
+              }}
+              title={isCollapsed ? "Expand model response" : "Collapse model response"}
+            >
+              {isCollapsed ? "▼ Expand" : "▲ Collapse"}
+            </button>
+          )}
+
           {canRemove && onRemove && (
             <button
               onClick={onRemove}
@@ -301,8 +362,17 @@ function ModelColumn({
         </div>
       </div>
 
-      {/* Column Body */}
-      <div style={{ flex: 1, padding: "16px", overflowY: "auto", display: "flex", flexDirection: "column" }}>
+      {/* Column Body (Hidden when card is collapsed) */}
+      {!isCollapsed && (
+      <div
+        style={{
+          flex: 1,
+          padding: layoutMode === "vertical" ? "20px 24px" : "16px",
+          overflowY: layoutMode === "vertical" ? "visible" : "auto",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
         {!hasContent ? (
           <div
             style={{
@@ -467,6 +537,7 @@ function ModelColumn({
           </>
         )}
       </div>
+      )}
     </div>
   );
 }
@@ -700,6 +771,8 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
   // Clutter-free UI states
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [isPromptCollapsed, setIsPromptCollapsed] = useState(false);
+  const [layoutMode, setLayoutMode] = useState<"vertical" | "columns">("vertical");
+  const [collapsedCards, setCollapsedCards] = useState<Record<number, boolean>>({});
 
   const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1044,6 +1117,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
     setStates(models.map(() => emptyModelState()));
     setIsPromptCollapsed(false);
     setShowAnalytics(false);
+    setCollapsedCards({});
   };
 
   // Active ground truth item for selected use case
@@ -1831,7 +1905,55 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                 )}
               </div>
 
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                {/* Layout Mode Toggle (Stacked vs Columns) */}
+                <div
+                  style={{
+                    display: "flex",
+                    background: "rgba(255, 255, 255, 0.05)",
+                    borderRadius: "7px",
+                    padding: "2px",
+                    border: "1px solid var(--border)",
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setLayoutMode("vertical")}
+                    style={{
+                      padding: "5px 11px",
+                      borderRadius: "5px",
+                      background: layoutMode === "vertical" ? "var(--cyan)" : "transparent",
+                      color: layoutMode === "vertical" ? "#050b14" : "var(--text-muted)",
+                      fontWeight: 700,
+                      fontSize: "0.74rem",
+                      border: "none",
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                    }}
+                    title="Stack models vertically in full-width cards"
+                  >
+                    ☰ Stacked
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLayoutMode("columns")}
+                    style={{
+                      padding: "5px 11px",
+                      borderRadius: "5px",
+                      background: layoutMode === "columns" ? "var(--cyan)" : "transparent",
+                      color: layoutMode === "columns" ? "#050b14" : "var(--text-muted)",
+                      fontWeight: 700,
+                      fontSize: "0.74rem",
+                      border: "none",
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                    }}
+                    title="Display models side-by-side in columns"
+                  >
+                    ⊞ Columns
+                  </button>
+                </div>
+
                 {/* The In-Page Analytics Toggle Button */}
                 <button
                   type="button"
@@ -1899,19 +2021,115 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
               </div>
             </div>
 
-            {/* ── Dynamic Multi-Model Grid (Prevents 4-model overlap with 2x2 grid) ── */}
+            {/* Quick-Jump & Bulk Collapse Toolbar (Vertical Stack Mode) */}
+            {layoutMode === "vertical" && models.length > 1 && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "8px 14px",
+                  borderRadius: "8px",
+                  background: "rgba(15, 30, 54, 0.6)",
+                  border: "1px solid rgba(255, 255, 255, 0.06)",
+                  flexWrap: "wrap",
+                  gap: "8px",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                  <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700 }}>
+                    Quick Jump:
+                  </span>
+                  {models.map((modelId, idx) => {
+                    const modelInfo = getModel(modelId);
+                    const name = modelInfo?.label ?? modelId.split("/").pop() ?? modelId;
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          const el = document.getElementById(`model-card-${idx}`);
+                          if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                        }}
+                        style={{
+                          padding: "3px 9px",
+                          borderRadius: "5px",
+                          background: "rgba(0, 212, 255, 0.08)",
+                          border: "1px solid rgba(0, 212, 255, 0.2)",
+                          color: "var(--cyan)",
+                          fontSize: "0.72rem",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                        }}
+                        title={`Scroll to Model ${idx + 1}`}
+                      >
+                        M{idx + 1}: {name.length > 16 ? name.slice(0, 16) + "…" : name}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const all: Record<number, boolean> = {};
+                      models.forEach((_, i) => { all[i] = true; });
+                      setCollapsedCards(all);
+                    }}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      color: "var(--text-dim)",
+                      fontSize: "0.7rem",
+                      cursor: "pointer",
+                      textDecoration: "underline",
+                    }}
+                  >
+                    Collapse All
+                  </button>
+                  <span style={{ color: "var(--text-dim)", fontSize: "0.7rem" }}>·</span>
+                  <button
+                    type="button"
+                    onClick={() => setCollapsedCards({})}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      color: "var(--text-dim)",
+                      fontSize: "0.7rem",
+                      cursor: "pointer",
+                      textDecoration: "underline",
+                    }}
+                  >
+                    Expand All
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ── Dynamic Multi-Model Container (Vertical Stack vs Side-by-Side Grid) ── */}
             <div
-              style={{
-                display: "grid",
-                gridTemplateColumns:
-                  models.length === 4
-                    ? "repeat(2, minmax(0, 1fr))"
-                    : `repeat(${models.length}, minmax(0, 1fr))`,
-                gap: "16px",
-                alignItems: "stretch",
-                width: "100%",
-                minWidth: 0,
-              }}
+              style={
+                layoutMode === "vertical"
+                  ? {
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "20px",
+                      width: "100%",
+                      minWidth: 0,
+                    }
+                  : {
+                      display: "grid",
+                      gridTemplateColumns:
+                        models.length === 4
+                          ? "repeat(2, minmax(0, 1fr))"
+                          : `repeat(${models.length}, minmax(0, 1fr))`,
+                      gap: "16px",
+                      alignItems: "stretch",
+                      width: "100%",
+                      minWidth: 0,
+                    }
+              }
             >
               {models.map((modelId, idx) => (
                 <ModelColumn
@@ -1925,6 +2143,11 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                   onRemove={() => handleRemoveModel(idx)}
                   showAnalytics={showAnalytics}
                   onToggleAnalytics={() => setShowAnalytics((prev) => !prev)}
+                  layoutMode={layoutMode}
+                  isCollapsed={Boolean(collapsedCards[idx])}
+                  onToggleCollapse={() =>
+                    setCollapsedCards((prev) => ({ ...prev, [idx]: !prev[idx] }))
+                  }
                 />
               ))}
             </div>
