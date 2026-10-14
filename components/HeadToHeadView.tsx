@@ -127,6 +127,8 @@ function ModelColumn({
   goldItem,
   onRemove,
   canRemove,
+  showAnalytics = false,
+  onToggleAnalytics,
 }: {
   index: number;
   modelId: string;
@@ -135,8 +137,11 @@ function ModelColumn({
   goldItem?: { goldResponse: string; evidence: string };
   onRemove?: () => void;
   canRemove?: boolean;
+  showAnalytics?: boolean;
+  onToggleAnalytics?: () => void;
 }) {
   const [showThinking, setShowThinking] = useState(true);
+  const [copied, setCopied] = useState(false);
   const modelInfo = getModel(modelId);
   const displayName = modelInfo?.label ?? modelId.split("/").pop() ?? modelId;
   const isFree = modelInfo?.isFree || modelId.endsWith(":free");
@@ -145,6 +150,13 @@ function ModelColumn({
 
   const activeGold = state.customGold || goldItem?.goldResponse;
   const activeEvidence = state.customEvidence || goldItem?.evidence;
+
+  const handleCopy = () => {
+    if (!state.answer) return;
+    navigator.clipboard.writeText(state.answer);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
 
   return (
     <div
@@ -172,7 +184,7 @@ function ModelColumn({
           justifyContent: "space-between",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0, flexWrap: "wrap" }}>
           <span
             style={{
               fontSize: "0.7rem",
@@ -228,25 +240,63 @@ function ModelColumn({
               🧠 REASONING
             </span>
           )}
+          {state.latencyMs > 0 && (
+            <span
+              style={{
+                fontSize: "0.65rem",
+                padding: "1px 6px",
+                borderRadius: "4px",
+                background: "rgba(16, 185, 129, 0.1)",
+                color: "var(--emerald)",
+                fontFamily: "var(--font-mono)",
+                fontWeight: 600,
+              }}
+            >
+              ⚡ {(state.latencyMs / 1000).toFixed(2)}s
+            </span>
+          )}
         </div>
 
-        {canRemove && onRemove && (
-          <button
-            onClick={onRemove}
-            style={{
-              background: "transparent",
-              border: "none",
-              color: "var(--text-muted)",
-              cursor: "pointer",
-              fontSize: "0.9rem",
-              padding: "2px 6px",
-              borderRadius: "4px",
-            }}
-            title="Remove model from comparison"
-          >
-            ✕
-          </button>
-        )}
+        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          {state.answer && (
+            <button
+              onClick={handleCopy}
+              style={{
+                background: "rgba(255, 255, 255, 0.04)",
+                border: "1px solid var(--border)",
+                color: copied ? "var(--emerald)" : "var(--text-muted)",
+                cursor: "pointer",
+                fontSize: "0.72rem",
+                padding: "3px 8px",
+                borderRadius: "4px",
+                display: "flex",
+                alignItems: "center",
+                gap: "3px",
+              }}
+              title="Copy model response to clipboard"
+            >
+              {copied ? "✓ Copied" : "📋 Copy"}
+            </button>
+          )}
+
+          {canRemove && onRemove && (
+            <button
+              onClick={onRemove}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "var(--text-muted)",
+                cursor: "pointer",
+                fontSize: "0.9rem",
+                padding: "2px 6px",
+                borderRadius: "4px",
+              }}
+              title="Remove model from comparison"
+            >
+              ✕
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Column Body */}
@@ -268,49 +318,51 @@ function ModelColumn({
               Ready for Evaluation
             </div>
             <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", maxWidth: "260px", lineHeight: 1.4 }}>
-              Run a prompt or select an insurance use case on the left.
+              Click Run to stream responses side-by-side.
             </div>
           </div>
         ) : (
           <>
-            {/* Live Metrics Row */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(4, 1fr)",
-                gap: "6px",
-                marginBottom: "14px",
-                padding: "8px",
-                borderRadius: "8px",
-                background: "rgba(0, 0, 0, 0.3)",
-                border: "1px solid var(--border)",
-              }}
-            >
-              <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: "0.62rem", color: "var(--text-muted)", textTransform: "uppercase" }}>Tokens In</div>
-                <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--cyan)", fontFamily: "var(--font-mono)" }}>
-                  {state.promptTokens || "—"}
+            {/* Live Metrics Row - Shown ONLY when Analytics is ON */}
+            {showAnalytics && (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(4, 1fr)",
+                  gap: "6px",
+                  marginBottom: "14px",
+                  padding: "8px",
+                  borderRadius: "8px",
+                  background: "rgba(0, 0, 0, 0.3)",
+                  border: "1px solid var(--border)",
+                }}
+              >
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: "0.62rem", color: "var(--text-muted)", textTransform: "uppercase" }}>Tokens In</div>
+                  <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--cyan)", fontFamily: "var(--font-mono)" }}>
+                    {state.promptTokens || "—"}
+                  </div>
+                </div>
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: "0.62rem", color: "var(--text-muted)", textTransform: "uppercase" }}>Tokens Out</div>
+                  <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--cyan)", fontFamily: "var(--font-mono)" }}>
+                    {state.completionTokens || "—"}
+                  </div>
+                </div>
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: "0.62rem", color: "var(--text-muted)", textTransform: "uppercase" }}>Latency</div>
+                  <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--emerald)", fontFamily: "var(--font-mono)" }}>
+                    {state.latencyMs ? `${(state.latencyMs / 1000).toFixed(2)}s` : state.isRunning ? `${elapsedSec}s...` : "—"}
+                  </div>
+                </div>
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: "0.62rem", color: "var(--text-muted)", textTransform: "uppercase" }}>Cost</div>
+                  <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--amber)", fontFamily: "var(--font-mono)" }}>
+                    {isFree ? "FREE" : state.estCostUsd ? `$${state.estCostUsd.toFixed(4)}` : "$0.00"}
+                  </div>
                 </div>
               </div>
-              <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: "0.62rem", color: "var(--text-muted)", textTransform: "uppercase" }}>Tokens Out</div>
-                <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--cyan)", fontFamily: "var(--font-mono)" }}>
-                  {state.completionTokens || "—"}
-                </div>
-              </div>
-              <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: "0.62rem", color: "var(--text-muted)", textTransform: "uppercase" }}>Latency</div>
-                <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--emerald)", fontFamily: "var(--font-mono)" }}>
-                  {state.latencyMs ? `${(state.latencyMs / 1000).toFixed(2)}s` : state.isRunning ? `${elapsedSec}s...` : "—"}
-                </div>
-              </div>
-              <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: "0.62rem", color: "var(--text-muted)", textTransform: "uppercase" }}>Cost</div>
-                <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--amber)", fontFamily: "var(--font-mono)" }}>
-                  {isFree ? "FREE" : state.estCostUsd ? `$${state.estCostUsd.toFixed(4)}` : "$0.00"}
-                </div>
-              </div>
-            </div>
+            )}
 
             {/* Reasoning / Thinking Drawer */}
             {state.reasoning && (
@@ -372,15 +424,43 @@ function ModelColumn({
               ) : null}
             </div>
 
-            {/* Ground Truth Alignment Section */}
-            {state.answer && activeGold && (
-              <GroundTruthPanel
-                modelAnswer={state.answer}
-                goldResponse={activeGold}
-                evidence={activeEvidence}
-                useCaseId={useCaseId}
-                modelName={displayName}
-              />
+            {/* Ground Truth Alignment Section - Shown ONLY when Analytics is ON */}
+            {showAnalytics && state.answer && activeGold && (
+              <div style={{ marginTop: "16px" }}>
+                <GroundTruthPanel
+                  modelAnswer={state.answer}
+                  goldResponse={activeGold}
+                  evidence={activeEvidence}
+                  useCaseId={useCaseId}
+                  modelName={displayName}
+                />
+              </div>
+            )}
+
+            {/* Subtle Quick-Link when Analytics is OFF */}
+            {!showAnalytics && state.answer && onToggleAnalytics && (
+              <div style={{ marginTop: "12px", paddingTop: "8px", borderTop: "1px solid rgba(255, 255, 255, 0.05)", display: "flex", justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  onClick={onToggleAnalytics}
+                  style={{
+                    fontSize: "0.72rem",
+                    background: "rgba(0, 212, 255, 0.08)",
+                    border: "1px solid rgba(0, 212, 255, 0.2)",
+                    color: "var(--cyan)",
+                    padding: "3px 8px",
+                    borderRadius: "5px",
+                    cursor: "pointer",
+                    fontWeight: 600,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                  title="Show Ground Truth and Domain Metrics"
+                >
+                  <span>📊 View Analytics</span>
+                </button>
+              </div>
             )}
           </>
         )}
@@ -615,10 +695,16 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
   const [showDocIngestModal, setShowDocIngestModal] = useState(false);
   const [isDraggingFile, setIsDraggingFile] = useState(false);
 
+  // Clutter-free UI states
+  const [showAnalytics, setShowAnalytics] = useState(false);
+  const [isPromptCollapsed, setIsPromptCollapsed] = useState(false);
+
   const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortRefs = useRef<(AbortController | null)[]>([null, null, null, null]);
   const tickerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const hasAnyResults = states.some((s) => Boolean(s.answer || s.reasoning || s.isRunning));
 
   // Sync initialPrompt from benchmark or external navigation
   useEffect(() => {
@@ -940,6 +1026,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
   const handleRunAll = () => {
     const effectivePrompt = getEffectivePrompt(prompt);
     if (!effectivePrompt.trim() || isAnyRunning) return;
+    setIsPromptCollapsed(true);
     models.forEach((modelId, idx) => {
       streamModel(idx, modelId, effectivePrompt);
     });
@@ -948,6 +1035,13 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
   const handleStopAll = () => {
     abortRefs.current.forEach((ref) => ref?.abort());
     setStates((prev) => prev.map((s) => ({ ...s, isRunning: false })));
+  };
+
+  const handleResetResults = () => {
+    handleStopAll();
+    setStates(models.map(() => emptyModelState()));
+    setIsPromptCollapsed(false);
+    setShowAnalytics(false);
   };
 
   // Active ground truth item for selected use case
@@ -1209,55 +1303,51 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
           return (
             <div
               style={{
-                padding: "14px 18px",
+                padding: hasAnyResults && isPromptCollapsed ? "10px 14px" : "14px 18px",
                 borderRadius: "12px",
                 background: "rgba(11, 22, 40, 0.95)",
                 border: "1px solid rgba(0, 212, 255, 0.25)",
                 boxShadow: "0 4px 20px rgba(0, 0, 0, 0.25)",
+                transition: "all 0.25s ease",
               }}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "12px", marginBottom: "8px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                  <span style={{ fontSize: "1.3rem" }}>{currentUseCaseConfig.icon}</span>
-                  <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                      <span style={{ fontSize: "0.88rem", fontWeight: 800, color: "var(--text)" }}>
-                        {cfg.title}
-                      </span>
-                      <span
-                        style={{
-                          fontSize: "0.68rem",
-                          padding: "2px 8px",
-                          borderRadius: "12px",
-                          background: "rgba(0, 212, 255, 0.15)",
-                          color: "var(--cyan)",
-                          border: "1px solid rgba(0, 212, 255, 0.3)",
-                          fontWeight: 700,
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "5px",
-                        }}
-                      >
-                        <span>📚 Recommended Benchmark:</span>
-                        <strong style={{ color: "#fff" }}>{cfg.recommendedBenchmark.name}</strong>
-                      </span>
-                      <span
-                        style={{
-                          fontSize: "0.65rem",
-                          padding: "2px 7px",
-                          borderRadius: "4px",
-                          background: "rgba(168, 85, 247, 0.18)",
-                          color: "#c084fc",
-                          border: "1px solid rgba(168, 85, 247, 0.35)",
-                          fontWeight: 700,
-                        }}
-                      >
-                        {cfg.recommendedBenchmark.source}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: "0.74rem", color: "var(--text-muted)", marginTop: "3px" }}>
-                      {cfg.recommendedBenchmark.description}
-                    </div>
+                  <span style={{ fontSize: "1.2rem" }}>{currentUseCaseConfig.icon}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                    <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--text)" }}>
+                      {cfg.title}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: "0.68rem",
+                        padding: "2px 8px",
+                        borderRadius: "12px",
+                        background: "rgba(0, 212, 255, 0.15)",
+                        color: "var(--cyan)",
+                        border: "1px solid rgba(0, 212, 255, 0.3)",
+                        fontWeight: 700,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "5px",
+                      }}
+                    >
+                      <span>📚 Benchmark:</span>
+                      <strong style={{ color: "#fff" }}>{cfg.recommendedBenchmark.name}</strong>
+                    </span>
+                    <span
+                      style={{
+                        fontSize: "0.65rem",
+                        padding: "2px 7px",
+                        borderRadius: "4px",
+                        background: "rgba(168, 85, 247, 0.18)",
+                        color: "#c084fc",
+                        border: "1px solid rgba(168, 85, 247, 0.35)",
+                        fontWeight: 700,
+                      }}
+                    >
+                      {cfg.recommendedBenchmark.source}
+                    </span>
                   </div>
                 </div>
 
@@ -1273,7 +1363,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                       display: "flex",
                       alignItems: "center",
                       gap: "4px",
-                      padding: "4px 8px",
+                      padding: "3px 8px",
                       borderRadius: "4px",
                       background: "rgba(0, 212, 255, 0.08)",
                       border: "1px solid rgba(0, 212, 255, 0.2)",
@@ -1284,297 +1374,582 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                 )}
               </div>
 
-              {/* Primary Metrics Row */}
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginTop: "8px", paddingTop: "8px", borderTop: "1px solid rgba(255, 255, 255, 0.06)" }}>
-                <span style={{ fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase", color: "var(--cyan)", letterSpacing: "0.06em" }}>
-                  Primary Metrics:
-                </span>
-                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                  {cfg.primaryMetricsList.map((metricName, mIdx) => (
-                    <span
-                      key={mIdx}
-                      style={{
-                        fontSize: "0.7rem",
-                        padding: "2px 8px",
-                        borderRadius: "5px",
-                        background: mIdx === 0 ? "rgba(0, 212, 255, 0.14)" : "rgba(255, 255, 255, 0.04)",
-                        border: mIdx === 0 ? "1px solid rgba(0, 212, 255, 0.4)" : "1px solid var(--border)",
-                        color: mIdx === 0 ? "var(--cyan-light)" : "var(--text-dim)",
-                        fontWeight: mIdx === 0 ? 700 : 500,
-                      }}
-                    >
-                      {metricName}
+              {/* Show description & full primary metrics list when prompt is not collapsed */}
+              {(!hasAnyResults || !isPromptCollapsed) && (
+                <>
+                  <div style={{ fontSize: "0.74rem", color: "var(--text-muted)", marginTop: "6px" }}>
+                    {cfg.recommendedBenchmark.description}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginTop: "8px", paddingTop: "8px", borderTop: "1px solid rgba(255, 255, 255, 0.06)" }}>
+                    <span style={{ fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase", color: "var(--cyan)", letterSpacing: "0.06em" }}>
+                      Target Metrics:
                     </span>
-                  ))}
-                </div>
-              </div>
+                    <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                      {cfg.primaryMetricsList.map((metricName, mIdx) => (
+                        <span
+                          key={mIdx}
+                          style={{
+                            fontSize: "0.68rem",
+                            padding: "2px 7px",
+                            borderRadius: "4px",
+                            background: mIdx === 0 ? "rgba(0, 212, 255, 0.14)" : "rgba(255, 255, 255, 0.04)",
+                            border: mIdx === 0 ? "1px solid rgba(0, 212, 255, 0.4)" : "1px solid var(--border)",
+                            color: mIdx === 0 ? "var(--cyan-light)" : "var(--text-dim)",
+                            fontWeight: mIdx === 0 ? 700 : 500,
+                          }}
+                        >
+                          {metricName}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           );
         })()}
 
-        {/* Prompt Input Card */}
-        <div
-          style={{
-            padding: "16px",
-            borderRadius: "12px",
-            background: "rgba(11, 22, 40, 0.9)",
-            border: "1px solid var(--border)",
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px", flexWrap: "wrap", gap: "10px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-              <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--cyan)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                Evaluation Prompt & Scenario
-              </span>
-              <button
-                type="button"
-                className="h2h-upload-btn"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploadingDoc}
-                title="Upload an insurance policy, endorsement, scan, or claim file (PDF, Images, TXT, CSV)"
-              >
-                {isUploadingDoc ? (
-                  <>
-                    <span className="spinner-border" style={{ width: "12px", height: "12px" }} />
-                    <span>Parsing & OCR...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>📎 Upload Policy / Document</span>
-                    <span className="h2h-upload-pill-tag">PDF, SCAN/OCR, TXT</span>
-                  </>
-                )}
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.md,.json,.csv"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) handleDocUpload(f);
-                  e.target.value = "";
+        {/* ── Prompt Section: Collapsed Bar OR Full Input Card ── */}
+        {hasAnyResults && isPromptCollapsed ? (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "10px 16px",
+              borderRadius: "10px",
+              background: "rgba(11, 22, 40, 0.9)",
+              border: "1px solid var(--border)",
+              gap: "12px",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0, flex: 1 }}>
+              <span style={{ fontSize: "0.95rem" }}>💬</span>
+              <span
+                style={{
+                  fontSize: "0.8rem",
+                  color: "var(--text)",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
                 }}
-                style={{ display: "none" }}
-              />
-            </div>
-            <div style={{ display: "flex", gap: "6px" }}>
-              {isAnyRunning ? (
-                <button
-                  onClick={handleStopAll}
+                title={prompt}
+              >
+                <strong style={{ color: "var(--cyan)" }}>Active Prompt:</strong> {prompt || "Evaluating attached document"}
+              </span>
+              {attachedDoc && (
+                <span
                   style={{
-                    padding: "6px 14px",
-                    borderRadius: "6px",
-                    background: "rgba(244, 63, 94, 0.2)",
-                    border: "1px solid var(--rose)",
-                    color: "var(--rose)",
-                    fontSize: "0.78rem",
-                    fontWeight: 700,
-                    cursor: "pointer",
+                    fontSize: "0.68rem",
+                    padding: "2px 6px",
+                    borderRadius: "4px",
+                    background: "rgba(16, 185, 129, 0.15)",
+                    color: "var(--emerald)",
+                    border: "1px solid rgba(16, 185, 129, 0.3)",
+                    flexShrink: 0,
                   }}
                 >
-                  ⏹ Stop Stream
-                </button>
-              ) : (
-                <button
-                  onClick={handleRunAll}
-                  disabled={(!prompt.trim() && !attachedDoc)}
-                  style={{
-                    padding: "6px 18px",
-                    borderRadius: "6px",
-                    background: "var(--cyan)",
-                    border: "none",
-                    color: "#050b14",
-                    fontSize: "0.78rem",
-                    fontWeight: 800,
-                    cursor: (prompt.trim() || attachedDoc) ? "pointer" : "not-allowed",
-                    boxShadow: "0 0 12px rgba(0, 212, 255, 0.3)",
-                  }}
-                >
-                  ▶ Run Head-to-Head ({models.length} Models)
-                </button>
+                  📄 {attachedDoc.name}
+                </span>
               )}
             </div>
-          </div>
-
-          {uploadError && (
-            <div
+            <button
+              onClick={() => setIsPromptCollapsed(false)}
               style={{
-                padding: "8px 12px",
+                fontSize: "0.72rem",
+                padding: "4px 10px",
                 borderRadius: "6px",
-                background: "rgba(244, 63, 94, 0.15)",
-                border: "1px solid rgba(244, 63, 94, 0.35)",
-                color: "var(--rose)",
-                fontSize: "0.76rem",
-                marginBottom: "10px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
+                background: "rgba(255, 255, 255, 0.06)",
+                border: "1px solid var(--border)",
+                color: "var(--text-dim)",
+                cursor: "pointer",
+                fontWeight: 600,
+                flexShrink: 0,
               }}
             >
-              <span>⚠️ {uploadError}</span>
-              <button
-                type="button"
-                onClick={() => setUploadError(null)}
-                style={{ background: "none", border: "none", color: "var(--rose)", cursor: "pointer", fontSize: "0.85rem" }}
-              >
-                ✕
-              </button>
-            </div>
-          )}
-
-          {attachedDoc && (
-            <div className="attached-doc-card">
-              <div className="attached-doc-left">
-                <span className={`doc-badge doc-badge-${(attachedDoc.type?.toUpperCase().includes("OCR") ? "ocr" : attachedDoc.type.toLowerCase())}`}>
-                  {attachedDoc.type?.toUpperCase().includes("OCR") ? "OCR" : attachedDoc.type}
+              ✏️ Edit Prompt
+            </button>
+          </div>
+        ) : (
+          /* Full Prompt Input Card */
+          <div
+            style={{
+              padding: "16px",
+              borderRadius: "12px",
+              background: "rgba(11, 22, 40, 0.9)",
+              border: "1px solid var(--border)",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px", flexWrap: "wrap", gap: "10px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+                <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--cyan)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  Evaluation Prompt & Scenario
                 </span>
-                <div className="attached-doc-details">
-                  <span className="attached-doc-name" title={attachedDoc.name}>
-                    {attachedDoc.name}
-                  </span>
-                  <span className="attached-doc-sub">
-                    {attachedDoc.formattedSize} · {attachedDoc.wordCount.toLocaleString()} words · ~{attachedDoc.tokenCount.toLocaleString()} LLM tokens
-                  </span>
-                </div>
+                <button
+                  type="button"
+                  className="h2h-upload-btn"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingDoc}
+                  title="Upload an insurance policy, endorsement, scan, or claim file (PDF, Images, TXT, CSV)"
+                >
+                  {isUploadingDoc ? (
+                    <>
+                      <span className="spinner-border" style={{ width: "12px", height: "12px" }} />
+                      <span>Parsing & OCR...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>📎 Upload Policy / Document</span>
+                      <span className="h2h-upload-pill-tag">PDF, SCAN/OCR, TXT</span>
+                    </>
+                  )}
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.md,.json,.csv"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleDocUpload(f);
+                    e.target.value = "";
+                  }}
+                  style={{ display: "none" }}
+                />
               </div>
-              <div className="attached-doc-actions">
+              <div style={{ display: "flex", gap: "6px" }}>
+                {hasAnyResults && (
+                  <button
+                    onClick={() => setIsPromptCollapsed(true)}
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: "6px",
+                      background: "rgba(255, 255, 255, 0.05)",
+                      border: "1px solid var(--border)",
+                      color: "var(--text-muted)",
+                      fontSize: "0.75rem",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    ▲ Collapse
+                  </button>
+                )}
+                {isAnyRunning ? (
+                  <button
+                    onClick={handleStopAll}
+                    style={{
+                      padding: "6px 14px",
+                      borderRadius: "6px",
+                      background: "rgba(244, 63, 94, 0.2)",
+                      border: "1px solid var(--rose)",
+                      color: "var(--rose)",
+                      fontSize: "0.78rem",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    ⏹ Stop Stream
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleRunAll}
+                    disabled={(!prompt.trim() && !attachedDoc)}
+                    style={{
+                      padding: "6px 18px",
+                      borderRadius: "6px",
+                      background: "var(--cyan)",
+                      border: "none",
+                      color: "#050b14",
+                      fontSize: "0.78rem",
+                      fontWeight: 800,
+                      cursor: (prompt.trim() || attachedDoc) ? "pointer" : "not-allowed",
+                      boxShadow: "0 0 12px rgba(0, 212, 255, 0.3)",
+                    }}
+                  >
+                    ▶ Run Head-to-Head ({models.length} Models)
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {uploadError && (
+              <div
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: "6px",
+                  background: "rgba(244, 63, 94, 0.15)",
+                  border: "1px solid rgba(244, 63, 94, 0.35)",
+                  color: "var(--rose)",
+                  fontSize: "0.76rem",
+                  marginBottom: "10px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <span>⚠️ {uploadError}</span>
                 <button
                   type="button"
-                  className="attached-action-btn"
-                  onClick={() => setShowDocPreview(true)}
-                  title="Preview extracted document text"
-                >
-                  👁️ Preview Text
-                </button>
-                <button
-                  type="button"
-                  className="attached-action-btn highlight"
-                  onClick={() => setShowDocIngestModal(true)}
-                  title="Ingest document to insurance data lake"
-                >
-                  💾 Ingest to Lake
-                </button>
-                <button
-                  type="button"
-                  className="attached-remove-btn"
-                  onClick={() => setAttachedDoc(null)}
-                  title="Remove document"
+                  onClick={() => setUploadError(null)}
+                  style={{ background: "none", border: "none", color: "var(--rose)", cursor: "pointer", fontSize: "0.85rem" }}
                 >
                   ✕
                 </button>
               </div>
-            </div>
-          )}
+            )}
 
-          <div
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            style={{ position: "relative" }}
-          >
-            {isDraggingFile && (
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  background: "rgba(11, 22, 40, 0.94)",
-                  border: "2px dashed var(--cyan)",
-                  borderRadius: "8px",
-                  zIndex: 10,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "6px",
-                  backdropFilter: "blur(4px)",
-                }}
-              >
-                <span style={{ fontSize: "2rem" }}>📄</span>
-                <span style={{ fontSize: "0.88rem", fontWeight: 700, color: "var(--cyan)" }}>
-                  Drop Insurance Document Here
-                </span>
-                <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
-                  Supports PDF, Scans (OCR), Images, CSV, TXT, JSON, MD
-                </span>
+            {attachedDoc && (
+              <div className="attached-doc-card">
+                <div className="attached-doc-left">
+                  <span className={`doc-badge doc-badge-${(attachedDoc.type?.toUpperCase().includes("OCR") ? "ocr" : attachedDoc.type.toLowerCase())}`}>
+                    {attachedDoc.type?.toUpperCase().includes("OCR") ? "OCR" : attachedDoc.type}
+                  </span>
+                  <div className="attached-doc-details">
+                    <span className="attached-doc-name" title={attachedDoc.name}>
+                      {attachedDoc.name}
+                    </span>
+                    <span className="attached-doc-sub">
+                      {attachedDoc.formattedSize} · {attachedDoc.wordCount.toLocaleString()} words · ~{attachedDoc.tokenCount.toLocaleString()} LLM tokens
+                    </span>
+                  </div>
+                </div>
+                <div className="attached-doc-actions">
+                  <button
+                    type="button"
+                    className="attached-action-btn"
+                    onClick={() => setShowDocPreview(true)}
+                    title="Preview extracted document text"
+                  >
+                    👁️ Preview Text
+                  </button>
+                  <button
+                    type="button"
+                    className="attached-action-btn highlight"
+                    onClick={() => setShowDocIngestModal(true)}
+                    title="Ingest document to insurance data lake"
+                  >
+                    💾 Ingest to Lake
+                  </button>
+                  <button
+                    type="button"
+                    className="attached-remove-btn"
+                    onClick={() => setAttachedDoc(null)}
+                    title="Remove document"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
             )}
-            <textarea
-              ref={promptTextareaRef}
-              rows={3}
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder={
-                attachedDoc
-                  ? `Document "${attachedDoc.name}" attached. Type evaluation task or leave as is to evaluate policy terms...`
-                  : "Type insurance prompt or policy clauses to evaluate, or upload a document above..."
-              }
-              style={{
-                width: "100%",
-                padding: "10px",
-                background: "rgba(0, 0, 0, 0.35)",
-                border: "1px solid var(--border)",
-                borderRadius: "8px",
-                color: "var(--text)",
-                fontSize: "0.82rem",
-                lineHeight: 1.5,
-                resize: "vertical",
-                boxSizing: "border-box",
-              }}
-            />
-          </div>
 
-          {/* Quick chips */}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "8px" }}>
-            {QUICK_CHIPS.map((chip, idx) => (
-              <button
-                key={idx}
-                onClick={() => setPrompt(chip)}
+            <div
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              style={{ position: "relative" }}
+            >
+              {isDraggingFile && (
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    background: "rgba(11, 22, 40, 0.94)",
+                    border: "2px dashed var(--cyan)",
+                    borderRadius: "8px",
+                    zIndex: 10,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "6px",
+                    backdropFilter: "blur(4px)",
+                  }}
+                >
+                  <span style={{ fontSize: "2rem" }}>📄</span>
+                  <span style={{ fontSize: "0.88rem", fontWeight: 700, color: "var(--cyan)" }}>
+                    Drop Insurance Document Here
+                  </span>
+                  <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
+                    Supports PDF, Scans (OCR), Images, CSV, TXT, JSON, MD
+                  </span>
+                </div>
+              )}
+              <textarea
+                ref={promptTextareaRef}
+                rows={3}
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder={
+                  attachedDoc
+                    ? `Document "${attachedDoc.name}" attached. Type evaluation task or leave as is to evaluate policy terms...`
+                    : "Type insurance prompt or policy clauses to evaluate, or upload a document above..."
+                }
                 style={{
-                  fontSize: "0.68rem",
-                  padding: "3px 8px",
-                  borderRadius: "12px",
-                  background: "rgba(255,255,255,0.03)",
+                  width: "100%",
+                  padding: "10px",
+                  background: "rgba(0, 0, 0, 0.35)",
                   border: "1px solid var(--border)",
-                  color: "var(--text-muted)",
-                  cursor: "pointer",
+                  borderRadius: "8px",
+                  color: "var(--text)",
+                  fontSize: "0.82rem",
+                  lineHeight: 1.5,
+                  resize: "vertical",
+                  boxSizing: "border-box",
                 }}
-              >
-                + {chip}
-              </button>
-            ))}
+              />
+            </div>
+
+            {/* Quick chips */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "8px" }}>
+              {QUICK_CHIPS.map((chip, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setPrompt(chip)}
+                  style={{
+                    fontSize: "0.68rem",
+                    padding: "3px 8px",
+                    borderRadius: "12px",
+                    background: "rgba(255,255,255,0.03)",
+                    border: "1px solid var(--border)",
+                    color: "var(--text-muted)",
+                    cursor: "pointer",
+                  }}
+                >
+                  + {chip}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* ── Dynamic Multi-Model Grid (Up to 4 columns!) ── */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: `repeat(${models.length}, minmax(300px, 1fr))`,
-            gap: "16px",
-            alignItems: "stretch",
-          }}
-        >
-          {models.map((modelId, idx) => (
-            <ModelColumn
-              key={`${idx}-${modelId}`}
-              index={idx}
-              modelId={modelId}
-              state={states[idx] || emptyModelState()}
-              useCaseId={activeUseCase}
-              goldItem={goldItem}
-              canRemove={models.length > 1}
-              onRemove={() => handleRemoveModel(idx)}
-            />
-          ))}
-        </div>
+        {/* ── Pre-Flight Readiness Summary (WHEN NOT RUN YET - NO EMPTY COLUMNS!) ── */}
+        {!hasAnyResults ? (
+          <div
+            style={{
+              padding: "26px 20px",
+              borderRadius: "12px",
+              background: "linear-gradient(180deg, rgba(15, 30, 54, 0.7) 0%, rgba(11, 22, 40, 0.85) 100%)",
+              border: "1px solid var(--border)",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              textAlign: "center",
+              gap: "16px",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <span style={{ fontSize: "1.8rem" }}>⚡</span>
+              <div>
+                <div style={{ fontSize: "1.05rem", fontWeight: 700, color: "var(--text)" }}>
+                  Ready to Evaluate {models.length} Models Side-by-Side
+                </div>
+                <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginTop: "2px" }}>
+                  Add or change models in the left sidebar. When you click run, comparative responses will stream here.
+                </div>
+              </div>
+            </div>
 
-        {/* ── Domain Evaluation Scorecard (All 8 Use-Case Metrics) ── */}
-        <UseCaseScorecard
-          useCaseId={activeUseCase}
-          models={models}
-          states={states}
-          goldItem={goldItem}
-        />
+            {/* Selected Models Badges */}
+            <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "10px", maxWidth: "800px" }}>
+              {models.map((mId, idx) => {
+                const m = getModel(mId);
+                const name = m?.label ?? mId.split("/").pop() ?? mId;
+                return (
+                  <div
+                    key={idx}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      padding: "6px 14px",
+                      borderRadius: "8px",
+                      background: "rgba(0, 212, 255, 0.08)",
+                      border: "1px solid rgba(0, 212, 255, 0.25)",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: "0.68rem",
+                        fontWeight: 800,
+                        padding: "2px 6px",
+                        borderRadius: "4px",
+                        background: "rgba(0, 212, 255, 0.2)",
+                        color: "var(--cyan)",
+                      }}
+                    >
+                      M{idx + 1}
+                    </span>
+                    <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--text)" }}>
+                      {name}
+                    </span>
+                    {m?.isFree && (
+                      <span style={{ fontSize: "0.62rem", color: "var(--emerald)", fontWeight: 700 }}>
+                        FREE
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={handleRunAll}
+              disabled={(!prompt.trim() && !attachedDoc)}
+              style={{
+                marginTop: "4px",
+                padding: "10px 32px",
+                borderRadius: "8px",
+                background: "var(--cyan)",
+                border: "none",
+                color: "#050b14",
+                fontSize: "0.9rem",
+                fontWeight: 800,
+                cursor: (prompt.trim() || attachedDoc) ? "pointer" : "not-allowed",
+                boxShadow: "0 0 20px rgba(0, 212, 255, 0.35)",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <span>▶ Run Head-to-Head Comparison</span>
+            </button>
+          </div>
+        ) : (
+          /* ── Post-Run Results Section ── */
+          <>
+            {/* Results Action Toolbar with In-Page Analytics Toggle */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "10px 16px",
+                borderRadius: "10px",
+                background: "rgba(11, 22, 40, 0.95)",
+                border: "1px solid var(--border)",
+                flexWrap: "wrap",
+                gap: "10px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text)" }}>
+                  Comparative Responses ({models.length} Models)
+                </span>
+                {isAnyRunning ? (
+                  <span style={{ fontSize: "0.72rem", color: "var(--cyan)", display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span className="spinner-border" style={{ width: "12px", height: "12px" }} /> Streaming...
+                  </span>
+                ) : (
+                  <span style={{ fontSize: "0.72rem", color: "var(--emerald)", fontWeight: 600 }}>
+                    ✓ Responses Complete
+                  </span>
+                )}
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                {/* The In-Page Analytics Toggle Button */}
+                <button
+                  type="button"
+                  onClick={() => setShowAnalytics(!showAnalytics)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    padding: "6px 14px",
+                    borderRadius: "7px",
+                    background: showAnalytics ? "rgba(0, 212, 255, 0.2)" : "rgba(255, 255, 255, 0.05)",
+                    border: showAnalytics ? "1px solid var(--cyan)" : "1px solid var(--border)",
+                    color: showAnalytics ? "var(--cyan-light)" : "var(--text-muted)",
+                    fontSize: "0.78rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    transition: "all 0.2s ease",
+                    boxShadow: showAnalytics ? "0 0 12px rgba(0, 212, 255, 0.25)" : "none",
+                  }}
+                  title="Toggle Ground Truth metrics, latency, token costs, and comparative scorecard"
+                >
+                  <span>📊</span>
+                  <span>{showAnalytics ? "Hide Analytics & Scorecard" : "View Analytics & Scorecard"}</span>
+                  {showAnalytics && (
+                    <span style={{ fontSize: "0.62rem", background: "var(--cyan)", color: "#000", padding: "1px 5px", borderRadius: "8px", fontWeight: 800 }}>
+                      ON
+                    </span>
+                  )}
+                </button>
+
+                {isAnyRunning ? (
+                  <button
+                    onClick={handleStopAll}
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: "7px",
+                      background: "rgba(244, 63, 94, 0.2)",
+                      border: "1px solid var(--rose)",
+                      color: "var(--rose)",
+                      fontSize: "0.75rem",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    ⏹ Stop
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleResetResults}
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: "7px",
+                      background: "rgba(255, 255, 255, 0.05)",
+                      border: "1px solid var(--border)",
+                      color: "var(--text-muted)",
+                      fontSize: "0.75rem",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                    title="Clear answers and return to prompt workspace"
+                  >
+                    🔄 New Comparison
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* ── Dynamic Multi-Model Grid ── */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: `repeat(${models.length}, minmax(300px, 1fr))`,
+                gap: "16px",
+                alignItems: "stretch",
+              }}
+            >
+              {models.map((modelId, idx) => (
+                <ModelColumn
+                  key={`${idx}-${modelId}`}
+                  index={idx}
+                  modelId={modelId}
+                  state={states[idx] || emptyModelState()}
+                  useCaseId={activeUseCase}
+                  goldItem={goldItem}
+                  canRemove={models.length > 1}
+                  onRemove={() => handleRemoveModel(idx)}
+                  showAnalytics={showAnalytics}
+                  onToggleAnalytics={() => setShowAnalytics((prev) => !prev)}
+                />
+              ))}
+            </div>
+
+            {/* ── In-Page Domain Evaluation Scorecard (Shown ONLY when Analytics is ON) ── */}
+            {showAnalytics && (
+              <UseCaseScorecard
+                useCaseId={activeUseCase}
+                models={models}
+                states={states}
+                goldItem={goldItem}
+              />
+            )}
+          </>
+        )}
       </div>
       {/* ── Document Modals ── */}
       <DocumentPreviewModal
