@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
     useTools?: boolean;
     selectedTools?: string[];
     toolChoice?: string;
+    activePlugins?: string[];
     customEndpoint?: { baseUrl?: string; apiKey?: string };
   };
 
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { model, prompt, systemPrompt, useTools, selectedTools, toolChoice, customEndpoint } = body;
+  const { model, prompt, systemPrompt, useTools, selectedTools, toolChoice, activePlugins, customEndpoint } = body;
 
   if (!model || !prompt) {
     return new Response(
@@ -42,12 +43,18 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Ensure regulatory_check_rag is enabled if regulatory-check plugin is active
+  let effectiveSelectedTools = selectedTools ? [...selectedTools] : [];
+  if (activePlugins?.includes("regulatory-check") && !effectiveSelectedTools.includes("regulatory_check_rag")) {
+    effectiveSelectedTools.push("regulatory_check_rag", "solvency_ratio_checker");
+  }
+
   let tools: ToolSchema[] | undefined = undefined;
   let formattedToolChoice: ToolChoice | undefined = undefined;
   let forcedToolName: string | null = null;
 
   if (useTools) {
-    tools = getFilteredToolSchemas(selectedTools);
+    tools = getFilteredToolSchemas(effectiveSelectedTools);
     if (toolChoice === "none" || tools.length === 0) {
       tools = undefined;
     } else if (toolChoice === "required") {
@@ -67,7 +74,36 @@ export async function POST(req: NextRequest) {
 
   const fallbackSystemPrompt =
     "Assign role to the model as an insurance expert and perform tasks as per insurance market. Provide accurate, professional, and evidence-grounded insurance analysis.";
-  const resolvedSystemPrompt = systemPrompt || fallbackSystemPrompt;
+  let resolvedSystemPrompt = systemPrompt || fallbackSystemPrompt;
+
+  // Regulatory RAG Grounding Context Injection
+  const isRegulatoryCheckActive =
+    activePlugins?.includes("regulatory-check") ||
+    effectiveSelectedTools.includes("regulatory_check_rag");
+
+  if (isRegulatoryCheckActive) {
+    try {
+      const { searchRegulatoryCorpus } = await import("@/lib/regulatory-rag");
+      const regMatches = searchRegulatoryCorpus(prompt, { topK: 3 });
+      if (regMatches.length > 0) {
+        const regulatoryContext =
+          "\n\n[OFFICIAL EU REGULATORY CORPUS — GROUND TRUTH EVIDENCE]\n" +
+          "The user has enabled the Regulatory Check plugin. You are grounded in the official regulatory documents uploaded in regulatory_check/ (Solvency II Directive 2009/138/EC, Commission Delegated Regulation (EU) 2015/35, and EU AI Act Regulation 2024/1689 / EIOPA). Below are the most relevant retrieved provisions:\n\n" +
+          regMatches
+            .map(
+              (m, i) =>
+                `--- [PROVISION ${i + 1}]: ${m.citation} ---\n${m.chunk.path ? `Path: ${m.chunk.path}\n` : ""}Full Legal Text:\n${m.chunk.content.slice(0, 3000)}`
+            )
+            .join("\n\n") +
+          "\n--- END OFFICIAL REGULATORY EVIDENCE ---\n" +
+          "INSTRUCTION: Base your compliance advice and analysis directly on these official articles and legal provisions. Always cite the exact Directive, Article number, and Title.";
+
+        resolvedSystemPrompt += regulatoryContext;
+      }
+    } catch (regErr) {
+      console.warn("Failed to inject regulatory context:", regErr);
+    }
+  }
 
   const effectiveSystemPrompt = forcedToolName
     ? `${resolvedSystemPrompt}\n\nCRITICAL INSTRUCTION: You MUST invoke the '${forcedToolName}' tool to compute, evaluate, or retrieve the necessary data to answer the user prompt.`

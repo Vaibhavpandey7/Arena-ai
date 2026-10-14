@@ -1020,6 +1020,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
   const handleDocUpload = async (file: File) => {
     setIsUploadingDoc(true);
     setUploadError(null);
+    const localFileUrl = URL.createObjectURL(file);
     try {
       const formData = new FormData();
       formData.append("file", file);
@@ -1047,7 +1048,11 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
             });
             const ocrData = await ocrRes.json();
             if (ocrData.success && ocrData.document) {
-              setAttachedDoc(ocrData.document);
+              setAttachedDoc({
+                ...ocrData.document,
+                fileUrl: localFileUrl || ocrData.document.fileUrl,
+                mimeType: file.type || "application/pdf",
+              });
               return;
             }
           }
@@ -1056,7 +1061,11 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
         }
       }
 
-      setAttachedDoc(data.document);
+      setAttachedDoc({
+        ...data.document,
+        fileUrl: localFileUrl || data.document.fileUrl,
+        mimeType: file.type || "application/pdf",
+      });
     } catch (err: any) {
       setUploadError(err.message || "Failed to upload document");
     } finally {

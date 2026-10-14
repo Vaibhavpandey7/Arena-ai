@@ -421,6 +421,10 @@ export async function POST(req: NextRequest) {
       charCount,
       tokenCount,
       preview: cleanText.slice(0, 350) + (cleanText.length > 350 ? "…" : ""),
+      fileUrl:
+        ext === "pdf" || file.type === "application/pdf"
+          ? `/api/documents/raw?hash=${fileHash}&name=${encodeURIComponent(filename)}`
+          : undefined,
       storedAt: new Date().toISOString(),
     };
 
@@ -435,6 +439,16 @@ export async function POST(req: NextRequest) {
         if (!existsSync(cacheDir)) mkdirSync(cacheDir, { recursive: true });
         writeFileSync(cacheJsonPath, JSON.stringify(documentPayload, null, 2), "utf-8");
         writeFileSync(cacheTxtPath, cleanText, "utf-8");
+
+        // Persist original PDF file for visual previewing
+        if (ext === "pdf" || file.type === "application/pdf") {
+          const filesDir = join(cacheDir, "files");
+          if (!existsSync(filesDir)) mkdirSync(filesDir, { recursive: true });
+          const rawPdfPath = join(filesDir, `${fileHash}.pdf`);
+          if (!existsSync(rawPdfPath)) {
+            writeFileSync(rawPdfPath, buffer);
+          }
+        }
       } catch (saveErr) {
         console.warn("Failed to persist OCR cache to disk:", saveErr);
       }

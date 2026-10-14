@@ -315,6 +315,61 @@ const solvencyRatioCheckerTool: Tool = {
   },
 };
 
+// ── Tool 6: Regulatory Check RAG ──────────────────────────────────────────────
+
+const regulatoryCheckRagTool: Tool = {
+  schema: {
+    type: "function",
+    function: {
+      name: "regulatory_check_rag",
+      description:
+        "Searches and retrieves official EU insurance regulations and directives from the uploaded regulatory PDFs: Solvency II Directive (2009/138/EC), Commission Delegated Regulation (EU) 2015/35 (SCR standard formula, technical provisions, governance), and the EU AI Act (Regulation (EU) 2024/1689 / EIOPA AI Governance). Returns exact Articles, Recitals, legal breadcrumbs, and verbatim text.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description:
+              "The regulatory query, article number, or topic to search (e.g. 'Article 101 SCR calculation', 'Article 260 qualifying infrastructure', 'Annex III high risk life health insurance', 'MCR minimum capital requirement calculation')",
+          },
+          regulation: {
+            type: "string",
+            description: "Optional filter: 'all' (default), 'solvency_ii', 'delegated_reg_2015_35', or 'eu_ai_act'",
+            enum: ["all", "solvency_ii", "delegated_reg_2015_35", "eu_ai_act"],
+          },
+          top_k: {
+            type: "number",
+            description: "Number of regulatory articles to return (default: 3, max: 6)",
+          },
+        },
+        required: ["query"],
+      },
+    },
+  },
+  async run(args) {
+    const query = String(args.query ?? "").trim();
+    if (!query) return "Error: query is required";
+
+    const { searchRegulatoryCorpus } = await import("./regulatory-rag");
+    const regulation = typeof args.regulation === "string" ? (args.regulation as any) : "all";
+    const topK = typeof args.top_k === "number" ? args.top_k : 3;
+
+    const results = searchRegulatoryCorpus(query, { regulation, topK });
+    if (results.length === 0) {
+      return `No regulatory articles found for "${query}"${regulation !== "all" ? ` under ${regulation}` : ""}. Try broadening the query or specifying a particular article number (e.g. 'Article 101').`;
+    }
+
+    return results
+      .map((r, i) => {
+        const head = `[REGULATORY CITATION ${i + 1}]: ${r.citation}`;
+        const pathLine = r.chunk.path ? `Path: ${r.chunk.path}` : "";
+        const snippet = `Legal Text Excerpt:\n${r.snippet}`;
+        return [head, pathLine, snippet].filter(Boolean).join("\n");
+      })
+      .join("\n\n---\n\n");
+  },
+};
+
 // ── Tool Registry ─────────────────────────────────────────────────────────────
 
 export { TOOL_CATALOG, type ToolCatalogItem } from "./tools-catalog";
@@ -322,6 +377,7 @@ export { TOOL_CATALOG, type ToolCatalogItem } from "./tools-catalog";
 export const TOOLS: Tool[] = [
   calculatorTool,
   solvencyRatioCheckerTool,
+  regulatoryCheckRagTool,
   insuranceKnowledgeSearchTool,
   currencyConverterTool,
   getCurrentTimeTool,

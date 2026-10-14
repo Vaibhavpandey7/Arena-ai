@@ -25,6 +25,14 @@ export const TOOL_CATALOG: ToolCatalogItem[] = [
     sampleArgs: { eligible_own_funds: 185000000, scr: 120000000, mcr: 54000000 },
   },
   {
+    name: "regulatory_check_rag",
+    title: "Regulatory Check RAG",
+    description: "Indexes official Solvency II Directive, Delegated Reg 2015/35, and EU AI Act (EIOPA) articles and text.",
+    category: "Regulatory",
+    icon: "⚖️",
+    sampleArgs: { query: "Article 101 Solvency Capital Requirement calculation", regulation: "all" },
+  },
+  {
     name: "insurance_knowledge_search",
     title: "Domain Insurance Lake Search",
     description: "Retrieves ground-truth insurance records, EIOPA compliance clauses, and policy text.",
