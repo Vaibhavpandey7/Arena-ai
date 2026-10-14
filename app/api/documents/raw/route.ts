@@ -31,7 +31,10 @@ export async function GET(req: NextRequest) {
         REGULATORY_FILES[docKey] ||
         (docKey.endsWith(".pdf") ? docKey : `${docKey}.pdf`);
 
-      const filePath = join(process.cwd(), "regulatory_check", mappedFile);
+      let filePath = join(process.cwd(), "regulatory_check", mappedFile);
+      if (!existsSync(filePath)) {
+        filePath = join(process.cwd(), "public", "regulatory", mappedFile);
+      }
       if (existsSync(filePath)) {
         const fileBuffer = readFileSync(filePath);
         return new NextResponse(fileBuffer, {

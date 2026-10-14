@@ -55,13 +55,19 @@ function tokenize(text: string): string[] {
 export function loadRegulatoryIndex(): RegulatoryIndexPayload {
   if (cachedIndex) return cachedIndex;
 
-  const indexPath = path.join(process.cwd(), "regulatory_check", "regulatory_index.json");
-  if (!fs.existsSync(indexPath)) {
-    throw new Error(`Regulatory index not found at ${indexPath}. Please run node scripts/build-regulatory-index.js`);
+  try {
+    // Statically bundled import for Vercel / serverless deployments
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const bundled = require("../regulatory_check/regulatory_index.json");
+    cachedIndex = bundled as RegulatoryIndexPayload;
+  } catch {
+    const indexPath = path.join(process.cwd(), "regulatory_check", "regulatory_index.json");
+    if (!fs.existsSync(indexPath)) {
+      throw new Error(`Regulatory index not found at ${indexPath}. Please run node scripts/build-regulatory-index.js`);
+    }
+    const raw = fs.readFileSync(indexPath, "utf-8");
+    cachedIndex = JSON.parse(raw) as RegulatoryIndexPayload;
   }
-
-  const raw = fs.readFileSync(indexPath, "utf-8");
-  cachedIndex = JSON.parse(raw) as RegulatoryIndexPayload;
 
   // Build BM25 inverted document frequency cache
   tokenFreqMap = new Map();

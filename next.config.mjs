@@ -28,6 +28,9 @@ const nextConfig = {
   // Uses critters internally. Eliminates the render-blocking 143KB globals.css.
   experimental: {
     optimizeCss: true,
+    outputFileTracingIncludes: {
+      "/api/**/*": ["./regulatory_check/**/*"],
+    },
   },
 };
 
