@@ -174,9 +174,9 @@ function ModelColumn({
         width: "100%",
         display: "flex",
         flexDirection: "column",
-        background: "rgba(11, 22, 40, 0.75)",
-        border: "1px solid var(--border)",
-        borderRadius: "12px",
+        background: "var(--bg-surface-elevated)",
+        border: "1px solid var(--border-default)",
+        borderRadius: "var(--radius-md)",
         overflow: "hidden",
         boxSizing: "border-box",
         transition: "all 0.2s ease",
@@ -186,9 +186,9 @@ function ModelColumn({
       <div
         className="h2h-col-header"
         style={{
-          padding: layoutMode === "vertical" ? "12px 20px" : "12px 16px",
-          background: "rgba(15, 30, 54, 0.95)",
-          borderBottom: isCollapsed ? "none" : "1px solid var(--border)",
+          padding: layoutMode === "vertical" ? "12px 18px" : "10px 14px",
+          background: "var(--bg-surface)",
+          borderBottom: isCollapsed ? "none" : "1px solid var(--border-default)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -199,22 +199,23 @@ function ModelColumn({
         <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0, flexWrap: "wrap" }}>
           <span
             style={{
-              fontSize: "0.7rem",
+              fontSize: "10px",
               fontWeight: 800,
               padding: "2px 7px",
-              borderRadius: "5px",
-              background: "rgba(0, 212, 255, 0.15)",
-              color: "var(--cyan)",
-              border: "1px solid rgba(0, 212, 255, 0.3)",
+              borderRadius: "4px",
+              background: "var(--accent-dim)",
+              color: "var(--accent)",
+              border: "1px solid var(--accent-border)",
             }}
           >
             M{index + 1}
           </span>
           <span
             style={{
-              fontSize: "0.88rem",
-              fontWeight: 700,
-              color: "var(--text)",
+              fontSize: "13.5px",
+              fontWeight: 600,
+              fontFamily: "var(--font-display-new)",
+              color: "var(--text-main)",
               whiteSpace: "nowrap",
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -226,10 +227,10 @@ function ModelColumn({
           {isFree && (
             <span
               style={{
-                fontSize: "0.62rem",
+                fontSize: "10px",
                 padding: "2px 6px",
                 borderRadius: "4px",
-                background: "rgba(16, 185, 129, 0.15)",
+                background: "var(--emerald-dim)",
                 color: "var(--emerald)",
                 border: "1px solid rgba(16, 185, 129, 0.3)",
                 fontWeight: 700,
@@ -241,11 +242,12 @@ function ModelColumn({
           {modelInfo?.tags?.includes("reasoning") && (
             <span
               style={{
-                fontSize: "0.62rem",
+                fontSize: "10px",
                 padding: "2px 6px",
                 borderRadius: "4px",
-                background: "rgba(14, 165, 233, 0.15)",
-                color: "var(--cyan-light)",
+                background: "var(--violet-dim)",
+                color: "var(--violet)",
+                border: "1px solid rgba(139, 92, 246, 0.3)",
                 fontWeight: 700,
               }}
             >
@@ -255,11 +257,11 @@ function ModelColumn({
           {state.isRunning && (
             <span
               style={{
-                fontSize: "0.68rem",
+                fontSize: "11px",
                 padding: "2px 7px",
                 borderRadius: "4px",
-                background: "rgba(0, 212, 255, 0.15)",
-                color: "var(--cyan)",
+                background: "var(--accent-dim)",
+                color: "var(--accent)",
                 display: "inline-flex",
                 alignItems: "center",
                 gap: "4px",
@@ -271,10 +273,10 @@ function ModelColumn({
           {state.latencyMs > 0 && !state.isRunning && (
             <span
               style={{
-                fontSize: "0.65rem",
+                fontSize: "11px",
                 padding: "1px 6px",
                 borderRadius: "4px",
-                background: "rgba(16, 185, 129, 0.1)",
+                background: "var(--emerald-dim)",
                 color: "var(--emerald)",
                 fontFamily: "var(--font-mono)",
                 fontWeight: 600,
@@ -285,12 +287,12 @@ function ModelColumn({
           )}
         </div>
 
-        {/* Live Quick Stats Strip (especially prominent in Vertical Stack) */}
+        {/* Live Quick Stats Strip */}
         {layoutMode === "vertical" && (state.promptTokens > 0 || state.completionTokens > 0 || state.estCostUsd !== undefined) && (
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", fontSize: "0.72rem", color: "var(--text-muted)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", fontSize: "11.5px", color: "var(--text-subtle)" }}>
             {(state.promptTokens > 0 || state.completionTokens > 0) && (
               <span style={{ fontFamily: "var(--font-mono)" }}>
-                Tokens: <strong style={{ color: "var(--cyan)" }}>{state.promptTokens || 0}</strong> in / <strong style={{ color: "var(--cyan)" }}>{state.completionTokens || 0}</strong> out
+                Tokens: <strong style={{ color: "var(--accent)" }}>{state.promptTokens || 0}</strong> in / <strong style={{ color: "var(--accent)" }}>{state.completionTokens || 0}</strong> out
               </span>
             )}
             {state.estCostUsd !== undefined && (
@@ -304,19 +306,10 @@ function ModelColumn({
         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
           {state.answer && (
             <button
+              type="button"
+              className="arena-header-btn"
               onClick={handleCopy}
-              style={{
-                background: "rgba(255, 255, 255, 0.04)",
-                border: "1px solid var(--border)",
-                color: copied ? "var(--emerald)" : "var(--text-muted)",
-                cursor: "pointer",
-                fontSize: "0.72rem",
-                padding: "3px 8px",
-                borderRadius: "4px",
-                display: "flex",
-                alignItems: "center",
-                gap: "3px",
-              }}
+              style={{ fontSize: "11px", padding: "3px 8px" }}
               title="Copy model response to clipboard"
             >
               {copied ? "✓ Copied" : "📋 Copy"}
@@ -326,16 +319,9 @@ function ModelColumn({
           {hasContent && onToggleCollapse && (
             <button
               type="button"
+              className="arena-header-btn"
               onClick={onToggleCollapse}
-              style={{
-                background: "rgba(255, 255, 255, 0.04)",
-                border: "1px solid var(--border)",
-                color: "var(--text-muted)",
-                cursor: "pointer",
-                fontSize: "0.72rem",
-                padding: "3px 8px",
-                borderRadius: "4px",
-              }}
+              style={{ fontSize: "11px", padding: "3px 8px" }}
               title={isCollapsed ? "Expand model response" : "Collapse model response"}
             >
               {isCollapsed ? "▼ Expand" : "▲ Collapse"}
@@ -344,15 +330,14 @@ function ModelColumn({
 
           {canRemove && onRemove && (
             <button
+              type="button"
               onClick={onRemove}
+              className="arena-header-btn"
               style={{
-                background: "transparent",
-                border: "none",
-                color: "var(--text-muted)",
-                cursor: "pointer",
-                fontSize: "0.9rem",
+                fontSize: "12px",
                 padding: "2px 6px",
-                borderRadius: "4px",
+                color: "var(--rose)",
+                borderColor: "transparent",
               }}
               title="Remove model from comparison"
             >
@@ -367,10 +352,11 @@ function ModelColumn({
       <div
         style={{
           flex: 1,
-          padding: layoutMode === "vertical" ? "20px 24px" : "16px",
+          padding: layoutMode === "vertical" ? "18px 22px" : "14px 16px",
           overflowY: layoutMode === "vertical" ? "visible" : "auto",
           display: "flex",
           flexDirection: "column",
+          gap: "12px",
         }}
       >
         {!hasContent ? (
@@ -386,10 +372,10 @@ function ModelColumn({
             }}
           >
             <div style={{ fontSize: "2rem", marginBottom: "8px" }}>🤖</div>
-            <div style={{ fontSize: "0.88rem", fontWeight: 600, color: "var(--text)", marginBottom: "4px" }}>
+            <div style={{ fontSize: "14px", fontWeight: 600, color: "var(--text-main)", marginBottom: "4px" }}>
               Ready for Evaluation
             </div>
-            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", maxWidth: "260px", lineHeight: 1.4 }}>
+            <div style={{ fontSize: "12px", color: "var(--text-subtle)", maxWidth: "260px", lineHeight: 1.4 }}>
               Click Run to stream responses side-by-side.
             </div>
           </div>
@@ -402,34 +388,33 @@ function ModelColumn({
                   display: "grid",
                   gridTemplateColumns: "repeat(4, 1fr)",
                   gap: "6px",
-                  marginBottom: "14px",
                   padding: "8px",
-                  borderRadius: "8px",
-                  background: "rgba(0, 0, 0, 0.3)",
-                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-sm)",
+                  background: "var(--bg-surface)",
+                  border: "1px solid var(--border-subtle)",
                 }}
               >
                 <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: "0.62rem", color: "var(--text-muted)", textTransform: "uppercase" }}>Tokens In</div>
-                  <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--cyan)", fontFamily: "var(--font-mono)" }}>
+                  <div style={{ fontSize: "10px", color: "var(--text-subtle)", textTransform: "uppercase" }}>Tokens In</div>
+                  <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--accent)", fontFamily: "var(--font-mono)" }}>
                     {state.promptTokens || "—"}
                   </div>
                 </div>
                 <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: "0.62rem", color: "var(--text-muted)", textTransform: "uppercase" }}>Tokens Out</div>
-                  <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--cyan)", fontFamily: "var(--font-mono)" }}>
+                  <div style={{ fontSize: "10px", color: "var(--text-subtle)", textTransform: "uppercase" }}>Tokens Out</div>
+                  <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--accent)", fontFamily: "var(--font-mono)" }}>
                     {state.completionTokens || "—"}
                   </div>
                 </div>
                 <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: "0.62rem", color: "var(--text-muted)", textTransform: "uppercase" }}>Latency</div>
-                  <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--emerald)", fontFamily: "var(--font-mono)" }}>
+                  <div style={{ fontSize: "10px", color: "var(--text-subtle)", textTransform: "uppercase" }}>Latency</div>
+                  <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--emerald)", fontFamily: "var(--font-mono)" }}>
                     {state.latencyMs ? `${(state.latencyMs / 1000).toFixed(2)}s` : state.isRunning ? `${elapsedSec}s...` : "—"}
                   </div>
                 </div>
                 <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: "0.62rem", color: "var(--text-muted)", textTransform: "uppercase" }}>Cost</div>
-                  <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--amber)", fontFamily: "var(--font-mono)" }}>
+                  <div style={{ fontSize: "10px", color: "var(--text-subtle)", textTransform: "uppercase" }}>Cost</div>
+                  <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--amber)", fontFamily: "var(--font-mono)" }}>
                     {isFree ? "FREE" : state.estCostUsd ? `$${state.estCostUsd.toFixed(4)}` : "$0.00"}
                   </div>
                 </div>
@@ -440,10 +425,9 @@ function ModelColumn({
             {state.reasoning && (
               <div
                 style={{
-                  marginBottom: "14px",
-                  borderRadius: "8px",
-                  border: "1px solid rgba(14, 165, 233, 0.25)",
-                  background: "rgba(14, 165, 233, 0.05)",
+                  borderRadius: "var(--radius-sm)",
+                  border: "1px solid rgba(139, 92, 246, 0.25)",
+                  background: "var(--violet-dim)",
                   overflow: "hidden",
                 }}
               >
@@ -451,14 +435,14 @@ function ModelColumn({
                   onClick={() => setShowThinking(!showThinking)}
                   style={{
                     padding: "6px 12px",
-                    background: "rgba(14, 165, 233, 0.1)",
+                    background: "rgba(139, 92, 246, 0.12)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
                     cursor: "pointer",
-                    fontSize: "0.72rem",
+                    fontSize: "11px",
                     fontWeight: 700,
-                    color: "var(--cyan-light)",
+                    color: "var(--violet)",
                   }}
                 >
                   <span>🧠 Thinking Process ({state.reasoning.split(/\s+/).length} words)</span>
@@ -468,13 +452,14 @@ function ModelColumn({
                   <div
                     style={{
                       padding: "10px 12px",
-                      fontSize: "0.75rem",
-                      lineHeight: 1.5,
-                      color: "var(--text-dim)",
+                      fontSize: "12px",
+                      lineHeight: 1.55,
+                      color: "var(--text-muted)",
                       maxHeight: "180px",
                       overflowY: "auto",
                       fontFamily: "var(--font-mono)",
                       whiteSpace: "pre-wrap",
+                      background: "var(--bg-surface)",
                     }}
                   >
                     {state.reasoning}
@@ -484,21 +469,35 @@ function ModelColumn({
             )}
 
             {/* Response Content */}
-            <div style={{ flex: 1, fontSize: "0.82rem", lineHeight: 1.6, color: "var(--text)" }}>
+            <div style={{ flex: 1, fontSize: "13.5px", lineHeight: 1.65, color: "var(--text-main)" }}>
               {state.answer ? (
-                <div className="prose prose-invert max-w-none">
+                <div className="prose prose-invert max-w-none arena-msg-bubble" style={{ background: "transparent", padding: 0, border: "none", maxWidth: "100%" }}>
                   <ReactMarkdown>{state.answer}</ReactMarkdown>
                 </div>
               ) : state.isRunning ? (
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--cyan)", fontSize: "0.78rem" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--accent)", fontSize: "13px" }}>
                   <span className="spinner-border" /> Generating response...
                 </div>
               ) : null}
             </div>
 
+            {/* Metrics footer when finished */}
+            {state.answer && !state.isRunning && (
+              <div className="arena-msg-metrics" style={{ marginTop: "4px", paddingTop: "8px", borderTop: "1px solid var(--border-subtle)" }}>
+                {state.promptTokens > 0 && <span>🔢 {state.promptTokens.toLocaleString()} in</span>}
+                {state.completionTokens > 0 && <span>📤 {state.completionTokens.toLocaleString()} out</span>}
+                {state.latencyMs > 0 && <span>⏱ {(state.latencyMs / 1000).toFixed(2)}s</span>}
+                {state.estCostUsd !== undefined && (
+                  <span>
+                    💵 {isFree ? "FREE" : state.estCostUsd < 0.0001 ? `$${state.estCostUsd.toExponential(2)}` : `$${state.estCostUsd.toFixed(4)}`}
+                  </span>
+                )}
+              </div>
+            )}
+
             {/* Ground Truth Alignment Section - Shown ONLY when Analytics is ON */}
             {showAnalytics && state.answer && activeGold && (
-              <div style={{ marginTop: "16px" }}>
+              <div style={{ marginTop: "12px" }}>
                 <GroundTruthPanel
                   modelAnswer={state.answer}
                   goldResponse={activeGold}
@@ -511,19 +510,13 @@ function ModelColumn({
 
             {/* Subtle Quick-Link when Analytics is OFF */}
             {!showAnalytics && state.answer && onToggleAnalytics && (
-              <div style={{ marginTop: "12px", paddingTop: "8px", borderTop: "1px solid rgba(255, 255, 255, 0.05)", display: "flex", justifyContent: "flex-end" }}>
+              <div style={{ marginTop: "8px", paddingTop: "6px", borderTop: "1px solid var(--border-subtle)", display: "flex", justifyContent: "flex-end" }}>
                 <button
                   type="button"
                   onClick={onToggleAnalytics}
+                  className="arena-header-btn"
                   style={{
-                    fontSize: "0.72rem",
-                    background: "rgba(0, 212, 255, 0.08)",
-                    border: "1px solid rgba(0, 212, 255, 0.2)",
-                    color: "var(--cyan)",
-                    padding: "3px 8px",
-                    borderRadius: "5px",
-                    cursor: "pointer",
-                    fontWeight: 600,
+                    fontSize: "11px",
                     display: "flex",
                     alignItems: "center",
                     gap: "4px",
@@ -571,34 +564,34 @@ function UseCaseScorecard({
   return (
     <div
       style={{
-        marginTop: "24px",
-        padding: "20px",
-        borderRadius: "12px",
-        background: "rgba(11, 22, 40, 0.9)",
-        border: "1px solid var(--border)",
+        marginTop: "16px",
+        padding: "18px 20px",
+        borderRadius: "var(--radius-md)",
+        background: "var(--bg-surface-elevated)",
+        border: "1px solid var(--border-default)",
       }}
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px", flexWrap: "wrap", gap: "10px" }}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-            <span style={{ fontSize: "0.72rem", color: "var(--cyan)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+            <span style={{ fontSize: "11px", color: "var(--accent)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>
               Domain Evaluation Scorecard
             </span>
             <span
               style={{
-                fontSize: "0.65rem",
+                fontSize: "10.5px",
                 padding: "2px 8px",
-                borderRadius: "4px",
-                background: "rgba(0, 212, 255, 0.12)",
-                color: "var(--cyan-light)",
-                border: "1px solid rgba(0, 212, 255, 0.25)",
+                borderRadius: "var(--radius-full)",
+                background: "var(--accent-dim)",
+                color: "var(--accent)",
+                border: "1px solid var(--accent-border)",
                 fontWeight: 600,
               }}
             >
               📚 {config.recommendedBenchmark.name} · {config.recommendedBenchmark.source}
             </span>
           </div>
-          <h3 style={{ fontSize: "1.05rem", fontWeight: 700, color: "var(--text)", margin: "2px 0 0 0" }}>
+          <h3 style={{ fontSize: "16px", fontWeight: 700, fontFamily: "var(--font-display-new)", color: "var(--text-main)", margin: "4px 0 0 0" }}>
             {config.title}
           </h3>
         </div>
@@ -607,11 +600,11 @@ function UseCaseScorecard({
             <span
               key={idx}
               style={{
-                fontSize: "0.65rem",
-                padding: "2px 6px",
-                borderRadius: "3px",
-                background: "rgba(255, 255, 255, 0.04)",
-                border: "1px solid var(--border)",
+                fontSize: "10.5px",
+                padding: "2px 7px",
+                borderRadius: "var(--radius-sm)",
+                background: "var(--bg-surface)",
+                border: "1px solid var(--border-subtle)",
                 color: "var(--text-muted)",
               }}
             >
@@ -624,23 +617,23 @@ function UseCaseScorecard({
       {/* Primary Metric Comparison Bars */}
       <div
         style={{
-          padding: "16px",
-          borderRadius: "10px",
-          background: "rgba(0, 212, 255, 0.04)",
-          border: "1px solid rgba(0, 212, 255, 0.2)",
-          marginBottom: "18px",
+          padding: "14px 16px",
+          borderRadius: "var(--radius-sm)",
+          background: "var(--bg-surface)",
+          border: "1px solid var(--border-subtle)",
+          marginBottom: "16px",
         }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px", flexWrap: "wrap", gap: "6px" }}>
           <div>
-            <span style={{ fontSize: "0.7rem", color: "var(--cyan)", fontWeight: 700, textTransform: "uppercase" }}>
+            <span style={{ fontSize: "10.5px", color: "var(--accent)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
               Primary Metric
             </span>
-            <div style={{ fontSize: "0.92rem", fontWeight: 800, color: "var(--text)" }}>
+            <div style={{ fontSize: "14px", fontWeight: 700, color: "var(--text-main)" }}>
               {config.primaryMetric.name}
             </div>
           </div>
-          <div style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
+          <div style={{ fontSize: "12px", color: "var(--text-subtle)" }}>
             {config.primaryMetric.description}
           </div>
         </div>
@@ -652,21 +645,21 @@ function UseCaseScorecard({
             const modelName = getModel(mId)?.label ?? mId.split("/").pop() ?? mId;
             return (
               <div key={mId}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem", marginBottom: "4px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", marginBottom: "4px" }}>
                   <span style={{ fontWeight: 600, color: colors[idx % colors.length] }}>
                     M{idx + 1}: {modelName}
                   </span>
-                  <span style={{ fontWeight: 700, fontFamily: "var(--font-mono)", color: "var(--text)" }}>
+                  <span style={{ fontWeight: 700, fontFamily: "var(--font-mono)", color: "var(--text-main)" }}>
                     {ev ? `${score}%` : "Pending..."}
                   </span>
                 </div>
-                <div style={{ height: "8px", borderRadius: "4px", background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+                <div style={{ height: "6px", borderRadius: "3px", background: "var(--bg-surface-elevated)", overflow: "hidden" }}>
                   <div
                     style={{
                       height: "100%",
                       width: `${score}%`,
                       background: colors[idx % colors.length],
-                      borderRadius: "4px",
+                      borderRadius: "3px",
                       transition: "width 0.4s ease",
                     }}
                   />
@@ -679,14 +672,14 @@ function UseCaseScorecard({
 
       {/* Secondary Metrics Comparison Table */}
       <div>
-        <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "10px" }}>
+        <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-subtle)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "8px" }}>
           Secondary Metrics Matrix
         </div>
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.78rem" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
             <thead>
-              <tr style={{ borderBottom: "1px solid var(--border)", background: "rgba(0,0,0,0.2)" }}>
-                <th style={{ textAlign: "left", padding: "8px 12px", color: "var(--text-muted)", fontWeight: 600 }}>Metric</th>
+              <tr style={{ borderBottom: "1px solid var(--border-default)", background: "var(--bg-surface)" }}>
+                <th style={{ textAlign: "left", padding: "8px 12px", color: "var(--text-subtle)", fontWeight: 600 }}>Metric</th>
                 {models.map((mId, idx) => {
                   const name = getModel(mId)?.label ?? mId.split("/").pop() ?? mId;
                   return (
@@ -710,11 +703,11 @@ function UseCaseScorecard({
                 <tr
                   key={sec.id}
                   style={{
-                    borderBottom: "1px solid rgba(255,255,255,0.04)",
-                    background: secIdx % 2 === 0 ? "rgba(255,255,255,0.01)" : "transparent",
+                    borderBottom: "1px solid var(--border-subtle)",
+                    background: secIdx % 2 === 0 ? "rgba(255, 255, 255, 0.02)" : "transparent",
                   }}
                 >
-                  <td style={{ padding: "8px 12px", color: "var(--text)", fontWeight: 500 }} title={sec.description}>
+                  <td style={{ padding: "8px 12px", color: "var(--text-main)", fontWeight: 500 }} title={sec.description}>
                     {sec.name}
                   </td>
                   {models.map((mId, mIdx) => {
@@ -729,7 +722,7 @@ function UseCaseScorecard({
                           padding: "8px 12px",
                           fontFamily: "var(--font-mono)",
                           fontWeight: 700,
-                          color: score !== undefined ? (score >= 75 ? "var(--emerald)" : score >= 50 ? "var(--cyan)" : "var(--amber)") : "var(--text-muted)",
+                          color: score !== undefined ? (score >= 75 ? "var(--emerald)" : score >= 50 ? "var(--cyan-light)" : "var(--amber)") : "var(--text-subtle)",
                         }}
                       >
                         {score !== undefined ? `${score}%` : "—"}
@@ -1136,55 +1129,30 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
     : undefined;
 
   return (
-    <div className="h2h-root" style={{ display: "flex", gap: "20px", padding: "24px", maxWidth: "1680px", margin: "0 auto" }}>
+    <div className="h2h-layout">
       {/* ── Left Sidebar (Controls & Use Cases) ── */}
-      <div
-        className="h2h-sidebar"
-        style={{
-          width: "320px",
-          flexShrink: 0,
-          display: "flex",
-          flexDirection: "column",
-          gap: "18px",
-        }}
-      >
+      <aside className="h2h-sidebar">
         {/* Model Slots Card */}
-        <div
-          style={{
-            padding: "16px",
-            borderRadius: "12px",
-            background: "rgba(11, 22, 40, 0.9)",
-            border: "1px solid var(--border)",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
-            <span style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", color: "var(--cyan)", letterSpacing: "0.06em" }}>
-              Active Models ({models.length} of 4)
-            </span>
+        <div className="h2h-sidebar-section">
+          <div className="h2h-sidebar-label">
+            <span>Active Models ({models.length} of 4)</span>
             {models.length < 4 && (
               <button
+                type="button"
                 onClick={handleAddModel}
-                style={{
-                  fontSize: "0.72rem",
-                  padding: "3px 8px",
-                  borderRadius: "5px",
-                  background: "rgba(0, 212, 255, 0.12)",
-                  border: "1px solid rgba(0, 212, 255, 0.3)",
-                  color: "var(--cyan)",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                }}
+                className="h2h-add-model-btn"
+                title="Add model to comparison"
               >
                 ＋ Add Model
               </button>
             )}
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+          <div className="h2h-models-container">
             {models.map((modelId, idx) => (
-              <div key={idx} style={{ width: "100%", minWidth: 0 }}>
+              <div key={idx} className="arena-active-model" style={{ padding: "8px 10px", gap: "4px" }}>
                 <ModelSelectWidget
-                  label={`Model ${idx + 1}`}
+                  label={`M${idx + 1}`}
                   value={modelId}
                   onRemove={models.length > 1 ? () => handleRemoveModel(idx) : undefined}
                   onChange={(newId) => handleModelChange(idx, newId)}
@@ -1195,508 +1163,533 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
         </div>
 
         {/* Use Cases Card */}
-        <div
-          style={{
-            padding: "16px",
-            borderRadius: "12px",
-            background: "rgba(11, 22, 40, 0.9)",
-            border: "1px solid var(--border)",
-          }}
-        >
-          <div style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", color: "var(--cyan)", letterSpacing: "0.06em", marginBottom: "10px" }}>
-            Insurance Use Cases
+        <div className="h2h-sidebar-section">
+          <div className="h2h-sidebar-label">
+            <span>Insurance Use Cases</span>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
             {USE_CASES.map((uc) => {
               const isSelected = activeUseCase === uc.id;
               const ucConfig = INSURANCE_USE_CASES[uc.id];
               return (
-                <button
+                <div
                   key={uc.id}
+                  className={`h2h-usecase-item${isSelected ? " active" : ""}`}
                   onClick={() => handleUseCaseSelect(uc)}
-                  style={{
-                    padding: "8px 10px",
-                    borderRadius: "6px",
-                    textAlign: "left",
-                    background: isSelected ? "rgba(0, 212, 255, 0.12)" : "rgba(255, 255, 255, 0.02)",
-                    border: isSelected ? "1px solid var(--cyan)" : "1px solid var(--border)",
-                    color: isSelected ? "var(--cyan-light)" : "var(--text-dim)",
-                    cursor: "pointer",
-                    fontSize: "0.75rem",
-                    fontWeight: isSelected ? 700 : 500,
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "4px",
-                  }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span>{uc.icon}</span>
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{uc.label}</span>
+                  <div className="h2h-usecase-header">
+                    <span className="h2h-usecase-icon">{uc.icon}</span>
+                    <span className="h2h-usecase-label">{uc.label}</span>
                   </div>
                   {ucConfig && (
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", paddingLeft: "24px" }}>
-                      <span style={{ fontSize: "0.65rem", color: isSelected ? "var(--cyan)" : "var(--text-muted)", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <div className="h2h-usecase-meta">
+                      <span className="h2h-usecase-bench-name">
                         {ucConfig.recommendedBenchmark.name}
                       </span>
-                      <span style={{
-                        fontSize: "0.58rem",
-                        padding: "1px 5px",
-                        borderRadius: "3px",
-                        background: isSelected ? "rgba(0, 212, 255, 0.2)" : "rgba(255, 255, 255, 0.05)",
-                        color: isSelected ? "#fff" : "var(--text-subtle)",
-                        flexShrink: 0,
-                      }}>
+                      <span className="h2h-usecase-bench-tag">
                         {ucConfig.recommendedBenchmark.source}
                       </span>
                     </div>
                   )}
-                </button>
+                </div>
               );
             })}
           </div>
         </div>
 
         {/* Policy Document Context Card */}
-        <div
-          style={{
-            padding: "16px",
-            borderRadius: "12px",
-            background: "rgba(11, 22, 40, 0.9)",
-            border: "1px solid var(--border)",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
-            <span style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", color: "var(--cyan)", letterSpacing: "0.06em" }}>
-              Policy Document Context
-            </span>
-            {attachedDoc ? (
-              <span
-                style={{
-                  fontSize: "0.62rem",
-                  padding: "2px 6px",
-                  borderRadius: "4px",
-                  background: "rgba(16, 185, 129, 0.15)",
-                  color: "var(--emerald)",
-                  border: "1px solid rgba(16, 185, 129, 0.3)",
-                  fontWeight: 700,
-                }}
-              >
+        <div className="h2h-sidebar-section">
+          <div className="h2h-sidebar-label">
+            <span>Context</span>
+            {attachedDoc && (
+              <span style={{ fontSize: "9px", color: "var(--emerald)", fontWeight: 700 }}>
                 ATTACHED
               </span>
-            ) : (
-              <span style={{ fontSize: "0.68rem", color: "var(--text-subtle)" }}>Optional</span>
             )}
           </div>
 
-          {attachedDoc ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              <div
-                style={{
-                  padding: "10px",
-                  borderRadius: "8px",
-                  background: "rgba(0, 212, 255, 0.05)",
-                  border: "1px solid rgba(0, 212, 255, 0.2)",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
-                  <span className={`doc-badge doc-badge-${(attachedDoc.type?.toUpperCase().includes("OCR") ? "ocr" : attachedDoc.type.toLowerCase())}`} style={{ fontSize: "0.62rem", padding: "1px 5px" }}>
-                    {attachedDoc.type?.toUpperCase().includes("OCR") ? "OCR" : attachedDoc.type}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: "0.78rem",
-                      fontWeight: 600,
-                      color: "var(--text)",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                    title={attachedDoc.name}
-                  >
-                    {attachedDoc.name}
-                  </span>
-                </div>
-                <div style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>
-                  {attachedDoc.formattedSize} · {attachedDoc.wordCount.toLocaleString()} words · ~{attachedDoc.tokenCount.toLocaleString()} tokens
-                </div>
-              </div>
-              <div style={{ display: "flex", gap: "6px" }}>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.md,.json,.csv"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handleDocUpload(f);
+              e.target.value = "";
+            }}
+            style={{ display: "none" }}
+          />
+
+          {isUploadingDoc ? (
+            <div className="arena-context-drop parsing">
+              <div className="arena-btn-spinner" />
+              <span>Parsing & running OCR...</span>
+            </div>
+          ) : attachedDoc ? (
+            <div className="arena-context-attached-card">
+              <div className="arena-context-attached-header">
+                <span
+                  className={`doc-badge doc-badge-${(attachedDoc.type?.toUpperCase().includes("OCR") ? "ocr" : attachedDoc.type.toLowerCase()).replace(/[^a-z0-9_-]/g, "-")}`}
+                >
+                  {attachedDoc.type?.toUpperCase().includes("OCR") ? "OCR" : attachedDoc.type}
+                </span>
                 <button
                   type="button"
+                  onClick={() => setAttachedDoc(null)}
+                  className="attached-remove-btn"
+                  title="Detach document"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="arena-context-attached-title" title={attachedDoc.name}>
+                {attachedDoc.name}
+              </div>
+              <div className="arena-context-attached-meta">
+                {attachedDoc.formattedSize} · {attachedDoc.wordCount.toLocaleString()} words · ~{attachedDoc.tokenCount.toLocaleString()} tokens
+              </div>
+              <div className="arena-context-attached-actions">
+                <button
+                  type="button"
+                  className="arena-context-btn"
                   onClick={() => setShowDocPreview(true)}
-                  style={{
-                    flex: 1,
-                    padding: "6px 8px",
-                    borderRadius: "6px",
-                    background: "rgba(255, 255, 255, 0.05)",
-                    border: "1px solid var(--border)",
-                    color: "var(--text-muted)",
-                    fontSize: "0.72rem",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
                 >
                   👁️ Preview
                 </button>
                 <button
                   type="button"
-                  onClick={() => setAttachedDoc(null)}
-                  style={{
-                    padding: "6px 10px",
-                    borderRadius: "6px",
-                    background: "rgba(244, 63, 94, 0.12)",
-                    border: "1px solid rgba(244, 63, 94, 0.3)",
-                    color: "var(--rose)",
-                    fontSize: "0.72rem",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
-                  title="Remove document"
+                  className="arena-context-btn highlight"
+                  onClick={() => setShowDocIngestModal(true)}
                 >
-                  Detach
+                  💾 Ingest
                 </button>
               </div>
             </div>
           ) : (
             <div
-              className="h2h-sidebar-doc-card"
+              className={`arena-context-drop${isDraggingFile ? " dragging" : ""}`}
               onClick={() => fileInputRef.current?.click()}
-              style={{
-                cursor: "pointer",
-                textAlign: "center",
-                padding: "16px 12px",
-              }}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
             >
-              <div style={{ fontSize: "1.5rem", marginBottom: "6px" }}>📑</div>
-              <div style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--cyan)" }}>
-                Attach Policy Document
-              </div>
-              <div style={{ fontSize: "0.68rem", color: "var(--text-muted)", marginTop: "4px" }}>
-                PDF, Scans, Images, TXT, CSV
-              </div>
+              <span style={{ fontSize: 20 }}>🗂</span>
+              <span>
+                Attach policy doc,
+                <br />
+                claim form, or report
+              </span>
+              <span style={{ fontSize: "10px", color: "var(--text-subtle)", marginTop: "2px" }}>
+                PDF, OCR, Images, TXT, CSV
+              </span>
             </div>
           )}
         </div>
-      </div>
+      </aside>
 
       {/* ── Main Workspace Area ── */}
-      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "18px" }}>
-        {/* Recommended Academic Benchmark Grounding Card */}
-        {currentUseCaseConfig && (() => {
-          const cfg = INSURANCE_USE_CASES[currentUseCaseConfig.id];
-          if (!cfg) return null;
-          return (
+      <div className="h2h-main">
+        {/* Sticky Header matching arena-header */}
+        <div className="arena-header">
+          <div className="arena-header-model">
+            <div className="arena-header-model-icon">
+              {currentUseCaseConfig?.icon || "⚖️"}
+            </div>
+            <div>
+              <div className="arena-header-model-name">
+                {currentUseCaseConfig?.label || "Head-to-Head Comparison"}
+              </div>
+              <div className="arena-header-plugin-count">
+                {models.length} Models Active · {currentUseCaseConfig?.goldKey ? `Ground Truth ${currentUseCaseConfig.goldKey}` : "Comparative Analysis"}
+              </div>
+            </div>
+          </div>
+
+          <div className="arena-header-actions" style={{ alignItems: "center", gap: "8px" }}>
+            {/* Layout Mode Toggle */}
             <div
               style={{
-                padding: hasAnyResults && isPromptCollapsed ? "10px 14px" : "14px 18px",
-                borderRadius: "12px",
-                background: "rgba(11, 22, 40, 0.95)",
-                border: "1px solid rgba(0, 212, 255, 0.25)",
-                boxShadow: "0 4px 20px rgba(0, 0, 0, 0.25)",
-                transition: "all 0.25s ease",
+                display: "flex",
+                background: "var(--bg-surface-elevated)",
+                borderRadius: "var(--radius-sm)",
+                padding: "2px",
+                border: "1px solid var(--border-default)",
               }}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                  <span style={{ fontSize: "1.2rem" }}>{currentUseCaseConfig.icon}</span>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                    <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--text)" }}>
-                      {cfg.title}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: "0.68rem",
-                        padding: "2px 8px",
-                        borderRadius: "12px",
-                        background: "rgba(0, 212, 255, 0.15)",
-                        color: "var(--cyan)",
-                        border: "1px solid rgba(0, 212, 255, 0.3)",
-                        fontWeight: 700,
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "5px",
-                      }}
-                    >
-                      <span>📚 Benchmark:</span>
-                      <strong style={{ color: "#fff" }}>{cfg.recommendedBenchmark.name}</strong>
-                    </span>
-                    <span
-                      style={{
-                        fontSize: "0.65rem",
-                        padding: "2px 7px",
-                        borderRadius: "4px",
-                        background: "rgba(168, 85, 247, 0.18)",
-                        color: "#c084fc",
-                        border: "1px solid rgba(168, 85, 247, 0.35)",
-                        fontWeight: 700,
-                      }}
-                    >
-                      {cfg.recommendedBenchmark.source}
-                    </span>
-                  </div>
-                </div>
-
-                {cfg.recommendedBenchmark.url && (
-                  <a
-                    href={cfg.recommendedBenchmark.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      fontSize: "0.7rem",
-                      color: "var(--cyan)",
-                      textDecoration: "none",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "4px",
-                      padding: "3px 8px",
-                      borderRadius: "4px",
-                      background: "rgba(0, 212, 255, 0.08)",
-                      border: "1px solid rgba(0, 212, 255, 0.2)",
-                    }}
-                  >
-                    Dataset Source ↗
-                  </a>
-                )}
-              </div>
-
-              {/* Show description & full primary metrics list when prompt is not collapsed */}
-              {(!hasAnyResults || !isPromptCollapsed) && (
-                <>
-                  <div style={{ fontSize: "0.74rem", color: "var(--text-muted)", marginTop: "6px" }}>
-                    {cfg.recommendedBenchmark.description}
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginTop: "8px", paddingTop: "8px", borderTop: "1px solid rgba(255, 255, 255, 0.06)" }}>
-                    <span style={{ fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase", color: "var(--cyan)", letterSpacing: "0.06em" }}>
-                      Target Metrics:
-                    </span>
-                    <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                      {cfg.primaryMetricsList.map((metricName, mIdx) => (
-                        <span
-                          key={mIdx}
-                          style={{
-                            fontSize: "0.68rem",
-                            padding: "2px 7px",
-                            borderRadius: "4px",
-                            background: mIdx === 0 ? "rgba(0, 212, 255, 0.14)" : "rgba(255, 255, 255, 0.04)",
-                            border: mIdx === 0 ? "1px solid rgba(0, 212, 255, 0.4)" : "1px solid var(--border)",
-                            color: mIdx === 0 ? "var(--cyan-light)" : "var(--text-dim)",
-                            fontWeight: mIdx === 0 ? 700 : 500,
-                          }}
-                        >
-                          {metricName}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          );
-        })()}
-
-        {/* ── Prompt Section: Collapsed Bar OR Full Input Card ── */}
-        {hasAnyResults && isPromptCollapsed ? (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              padding: "10px 16px",
-              borderRadius: "10px",
-              background: "rgba(11, 22, 40, 0.9)",
-              border: "1px solid var(--border)",
-              gap: "12px",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0, flex: 1 }}>
-              <span style={{ fontSize: "0.95rem" }}>💬</span>
-              <span
+              <button
+                type="button"
+                onClick={() => setLayoutMode("vertical")}
                 style={{
-                  fontSize: "0.8rem",
-                  color: "var(--text)",
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
+                  padding: "4px 10px",
+                  borderRadius: "4px",
+                  background: layoutMode === "vertical" ? "var(--accent)" : "transparent",
+                  color: layoutMode === "vertical" ? "var(--text-inverted)" : "var(--text-muted)",
+                  fontWeight: 700,
+                  fontSize: "11.5px",
+                  border: "none",
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
                 }}
-                title={prompt}
+                title="Stack models vertically in full-width cards"
               >
-                <strong style={{ color: "var(--cyan)" }}>Active Prompt:</strong> {prompt || "Evaluating attached document"}
-              </span>
-              {attachedDoc && (
-                <span
-                  style={{
-                    fontSize: "0.68rem",
-                    padding: "2px 6px",
-                    borderRadius: "4px",
-                    background: "rgba(16, 185, 129, 0.15)",
-                    color: "var(--emerald)",
-                    border: "1px solid rgba(16, 185, 129, 0.3)",
-                    flexShrink: 0,
-                  }}
-                >
-                  📄 {attachedDoc.name}
+                ☰ Stacked
+              </button>
+              <button
+                type="button"
+                onClick={() => setLayoutMode("columns")}
+                style={{
+                  padding: "4px 10px",
+                  borderRadius: "4px",
+                  background: layoutMode === "columns" ? "var(--accent)" : "transparent",
+                  color: layoutMode === "columns" ? "var(--text-inverted)" : "var(--text-muted)",
+                  fontWeight: 700,
+                  fontSize: "11.5px",
+                  border: "none",
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
+                }}
+                title="Display models side-by-side in columns"
+              >
+                ⊞ Columns
+              </button>
+            </div>
+
+            {/* Analytics Scorecard Toggle */}
+            <button
+              type="button"
+              className="arena-header-btn"
+              onClick={() => setShowAnalytics(!showAnalytics)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "5px",
+                background: showAnalytics ? "var(--accent-dim)" : undefined,
+                borderColor: showAnalytics ? "var(--accent-border)" : undefined,
+                color: showAnalytics ? "var(--accent)" : undefined,
+                fontWeight: 600,
+              }}
+              title="Toggle Ground Truth metrics, latency, token costs, and comparative scorecard"
+            >
+              <span>📊 Scorecard</span>
+              {showAnalytics && (
+                <span style={{ fontSize: "9px", background: "var(--accent)", color: "var(--text-inverted)", padding: "1px 5px", borderRadius: "6px", fontWeight: 800 }}>
+                  ON
                 </span>
               )}
-            </div>
-            <button
-              onClick={() => setIsPromptCollapsed(false)}
-              style={{
-                fontSize: "0.72rem",
-                padding: "4px 10px",
-                borderRadius: "6px",
-                background: "rgba(255, 255, 255, 0.06)",
-                border: "1px solid var(--border)",
-                color: "var(--text-dim)",
-                cursor: "pointer",
-                fontWeight: 600,
-                flexShrink: 0,
-              }}
-            >
-              ✏️ Edit Prompt
             </button>
+
+            {/* Stop / New Comparison */}
+            {isAnyRunning ? (
+              <button
+                type="button"
+                onClick={handleStopAll}
+                className="arena-header-btn"
+                style={{
+                  background: "rgba(244, 63, 94, 0.15)",
+                  borderColor: "rgba(244, 63, 94, 0.35)",
+                  color: "var(--rose)",
+                  fontWeight: 700,
+                }}
+              >
+                ⏹ Stop
+              </button>
+            ) : hasAnyResults ? (
+              <button
+                type="button"
+                onClick={handleResetResults}
+                className="arena-header-btn"
+                title="Clear answers and return to prompt workspace"
+              >
+                🔄 New Comparison
+              </button>
+            ) : null}
           </div>
-        ) : (
-          /* Full Prompt Input Card */
-          <div
-            style={{
-              padding: "16px",
-              borderRadius: "12px",
-              background: "rgba(11, 22, 40, 0.9)",
-              border: "1px solid var(--border)",
-            }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px", flexWrap: "wrap", gap: "10px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--cyan)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                  Evaluation Prompt & Scenario
-                </span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                <button
-                  type="button"
-                  className="h2h-upload-btn"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploadingDoc}
-                  title="Upload an insurance policy, endorsement, scan, or claim file (PDF, Images, TXT, CSV)"
-                >
-                  {isUploadingDoc ? (
-                    <>
-                      <span className="spinner-border" style={{ width: "12px", height: "12px" }} />
-                      <span>Parsing & OCR...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>📎 Upload Policy / Document</span>
-                      <span className="h2h-upload-pill-tag">PDF, SCAN/OCR, TXT</span>
-                    </>
-                  )}
-                </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.md,.json,.csv"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) handleDocUpload(f);
-                    e.target.value = "";
-                  }}
-                  style={{ display: "none" }}
-                />
+        </div>
 
-                {hasAnyResults && (
-                  <button
-                    onClick={() => setIsPromptCollapsed(true)}
-                    style={{
-                      padding: "6px 12px",
-                      borderRadius: "6px",
-                      background: "rgba(255, 255, 255, 0.05)",
-                      border: "1px solid var(--border)",
-                      color: "var(--text-muted)",
-                      fontSize: "0.75rem",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                    }}
-                  >
-                    ▲ Collapse
-                  </button>
-                )}
-                {isAnyRunning && (
-                  <button
-                    onClick={handleStopAll}
-                    style={{
-                      padding: "6px 14px",
-                      borderRadius: "6px",
-                      background: "rgba(244, 63, 94, 0.2)",
-                      border: "1px solid var(--rose)",
-                      color: "var(--rose)",
-                      fontSize: "0.78rem",
-                      fontWeight: 700,
-                      cursor: "pointer",
-                    }}
-                  >
-                    ⏹ Stop Stream
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {uploadError && (
+        {/* Scrollable Workspace */}
+        <div className="h2h-workspace">
+          {/* Recommended Academic Benchmark Grounding Card */}
+          {currentUseCaseConfig && (() => {
+            const cfg = INSURANCE_USE_CASES[currentUseCaseConfig.id];
+            if (!cfg) return null;
+            return (
               <div
                 style={{
-                  padding: "8px 12px",
-                  borderRadius: "6px",
-                  background: "rgba(244, 63, 94, 0.15)",
-                  border: "1px solid rgba(244, 63, 94, 0.35)",
-                  color: "var(--rose)",
-                  fontSize: "0.76rem",
-                  marginBottom: "10px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
+                  padding: hasAnyResults && isPromptCollapsed ? "10px 16px" : "14px 18px",
+                  borderRadius: "var(--radius-md)",
+                  background: "var(--bg-surface-elevated)",
+                  border: "1px solid var(--border-default)",
+                  transition: "all 0.25s ease",
                 }}
               >
-                <span>⚠️ {uploadError}</span>
-                <button
-                  type="button"
-                  onClick={() => setUploadError(null)}
-                  style={{ background: "none", border: "none", color: "var(--rose)", cursor: "pointer", fontSize: "0.85rem" }}
-                >
-                  ✕
-                </button>
-              </div>
-            )}
-
-            {attachedDoc && (
-              <div className="attached-doc-card">
-                <div className="attached-doc-left">
-                  <span className={`doc-badge doc-badge-${(attachedDoc.type?.toUpperCase().includes("OCR") ? "ocr" : attachedDoc.type.toLowerCase())}`}>
-                    {attachedDoc.type?.toUpperCase().includes("OCR") ? "OCR" : attachedDoc.type}
-                  </span>
-                  <div className="attached-doc-details">
-                    <span className="attached-doc-name" title={attachedDoc.name}>
-                      {attachedDoc.name}
-                    </span>
-                    <span className="attached-doc-sub">
-                      {attachedDoc.formattedSize} · {attachedDoc.wordCount.toLocaleString()} words · ~{attachedDoc.tokenCount.toLocaleString()} LLM tokens
-                    </span>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                    <span style={{ fontSize: "1.2rem" }}>{currentUseCaseConfig.icon}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                      <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--text-main)" }}>
+                        {cfg.title}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: "11px",
+                          padding: "2px 8px",
+                          borderRadius: "var(--radius-full)",
+                          background: "var(--accent-dim)",
+                          color: "var(--accent)",
+                          border: "1px solid var(--accent-border)",
+                          fontWeight: 600,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "5px",
+                        }}
+                      >
+                        <span>📚 Benchmark:</span>
+                        <strong style={{ color: "var(--text-main)" }}>{cfg.recommendedBenchmark.name}</strong>
+                      </span>
+                      <span
+                        style={{
+                          fontSize: "10.5px",
+                          padding: "2px 7px",
+                          borderRadius: "4px",
+                          background: "var(--violet-dim)",
+                          color: "var(--violet)",
+                          border: "1px solid rgba(139, 92, 246, 0.3)",
+                          fontWeight: 600,
+                        }}
+                      >
+                        {cfg.recommendedBenchmark.source}
+                      </span>
+                    </div>
                   </div>
+
+                  {cfg.recommendedBenchmark.url && (
+                    <a
+                      href={cfg.recommendedBenchmark.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="arena-header-btn"
+                      style={{
+                        textDecoration: "none",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "4px",
+                        fontSize: "11.5px",
+                      }}
+                    >
+                      Dataset Source ↗
+                    </a>
+                  )}
                 </div>
-                <div className="attached-doc-actions">
+
+                {/* Show description & full primary metrics list when prompt is not collapsed */}
+                {(!hasAnyResults || !isPromptCollapsed) && (
+                  <>
+                    <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "8px", lineHeight: 1.5 }}>
+                      {cfg.recommendedBenchmark.description}
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginTop: "10px", paddingTop: "8px", borderTop: "1px solid var(--border-subtle)" }}>
+                      <span style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", color: "var(--text-subtle)", letterSpacing: "0.06em" }}>
+                        Target Metrics:
+                      </span>
+                      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                        {cfg.primaryMetricsList.map((metricName, mIdx) => (
+                          <span
+                            key={mIdx}
+                            style={{
+                              fontSize: "11px",
+                              padding: "2px 8px",
+                              borderRadius: "4px",
+                              background: mIdx === 0 ? "var(--accent-dim)" : "var(--bg-surface)",
+                              border: mIdx === 0 ? "1px solid var(--accent-border)" : "1px solid var(--border-subtle)",
+                              color: mIdx === 0 ? "var(--accent)" : "var(--text-muted)",
+                              fontWeight: mIdx === 0 ? 700 : 500,
+                            }}
+                          >
+                            {metricName}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* ── Prompt Section: Collapsed Bar OR Full Input Card ── */}
+          {hasAnyResults && isPromptCollapsed ? (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "10px 16px",
+                borderRadius: "var(--radius-md)",
+                background: "var(--bg-surface-elevated)",
+                border: "1px solid var(--border-default)",
+                gap: "12px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0, flex: 1 }}>
+                <span style={{ fontSize: "15px" }}>💬</span>
+                <span
+                  style={{
+                    fontSize: "13px",
+                    color: "var(--text-main)",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                  title={prompt}
+                >
+                  <strong style={{ color: "var(--accent)" }}>Active Prompt:</strong> {prompt || "Evaluating attached document"}
+                </span>
+                {attachedDoc && (
+                  <span
+                    style={{
+                      fontSize: "11px",
+                      padding: "2px 7px",
+                      borderRadius: "4px",
+                      background: "var(--emerald-dim)",
+                      color: "var(--emerald)",
+                      border: "1px solid rgba(16, 185, 129, 0.3)",
+                      flexShrink: 0,
+                      fontWeight: 600,
+                    }}
+                  >
+                    📄 {attachedDoc.name}
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                className="arena-header-btn"
+                onClick={() => setIsPromptCollapsed(false)}
+                style={{ fontSize: "12px", flexShrink: 0 }}
+              >
+                ✏️ Edit Prompt
+              </button>
+            </div>
+          ) : (
+            /* Full Prompt Input Card */
+            <div
+              style={{
+                padding: "16px",
+                borderRadius: "var(--radius-md)",
+                background: "var(--bg-surface-elevated)",
+                border: "1px solid var(--border-default)",
+                display: "flex",
+                flexDirection: "column",
+                gap: "10px",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px", flexWrap: "wrap", gap: "10px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-subtle)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                    Evaluation Prompt & Scenario
+                  </span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                   <button
                     type="button"
-                    className="attached-action-btn"
+                    className="arena-header-btn"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploadingDoc}
+                    title="Upload an insurance policy, endorsement, scan, or claim file"
+                    style={{ display: "flex", alignItems: "center", gap: "6px" }}
+                  >
+                    {isUploadingDoc ? (
+                      <>
+                        <span className="spinner-border" style={{ width: "12px", height: "12px" }} />
+                        <span>Parsing & OCR...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>📎 Upload Document</span>
+                        <span style={{ fontSize: "10px", opacity: 0.7 }}>PDF, OCR, TXT</span>
+                      </>
+                    )}
+                  </button>
+
+                  {hasAnyResults && (
+                    <button
+                      type="button"
+                      className="arena-header-btn"
+                      onClick={() => setIsPromptCollapsed(true)}
+                      style={{ fontSize: "12px" }}
+                    >
+                      ▲ Collapse
+                    </button>
+                  )}
+                  {isAnyRunning && (
+                    <button
+                      type="button"
+                      onClick={handleStopAll}
+                      className="arena-header-btn"
+                      style={{
+                        background: "rgba(244, 63, 94, 0.15)",
+                        borderColor: "rgba(244, 63, 94, 0.35)",
+                        color: "var(--rose)",
+                        fontWeight: 700,
+                      }}
+                    >
+                      ⏹ Stop Stream
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {uploadError && (
+                <div
+                  style={{
+                    padding: "8px 12px",
+                    borderRadius: "var(--radius-sm)",
+                    background: "rgba(244, 63, 94, 0.15)",
+                    border: "1px solid rgba(244, 63, 94, 0.35)",
+                    color: "var(--rose)",
+                    fontSize: "12px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <span>⚠️ {uploadError}</span>
+                  <button
+                    type="button"
+                    onClick={() => setUploadError(null)}
+                    style={{ background: "none", border: "none", color: "var(--rose)", cursor: "pointer", fontSize: "14px" }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
+              {attachedDoc && (
+                <div className="arena-msg-doc-pill" style={{ margin: "2px 0" }}>
+                  <span className={`doc-badge doc-badge-${(attachedDoc.type?.toUpperCase().includes("OCR") ? "ocr" : attachedDoc.type.toLowerCase()).replace(/[^a-z0-9_-]/g, "-")}`}>
+                    {attachedDoc.type?.toUpperCase().includes("OCR") ? "OCR" : attachedDoc.type}
+                  </span>
+                  <span className="arena-msg-doc-name" title={attachedDoc.name}>
+                    {attachedDoc.name}
+                  </span>
+                  <span className="arena-msg-doc-meta">
+                    {attachedDoc.formattedSize} · {attachedDoc.wordCount.toLocaleString()} words · ~{attachedDoc.tokenCount.toLocaleString()} tokens
+                  </span>
+                  <button
+                    type="button"
+                    className="arena-msg-doc-view-btn"
                     onClick={() => setShowDocPreview(true)}
                     title="Preview extracted document text"
                   >
-                    👁️ Preview Text
+                    👁️ View
                   </button>
                   <button
                     type="button"
-                    className="attached-action-btn highlight"
+                    className="arena-msg-doc-view-btn"
                     onClick={() => setShowDocIngestModal(true)}
                     title="Ingest document to insurance data lake"
                   >
-                    💾 Ingest to Lake
+                    💾 Ingest
                   </button>
                   <button
                     type="button"
@@ -1707,471 +1700,410 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                     ✕
                   </button>
                 </div>
-              </div>
-            )}
-
-            <div
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              style={{ position: "relative" }}
-            >
-              {isDraggingFile && (
-                <div
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    background: "rgba(11, 22, 40, 0.94)",
-                    border: "2px dashed var(--cyan)",
-                    borderRadius: "8px",
-                    zIndex: 10,
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "6px",
-                    backdropFilter: "blur(4px)",
-                  }}
-                >
-                  <span style={{ fontSize: "2rem" }}>📄</span>
-                  <span style={{ fontSize: "0.88rem", fontWeight: 700, color: "var(--cyan)" }}>
-                    Drop Insurance Document Here
-                  </span>
-                  <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
-                    Supports PDF, Scans (OCR), Images, CSV, TXT, JSON, MD
-                  </span>
-                </div>
               )}
-              <textarea
-                ref={promptTextareaRef}
-                rows={3}
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder={
-                  attachedDoc
-                    ? `Document "${attachedDoc.name}" attached. Type evaluation task or leave as is to evaluate policy terms...`
-                    : "Type insurance prompt or policy clauses to evaluate, or upload a document above..."
-                }
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  background: "rgba(0, 0, 0, 0.35)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "8px",
-                  color: "var(--text)",
-                  fontSize: "0.82rem",
-                  lineHeight: 1.5,
-                  resize: "vertical",
-                  boxSizing: "border-box",
-                }}
-              />
-            </div>
 
-            {/* Quick chips */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "8px" }}>
-              {QUICK_CHIPS.map((chip, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setPrompt(chip)}
-                  style={{
-                    fontSize: "0.68rem",
-                    padding: "3px 8px",
-                    borderRadius: "12px",
-                    background: "rgba(255,255,255,0.03)",
-                    border: "1px solid var(--border)",
-                    color: "var(--text-muted)",
-                    cursor: "pointer",
-                  }}
-                >
-                  + {chip}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ── Pre-Flight Readiness Summary (WHEN NOT RUN YET - NO EMPTY COLUMNS!) ── */}
-        {!hasAnyResults ? (
-          <div
-            style={{
-              padding: "26px 20px",
-              borderRadius: "12px",
-              background: "linear-gradient(180deg, rgba(15, 30, 54, 0.7) 0%, rgba(11, 22, 40, 0.85) 100%)",
-              border: "1px solid var(--border)",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              textAlign: "center",
-              gap: "16px",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <span style={{ fontSize: "1.8rem" }}>⚡</span>
-              <div>
-                <div style={{ fontSize: "1.05rem", fontWeight: 700, color: "var(--text)" }}>
-                  Ready to Evaluate {models.length} Models Side-by-Side
-                </div>
-                <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginTop: "2px" }}>
-                  Add or change models in the left sidebar. When you click run, comparative responses will stream here.
-                </div>
-              </div>
-            </div>
-
-            {/* Selected Models Badges */}
-            <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "10px", maxWidth: "800px" }}>
-              {models.map((mId, idx) => {
-                const m = getModel(mId);
-                const name = m?.label ?? mId.split("/").pop() ?? mId;
-                return (
+              <div
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                style={{ position: "relative" }}
+              >
+                {isDraggingFile && (
                   <div
-                    key={idx}
                     style={{
+                      position: "absolute",
+                      inset: 0,
+                      background: "rgba(10, 15, 26, 0.92)",
+                      border: "2px dashed var(--accent)",
+                      borderRadius: "var(--radius-sm)",
+                      zIndex: 10,
                       display: "flex",
+                      flexDirection: "column",
                       alignItems: "center",
-                      gap: "8px",
-                      padding: "6px 14px",
-                      borderRadius: "8px",
-                      background: "rgba(0, 212, 255, 0.08)",
-                      border: "1px solid rgba(0, 212, 255, 0.25)",
+                      justifyContent: "center",
+                      gap: "6px",
+                      backdropFilter: "blur(4px)",
                     }}
                   >
-                    <span
+                    <span style={{ fontSize: "2rem" }}>📄</span>
+                    <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--accent)" }}>
+                      Drop Insurance Document Here
+                    </span>
+                    <span style={{ fontSize: "11.5px", color: "var(--text-subtle)" }}>
+                      Supports PDF, Scans (OCR), Images, CSV, TXT, JSON, MD
+                    </span>
+                  </div>
+                )}
+                <textarea
+                  ref={promptTextareaRef}
+                  rows={3}
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  placeholder={
+                    attachedDoc
+                      ? `Document "${attachedDoc.name}" attached. Type evaluation task or leave as is to evaluate policy terms...`
+                      : "Type insurance prompt or policy clauses to evaluate, or upload a document above..."
+                  }
+                  style={{
+                    width: "100%",
+                    padding: "10px 14px",
+                    background: "var(--bg-surface)",
+                    border: "1px solid var(--border-default)",
+                    borderRadius: "var(--radius-sm)",
+                    color: "var(--text-main)",
+                    fontSize: "13px",
+                    lineHeight: 1.55,
+                    resize: "vertical",
+                    boxSizing: "border-box",
+                    fontFamily: "var(--font-ui)",
+                  }}
+                />
+              </div>
+
+              {/* Quick chips & Run action */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", marginTop: "4px" }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                  {QUICK_CHIPS.map((chip, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setPrompt(chip)}
                       style={{
-                        fontSize: "0.68rem",
-                        fontWeight: 800,
-                        padding: "2px 6px",
-                        borderRadius: "4px",
-                        background: "rgba(0, 212, 255, 0.2)",
-                        color: "var(--cyan)",
+                        fontSize: "11px",
+                        padding: "3px 9px",
+                        borderRadius: "var(--radius-full)",
+                        background: "var(--bg-surface)",
+                        border: "1px solid var(--border-subtle)",
+                        color: "var(--text-subtle)",
+                        cursor: "pointer",
+                        transition: "all var(--transition-fast)",
                       }}
                     >
-                      M{idx + 1}
-                    </span>
-                    <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--text)" }}>
-                      {name}
-                    </span>
-                    {m?.isFree && (
-                      <span style={{ fontSize: "0.62rem", color: "var(--emerald)", fontWeight: 700 }}>
-                        FREE
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                      + {chip}
+                    </button>
+                  ))}
+                </div>
 
-            <button
-              onClick={handleRunAll}
-              disabled={(!prompt.trim() && !attachedDoc)}
-              style={{
-                marginTop: "4px",
-                padding: "10px 32px",
-                borderRadius: "8px",
-                background: "var(--cyan)",
-                border: "none",
-                color: "#050b14",
-                fontSize: "0.9rem",
-                fontWeight: 800,
-                cursor: (prompt.trim() || attachedDoc) ? "pointer" : "not-allowed",
-                boxShadow: "0 0 20px rgba(0, 212, 255, 0.35)",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-              }}
-            >
-              <span>▶ Run Head-to-Head Comparison</span>
-            </button>
-          </div>
-        ) : (
-          /* ── Post-Run Results Section ── */
-          <>
-            {/* Results Action Toolbar with In-Page Analytics Toggle */}
+                <button
+                  type="button"
+                  onClick={handleRunAll}
+                  disabled={(!prompt.trim() && !attachedDoc) || isAnyRunning}
+                  style={{
+                    padding: "7px 18px",
+                    borderRadius: "var(--radius-sm)",
+                    background: "var(--accent)",
+                    border: "none",
+                    color: "var(--text-inverted)",
+                    fontSize: "12.5px",
+                    fontWeight: 700,
+                    cursor: (prompt.trim() || attachedDoc) && !isAnyRunning ? "pointer" : "not-allowed",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    transition: "all var(--transition-fast)",
+                    opacity: (!prompt.trim() && !attachedDoc) || isAnyRunning ? 0.5 : 1,
+                  }}
+                >
+                  <span>▶ Run Comparison</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── Pre-Flight Readiness Summary (WHEN NOT RUN YET) ── */}
+          {!hasAnyResults ? (
             <div
               style={{
+                padding: "32px 24px",
+                borderRadius: "var(--radius-lg)",
+                background: "var(--bg-surface-elevated)",
+                border: "1px solid var(--border-default)",
                 display: "flex",
+                flexDirection: "column",
                 alignItems: "center",
-                justifyContent: "space-between",
-                padding: "10px 16px",
-                borderRadius: "10px",
-                background: "rgba(11, 22, 40, 0.95)",
-                border: "1px solid var(--border)",
-                flexWrap: "wrap",
-                gap: "10px",
+                textAlign: "center",
+                gap: "16px",
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text)" }}>
-                  Comparative Responses ({models.length} Models)
-                </span>
-                {isAnyRunning ? (
-                  <span style={{ fontSize: "0.72rem", color: "var(--cyan)", display: "flex", alignItems: "center", gap: "6px" }}>
-                    <span className="spinner-border" style={{ width: "12px", height: "12px" }} /> Streaming...
-                  </span>
-                ) : (
-                  <span style={{ fontSize: "0.72rem", color: "var(--emerald)", fontWeight: 600 }}>
-                    ✓ Responses Complete
-                  </span>
-                )}
-              </div>
-
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                {/* Layout Mode Toggle (Stacked vs Columns) */}
-                <div
-                  style={{
-                    display: "flex",
-                    background: "rgba(255, 255, 255, 0.05)",
-                    borderRadius: "7px",
-                    padding: "2px",
-                    border: "1px solid var(--border)",
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setLayoutMode("vertical")}
-                    style={{
-                      padding: "5px 11px",
-                      borderRadius: "5px",
-                      background: layoutMode === "vertical" ? "var(--cyan)" : "transparent",
-                      color: layoutMode === "vertical" ? "#050b14" : "var(--text-muted)",
-                      fontWeight: 700,
-                      fontSize: "0.74rem",
-                      border: "none",
-                      cursor: "pointer",
-                      transition: "all 0.15s ease",
-                    }}
-                    title="Stack models vertically in full-width cards"
-                  >
-                    ☰ Stacked
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setLayoutMode("columns")}
-                    style={{
-                      padding: "5px 11px",
-                      borderRadius: "5px",
-                      background: layoutMode === "columns" ? "var(--cyan)" : "transparent",
-                      color: layoutMode === "columns" ? "#050b14" : "var(--text-muted)",
-                      fontWeight: 700,
-                      fontSize: "0.74rem",
-                      border: "none",
-                      cursor: "pointer",
-                      transition: "all 0.15s ease",
-                    }}
-                    title="Display models side-by-side in columns"
-                  >
-                    ⊞ Columns
-                  </button>
+                <span style={{ fontSize: "2rem" }}>⚡</span>
+                <div>
+                  <div style={{ fontSize: "16px", fontWeight: 700, color: "var(--text-main)" }}>
+                    Ready to Evaluate {models.length} Models Side-by-Side
+                  </div>
+                  <div style={{ fontSize: "12.5px", color: "var(--text-subtle)", marginTop: "3px" }}>
+                    Add or customize models in the left sidebar. Comparative responses will stream in real time.
+                  </div>
                 </div>
-
-                {/* The In-Page Analytics Toggle Button */}
-                <button
-                  type="button"
-                  onClick={() => setShowAnalytics(!showAnalytics)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    padding: "6px 14px",
-                    borderRadius: "7px",
-                    background: showAnalytics ? "rgba(0, 212, 255, 0.2)" : "rgba(255, 255, 255, 0.05)",
-                    border: showAnalytics ? "1px solid var(--cyan)" : "1px solid var(--border)",
-                    color: showAnalytics ? "var(--cyan-light)" : "var(--text-muted)",
-                    fontSize: "0.78rem",
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    transition: "all 0.2s ease",
-                    boxShadow: showAnalytics ? "0 0 12px rgba(0, 212, 255, 0.25)" : "none",
-                  }}
-                  title="Toggle Ground Truth metrics, latency, token costs, and comparative scorecard"
-                >
-                  <span>📊</span>
-                  <span>{showAnalytics ? "Hide Analytics & Scorecard" : "View Analytics & Scorecard"}</span>
-                  {showAnalytics && (
-                    <span style={{ fontSize: "0.62rem", background: "var(--cyan)", color: "#000", padding: "1px 5px", borderRadius: "8px", fontWeight: 800 }}>
-                      ON
-                    </span>
-                  )}
-                </button>
-
-                {isAnyRunning ? (
-                  <button
-                    onClick={handleStopAll}
-                    style={{
-                      padding: "6px 12px",
-                      borderRadius: "7px",
-                      background: "rgba(244, 63, 94, 0.2)",
-                      border: "1px solid var(--rose)",
-                      color: "var(--rose)",
-                      fontSize: "0.75rem",
-                      fontWeight: 700,
-                      cursor: "pointer",
-                    }}
-                  >
-                    ⏹ Stop
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleResetResults}
-                    style={{
-                      padding: "6px 12px",
-                      borderRadius: "7px",
-                      background: "rgba(255, 255, 255, 0.05)",
-                      border: "1px solid var(--border)",
-                      color: "var(--text-muted)",
-                      fontSize: "0.75rem",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                    }}
-                    title="Clear answers and return to prompt workspace"
-                  >
-                    🔄 New Comparison
-                  </button>
-                )}
               </div>
-            </div>
 
-            {/* Quick-Jump & Bulk Collapse Toolbar (Vertical Stack Mode) */}
-            {layoutMode === "vertical" && models.length > 1 && (
+              {/* Selected Models Badges */}
+              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "10px", maxWidth: "800px" }}>
+                {models.map((mId, idx) => {
+                  const m = getModel(mId);
+                  const name = m?.label ?? mId.split("/").pop() ?? mId;
+                  return (
+                    <div
+                      key={idx}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        padding: "6px 12px",
+                        borderRadius: "var(--radius-sm)",
+                        background: "var(--bg-surface)",
+                        border: "1px solid var(--border-default)",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: "10px",
+                          fontWeight: 800,
+                          padding: "2px 6px",
+                          borderRadius: "4px",
+                          background: "var(--accent-dim)",
+                          color: "var(--accent)",
+                          border: "1px solid var(--accent-border)",
+                        }}
+                      >
+                        M{idx + 1}
+                      </span>
+                      <span style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--text-main)" }}>
+                        {name}
+                      </span>
+                      {m?.isFree && (
+                        <span style={{ fontSize: "10px", color: "var(--emerald)", fontWeight: 700 }}>
+                          FREE
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <button
+                type="button"
+                onClick={handleRunAll}
+                disabled={!prompt.trim() && !attachedDoc}
+                style={{
+                  marginTop: "4px",
+                  padding: "10px 28px",
+                  borderRadius: "var(--radius-sm)",
+                  background: "var(--accent)",
+                  border: "none",
+                  color: "var(--text-inverted)",
+                  fontSize: "14px",
+                  fontWeight: 700,
+                  cursor: prompt.trim() || attachedDoc ? "pointer" : "not-allowed",
+                  boxShadow: "0 0 16px var(--accent-dim)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  opacity: prompt.trim() || attachedDoc ? 1 : 0.5,
+                }}
+              >
+                <span>▶ Run Head-to-Head Comparison</span>
+              </button>
+            </div>
+          ) : (
+            /* ── Post-Run Results Section ── */
+            <>
+              {/* Results Action Toolbar with In-Page Analytics Toggle */}
               <div
                 style={{
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  padding: "8px 14px",
-                  borderRadius: "8px",
-                  background: "rgba(15, 30, 54, 0.6)",
-                  border: "1px solid rgba(255, 255, 255, 0.06)",
+                  padding: "10px 16px",
+                  borderRadius: "var(--radius-md)",
+                  background: "var(--bg-surface-elevated)",
+                  border: "1px solid var(--border-default)",
                   flexWrap: "wrap",
-                  gap: "8px",
+                  gap: "10px",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                  <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700 }}>
-                    Quick Jump:
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-main)" }}>
+                    Comparative Responses ({models.length} Models)
                   </span>
-                  {models.map((modelId, idx) => {
-                    const modelInfo = getModel(modelId);
-                    const name = modelInfo?.label ?? modelId.split("/").pop() ?? modelId;
-                    return (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => {
-                          const el = document.getElementById(`model-card-${idx}`);
-                          if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-                        }}
-                        style={{
-                          padding: "3px 9px",
-                          borderRadius: "5px",
-                          background: "rgba(0, 212, 255, 0.08)",
-                          border: "1px solid rgba(0, 212, 255, 0.2)",
-                          color: "var(--cyan)",
-                          fontSize: "0.72rem",
-                          fontWeight: 600,
-                          cursor: "pointer",
-                        }}
-                        title={`Scroll to Model ${idx + 1}`}
-                      >
-                        M{idx + 1}: {name.length > 16 ? name.slice(0, 16) + "…" : name}
-                      </button>
-                    );
-                  })}
+                  {isAnyRunning ? (
+                    <span style={{ fontSize: "12px", color: "var(--accent)", display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span className="spinner-border" style={{ width: "12px", height: "12px" }} /> Streaming...
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: "12px", color: "var(--emerald)", fontWeight: 600 }}>
+                      ✓ Responses Complete
+                    </span>
+                  )}
                 </div>
 
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const all: Record<number, boolean> = {};
-                      models.forEach((_, i) => { all[i] = true; });
-                      setCollapsedCards(all);
-                    }}
-                    style={{
-                      background: "transparent",
-                      border: "none",
-                      color: "var(--text-dim)",
-                      fontSize: "0.7rem",
-                      cursor: "pointer",
-                      textDecoration: "underline",
-                    }}
-                  >
-                    Collapse All
-                  </button>
-                  <span style={{ color: "var(--text-dim)", fontSize: "0.7rem" }}>·</span>
-                  <button
-                    type="button"
-                    onClick={() => setCollapsedCards({})}
-                    style={{
-                      background: "transparent",
-                      border: "none",
-                      color: "var(--text-dim)",
-                      fontSize: "0.7rem",
-                      cursor: "pointer",
-                      textDecoration: "underline",
-                    }}
-                  >
-                    Expand All
-                  </button>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                  {isAnyRunning ? (
+                    <button
+                      type="button"
+                      onClick={handleStopAll}
+                      className="arena-header-btn"
+                      style={{
+                        background: "rgba(244, 63, 94, 0.15)",
+                        borderColor: "rgba(244, 63, 94, 0.35)",
+                        color: "var(--rose)",
+                        fontWeight: 700,
+                      }}
+                    >
+                      ⏹ Stop
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleResetResults}
+                      className="arena-header-btn"
+                      title="Clear answers and return to prompt workspace"
+                    >
+                      🔄 New Comparison
+                    </button>
+                  )}
                 </div>
               </div>
-            )}
 
-            {/* ── Dynamic Multi-Model Container (Vertical Stack vs Side-by-Side Grid) ── */}
-            <div
-              style={
-                layoutMode === "vertical"
-                  ? {
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "20px",
-                      width: "100%",
-                      minWidth: 0,
+              {/* Quick-Jump & Bulk Collapse Toolbar (Vertical Stack Mode) */}
+              {layoutMode === "vertical" && models.length > 1 && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "8px 14px",
+                    borderRadius: "var(--radius-sm)",
+                    background: "var(--bg-surface)",
+                    border: "1px solid var(--border-subtle)",
+                    flexWrap: "wrap",
+                    gap: "8px",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                    <span style={{ fontSize: "11px", color: "var(--text-subtle)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700 }}>
+                      Quick Jump:
+                    </span>
+                    {models.map((modelId, idx) => {
+                      const modelInfo = getModel(modelId);
+                      const name = modelInfo?.label ?? modelId.split("/").pop() ?? modelId;
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            const el = document.getElementById(`model-card-${idx}`);
+                            if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                          }}
+                          className="arena-header-btn"
+                          style={{
+                            padding: "2px 8px",
+                            fontSize: "11px",
+                            color: "var(--accent)",
+                          }}
+                          title={`Scroll to Model ${idx + 1}`}
+                        >
+                          M{idx + 1}: {name.length > 16 ? name.slice(0, 16) + "…" : name}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const all: Record<number, boolean> = {};
+                        models.forEach((_, i) => { all[i] = true; });
+                        setCollapsedCards(all);
+                      }}
+                      style={{
+                        background: "transparent",
+                        border: "none",
+                        color: "var(--text-subtle)",
+                        fontSize: "11px",
+                        cursor: "pointer",
+                        textDecoration: "underline",
+                      }}
+                    >
+                      Collapse All
+                    </button>
+                    <span style={{ color: "var(--text-subtle)", fontSize: "11px" }}>·</span>
+                    <button
+                      type="button"
+                      onClick={() => setCollapsedCards({})}
+                      style={{
+                        background: "transparent",
+                        border: "none",
+                        color: "var(--text-subtle)",
+                        fontSize: "11px",
+                        cursor: "pointer",
+                        textDecoration: "underline",
+                      }}
+                    >
+                      Expand All
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Dynamic Multi-Model Container (Vertical Stack vs Side-by-Side Grid) ── */}
+              <div
+                style={
+                  layoutMode === "vertical"
+                    ? {
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "18px",
+                        width: "100%",
+                        minWidth: 0,
+                      }
+                    : {
+                        display: "grid",
+                        gridTemplateColumns:
+                          models.length === 4
+                            ? "repeat(2, minmax(0, 1fr))"
+                            : `repeat(${models.length}, minmax(0, 1fr))`,
+                        gap: "16px",
+                        alignItems: "stretch",
+                        width: "100%",
+                        minWidth: 0,
+                      }
+                }
+              >
+                {models.map((modelId, idx) => (
+                  <ModelColumn
+                    key={`${idx}-${modelId}`}
+                    index={idx}
+                    modelId={modelId}
+                    state={states[idx] || emptyModelState()}
+                    useCaseId={activeUseCase}
+                    goldItem={goldItem}
+                    canRemove={models.length > 1}
+                    onRemove={() => handleRemoveModel(idx)}
+                    showAnalytics={showAnalytics}
+                    onToggleAnalytics={() => setShowAnalytics((prev) => !prev)}
+                    layoutMode={layoutMode}
+                    isCollapsed={Boolean(collapsedCards[idx])}
+                    onToggleCollapse={() =>
+                      setCollapsedCards((prev) => ({ ...prev, [idx]: !prev[idx] }))
                     }
-                  : {
-                      display: "grid",
-                      gridTemplateColumns:
-                        models.length === 4
-                          ? "repeat(2, minmax(0, 1fr))"
-                          : `repeat(${models.length}, minmax(0, 1fr))`,
-                      gap: "16px",
-                      alignItems: "stretch",
-                      width: "100%",
-                      minWidth: 0,
-                    }
-              }
-            >
-              {models.map((modelId, idx) => (
-                <ModelColumn
-                  key={`${idx}-${modelId}`}
-                  index={idx}
-                  modelId={modelId}
-                  state={states[idx] || emptyModelState()}
+                  />
+                ))}
+              </div>
+
+              {/* ── In-Page Domain Evaluation Scorecard (Shown ONLY when Analytics is ON) ── */}
+              {showAnalytics && (
+                <UseCaseScorecard
                   useCaseId={activeUseCase}
+                  models={models}
+                  states={states}
                   goldItem={goldItem}
-                  canRemove={models.length > 1}
-                  onRemove={() => handleRemoveModel(idx)}
-                  showAnalytics={showAnalytics}
-                  onToggleAnalytics={() => setShowAnalytics((prev) => !prev)}
-                  layoutMode={layoutMode}
-                  isCollapsed={Boolean(collapsedCards[idx])}
-                  onToggleCollapse={() =>
-                    setCollapsedCards((prev) => ({ ...prev, [idx]: !prev[idx] }))
-                  }
                 />
-              ))}
-            </div>
-
-            {/* ── In-Page Domain Evaluation Scorecard (Shown ONLY when Analytics is ON) ── */}
-            {showAnalytics && (
-              <UseCaseScorecard
-                useCaseId={activeUseCase}
-                models={models}
-                states={states}
-                goldItem={goldItem}
-              />
-            )}
-          </>
-        )}
+              )}
+            </>
+          )}
+        </div>
       </div>
       {/* ── Document Modals ── */}
       <DocumentPreviewModal
