@@ -133,7 +133,7 @@ export function DocumentIngestModal({ initialDocument, isOpen, onClose, onIngest
 
         {/* Body */}
         <div className="doc-modal-body ingest-body">
-          {error && <div className="doc-alert-error">⚠ {error}</div>}
+          {error && <div className="doc-alert-error">Error: {error}</div>}
 
           {successInfo ? (
             <div className="doc-ingest-success">
@@ -172,7 +172,7 @@ export function DocumentIngestModal({ initialDocument, isOpen, onClose, onIngest
                     className="dropzone-area"
                     onClick={() => modalFileInputRef.current?.click()}
                   >
-                    <span className="dropzone-icon">📁</span>
+                    <span className="dropzone-icon" style={{ fontSize: "14px", fontWeight: 700, color: "var(--accent)" }}>UPLOAD</span>
                     <h4>{isUploading ? "Extracting document text…" : "Select or Drop a Document"}</h4>
                     <p>Supports PDF (insurance policies), TXT, MD, CSV, and JSON contracts</p>
                     <button className="doc-btn-secondary" type="button" disabled={isUploading}>
@@ -279,7 +279,7 @@ export function DocumentIngestModal({ initialDocument, isOpen, onClose, onIngest
               onClick={handleIngest}
               disabled={!document || isIngesting || isUploading}
             >
-              {isIngesting ? "Ingesting Records…" : "Ingest into Data Lake ⚡"}
+              {isIngesting ? "Ingesting Records…" : "Ingest into Data Lake"}
             </button>
           </div>
         )}

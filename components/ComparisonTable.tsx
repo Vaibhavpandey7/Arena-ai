@@ -442,7 +442,7 @@ function ComparisonTable({
               onClick={() => setViewMode("split")}
               title="Side-by-side reading cards"
             >
-              <span>🔲 Side-by-Side</span>
+              <span>Side-by-Side</span>
             </button>
             <button
               type="button"
@@ -450,7 +450,7 @@ function ComparisonTable({
               onClick={() => setViewMode("tabs")}
               title="Full-width document reader"
             >
-              <span>📑 Full-Width Tabs</span>
+              <span>Tabs</span>
             </button>
             <button
               type="button"
@@ -458,7 +458,7 @@ function ComparisonTable({
               onClick={() => setViewMode("table")}
               title="Metrics matrix table"
             >
-              <span>📊 Metrics Table</span>
+              <span>Metrics Table</span>
             </button>
           </div>
         </div>
@@ -589,7 +589,7 @@ function ComparisonTable({
                       onClick={() => setVotedWinner(isVoted ? null : row.model)}
                       title="Vote this model response as preferred"
                     >
-                      <span>{isVoted ? "★ Voted Best" : "☆ Vote Best"}</span>
+                      <span>{isVoted ? "Voted Best" : "Vote Best"}</span>
                     </button>
                   </div>
 
@@ -597,18 +597,18 @@ function ComparisonTable({
                   <div className="arena-accolade-badges">
                     {!row.ok && (
                       <span className="arena-pill-badge" style={{ background: "var(--rose-dim)", color: "var(--rose)", borderColor: "rgba(244,63,94,0.3)" }}>
-                        ⚠ Inference Failed
+                        Inference Failed
                       </span>
                     )}
-                    {isTopAlignment && <span className="arena-pill-badge alignment">🎯 Top Gold Alignment</span>}
-                    {isTopSpeed && <span className="arena-pill-badge fastest">⚡ {ev?.speed} tok/s</span>}
-                    {isFastest && !isTopSpeed && <span className="arena-pill-badge fastest">⚡ Lowest Latency</span>}
+                    {isTopAlignment && <span className="arena-pill-badge alignment">Top Gold Alignment</span>}
+                    {isTopSpeed && <span className="arena-pill-badge fastest">{ev?.speed} tok/s</span>}
+                    {isFastest && !isTopSpeed && <span className="arena-pill-badge fastest">Lowest Latency</span>}
                     {isCheapest && (
                       <span className="arena-pill-badge cheapest">
-                        💎 {row.estCostUsd === 0 ? "Zero-Cost" : "Lowest Cost"}
+                        {row.estCostUsd === 0 ? "Zero-Cost" : "Lowest Cost"}
                       </span>
                     )}
-                    {isVoted && <span className="arena-pill-badge winner">★ Your Preference</span>}
+                    {isVoted && <span className="arena-pill-badge winner">Your Preference</span>}
                   </div>
                 </div>
 
@@ -655,7 +655,7 @@ function ComparisonTable({
                       <div
                         className={`arena-evidence-status ${ev.goldEval.evidenceMatched ? "verified" : "missing"}`}
                       >
-                        {ev.goldEval.evidenceMatched ? "✓ Evidence Cited" : "⚠ Evidence Not Cited"}
+                        {ev.goldEval.evidenceMatched ? "Evidence Cited" : "Evidence Not Cited"}
                       </div>
                     )}
                   </div>
@@ -674,7 +674,7 @@ function ComparisonTable({
                   {!row.loading && !row.ok && (
                     <div className="arena-error-box">
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                        <div style={{ fontWeight: 700 }}>⚠ Inference Error</div>
+                        <div style={{ fontWeight: 700 }}>Inference Error</div>
                         {onRetryModel && (
                           <button
                             type="button"
@@ -682,14 +682,14 @@ function ComparisonTable({
                             onClick={() => onRetryModel(row.model)}
                             style={{ fontSize: 11, padding: "2px 8px", borderColor: "var(--rose)", color: "var(--rose)" }}
                           >
-                            🔄 Retry Model
+                            Retry Model
                           </button>
                         )}
                       </div>
                       <div style={{ fontSize: 12.5, lineHeight: 1.5 }}>{row.error ?? "An inference error occurred"}</div>
                       {(row.error?.includes("429") || row.error?.toLowerCase().includes("rate limit") || row.error?.toLowerCase().includes("free-models-per-day")) && (
                         <div style={{ marginTop: 8, padding: "8px 10px", background: "rgba(244,63,94,0.15)", borderRadius: "6px", fontSize: "11.5px", color: "var(--text-main)" }}>
-                          💡 <b>OpenRouter Rate Limit:</b> Free-tier models have a strict daily quota (<code>free-models-per-day</code>). Switch to production models (e.g. <b>GPT-4o Mini</b> or <b>Llama 3.3 70B</b>) or local Ollama models to bypass this limit.
+                          <b>OpenRouter Rate Limit:</b> Free-tier models have a strict daily quota (<code>free-models-per-day</code>). Switch to production models (e.g. <b>GPT-4o Mini</b> or <b>Llama 3.3 70B</b>) or local Ollama models to bypass this limit.
                         </div>
                       )}
                     </div>
@@ -701,7 +701,7 @@ function ComparisonTable({
 
                   {!row.loading && row.ok && (!row.answer || !row.answer.trim()) && (
                     <div className="arena-empty-answer-box">
-                      <div style={{ fontWeight: 600, marginBottom: 4 }}>ℹ Empty Response Received</div>
+                      <div style={{ fontWeight: 600, marginBottom: 4 }}>Empty Response Received</div>
                       <div style={{ fontSize: 12, marginBottom: 10 }}>
                         The model concluded inference without producing text content. Output may have been consumed by internal reasoning or filtered.
                       </div>
@@ -712,7 +712,7 @@ function ComparisonTable({
                           onClick={() => onRetryModel(row.model)}
                           style={{ fontSize: 11, padding: "4px 12px" }}
                         >
-                          🔄 Retry Model
+                          Retry Model
                         </button>
                       )}
                     </div>
@@ -723,7 +723,7 @@ function ComparisonTable({
                 {expandedTools.has(row.model) && row.toolEvents && row.toolEvents.length > 0 && (
                   <div style={{ padding: "12px 18px", background: "var(--bg-canvas-subtle)", borderTop: "1px solid var(--border-subtle)" }}>
                     <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--cyan-light)", marginBottom: 8 }}>
-                      ⚡ Executed Tool Sequence ({row.toolEvents.length} events)
+                      Executed Tool Sequence ({row.toolEvents.length} events)
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: "220px", overflowY: "auto" }}>
                       {row.toolEvents.map((evItem, ei) => (
@@ -830,7 +830,7 @@ function ComparisonTable({
                     style={{ fontSize: 11, padding: "4px 10px" }}
                     title="Edit system prompt override for this model"
                   >
-                    ⚙ System Prompt
+                    System Prompt
                   </button>
                 </div>
               </div>
@@ -855,8 +855,7 @@ function ComparisonTable({
                   onClick={() => setActiveTabModel(r.model)}
                 >
                   <span>{short}</span>
-                  {!r.ok && <span style={{ color: "var(--rose)", fontSize: 10 }}>⚠</span>}
-                  {votedWinner === r.model && <span>★</span>}
+                  {!r.ok && <span style={{ color: "var(--rose)", fontSize: 10 }}>!</span>}
                 </button>
               );
             })}
@@ -882,7 +881,7 @@ function ComparisonTable({
                     setVotedWinner(votedWinner === activeTabRow.model ? null : activeTabRow.model)
                   }
                 >
-                  {votedWinner === activeTabRow.model ? "★ Voted Best Response" : "☆ Vote as Best"}
+                  {votedWinner === activeTabRow.model ? "Voted Best Response" : "Vote as Best"}
                 </button>
 
                 {activeTabRow.ok && activeTabRow.answer && (
@@ -951,7 +950,7 @@ function ComparisonTable({
             {!activeTabRow.loading && !activeTabRow.ok && (
               <div className="arena-error-box">
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                  <div style={{ fontWeight: 700 }}>⚠ Inference Error</div>
+                  <div style={{ fontWeight: 700 }}>Inference Error</div>
                   {onRetryModel && (
                     <button
                       type="button"
@@ -959,14 +958,14 @@ function ComparisonTable({
                       onClick={() => onRetryModel(activeTabRow.model)}
                       style={{ fontSize: 11, padding: "3px 10px", borderColor: "var(--rose)", color: "var(--rose)" }}
                     >
-                      🔄 Retry Model
+                      Retry Model
                     </button>
                   )}
                 </div>
                 <div style={{ fontSize: 13, lineHeight: 1.6 }}>{activeTabRow.error ?? "An error occurred during inference"}</div>
                 {(activeTabRow.error?.includes("429") || activeTabRow.error?.toLowerCase().includes("rate limit") || activeTabRow.error?.toLowerCase().includes("free-models-per-day")) && (
                   <div style={{ marginTop: 8, padding: "8px 10px", background: "rgba(244,63,94,0.15)", borderRadius: "6px", fontSize: "12px", color: "var(--text-main)" }}>
-                    💡 <b>OpenRouter Rate Limit:</b> Free-tier models have a strict daily quota (<code>free-models-per-day</code>). Switch to production models (e.g. <b>GPT-4o Mini</b> or <b>Llama 3.3 70B</b>) or local Ollama models to bypass this limit.
+                    <b>OpenRouter Rate Limit:</b> Free-tier models have a strict daily quota (<code>free-models-per-day</code>). Switch to production models (e.g. <b>GPT-4o Mini</b> or <b>Llama 3.3 70B</b>) or local Ollama models to bypass this limit.
                   </div>
                 )}
               </div>
@@ -978,7 +977,7 @@ function ComparisonTable({
 
             {!activeTabRow.loading && activeTabRow.ok && (!activeTabRow.answer || !activeTabRow.answer.trim()) && (
               <div className="arena-empty-answer-box">
-                <div style={{ fontWeight: 600, marginBottom: 4 }}>ℹ Empty Response Received</div>
+                <div style={{ fontWeight: 600, marginBottom: 4 }}>Empty Response Received</div>
                 <div style={{ fontSize: 13, marginBottom: 12 }}>
                   The model concluded inference without producing text content. Output may have been consumed by internal reasoning or filtered.
                 </div>
@@ -989,7 +988,7 @@ function ComparisonTable({
                     onClick={() => onRetryModel(activeTabRow.model)}
                     style={{ fontSize: 11, padding: "4px 12px" }}
                   >
-                    🔄 Re-run Model
+                    Re-run Model
                   </button>
                 )}
               </div>
@@ -1093,7 +1092,7 @@ function ComparisonTable({
                       <td>
                         <div style={{ fontSize: "12.5px", color: "var(--text-muted)", maxHeight: "64px", overflow: "hidden", lineHeight: 1.5 }}>
                           {row.error ? (
-                            <span style={{ color: "var(--rose)" }}>⚠ {row.error}</span>
+                            <span style={{ color: "var(--rose)" }}>Error: {row.error}</span>
                           ) : (
                             row.answer?.slice(0, 180) + "…"
                           )}
@@ -1171,7 +1170,7 @@ function ComparisonTable({
             <div className="arena-modal-body">
               {results.find((r) => r.model === modalModel)?.error && (
                 <div style={{ color: "var(--rose)", background: "var(--rose-dim)", padding: "16px 20px", borderRadius: "8px", marginBottom: "16px" }}>
-                  ⚠ {results.find((r) => r.model === modalModel)?.error}
+                  Error: {results.find((r) => r.model === modalModel)?.error}
                 </div>
               )}
 

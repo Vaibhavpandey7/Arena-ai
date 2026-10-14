@@ -129,7 +129,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                 </span>
               </div>
               <div style={{ fontSize: "0.82rem", color: "var(--text-dim)", marginTop: "4px", fontWeight: 500 }}>
-                📄 <strong style={{ color: "var(--text)" }}>{currentDataset.paperTitle}</strong> — {currentDataset.authors}
+                <strong style={{ color: "var(--text)" }}>{currentDataset.paperTitle}</strong> — {currentDataset.authors}
               </div>
             </div>
 
@@ -153,7 +153,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                   transition: "all 0.2s ease",
                 }}
               >
-                <span>📥 Paper PDF</span>
+                <span>Paper PDF</span>
                 <span>↗</span>
               </a>
 
@@ -175,7 +175,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                   gap: "6px",
                 }}
               >
-                <span>🔗 {currentDataset.arxivId}</span>
+                <span>{currentDataset.arxivId}</span>
                 <span>↗</span>
               </a>
             </div>
@@ -198,7 +198,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
               className={`benchmark-score-card${i === 0 ? " rank-1" : ""}`}
             >
               <div className="benchmark-card-model">
-                {i === 0 ? "🥇 " : i === 1 ? "🥈 " : i === 2 ? "🥉 " : `#${i + 1} `}
+                {i === 0 ? "1. " : i === 1 ? "2. " : i === 2 ? "3. " : `#${i + 1} `}
                 {item.model}
               </div>
               <div className="benchmark-card-score">
@@ -377,7 +377,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                           fontWeight: 700,
                         }}
                       >
-                        🏆 Leader: {activeDom.leaderModel} ({activeDom.leaderScore})
+                        Leader: {activeDom.leaderModel} ({activeDom.leaderScore})
                       </span>
                       {activeDom.baselineScore && (
                         <span
@@ -391,7 +391,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                             fontWeight: 600,
                           }}
                         >
-                          👤 {activeDom.baselineModel}: {activeDom.baselineScore}
+                          Human: {activeDom.baselineModel}: {activeDom.baselineScore}
                         </span>
                       )}
                     </div>
@@ -403,7 +403,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                       <div key={m.model} style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.76rem" }}>
                           <span style={{ color: m.isLeader ? "var(--cyan)" : "var(--text-muted)", fontWeight: m.isLeader ? 700 : 500, display: "flex", alignItems: "center", gap: "6px" }}>
-                            {m.isLeader && <span>★</span>}
+                            {m.isLeader && <span style={{ fontSize: "0.65rem", color: "var(--emerald)", fontWeight: 700 }}>[TOP]</span>}
                             {m.model}
                           </span>
                           <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: m.isLeader ? "var(--emerald)" : "var(--text)" }}>
@@ -454,7 +454,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                   alignItems: "center",
                   gap: "6px",
                 }}>
-                  <span>📜</span>
+                  
                   <span>{insight.paperRef}</span>
                 </div>
               </div>
@@ -474,7 +474,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                 marginTop: "6px",
                 marginBottom: "20px",
               }}>
-                <span style={{ color: "var(--cyan)", fontSize: "1rem" }}>💡</span>
+                <span style={{ color: "var(--cyan)", fontSize: "0.75rem", fontWeight: 700 }}>NOTE:</span>
                 <div>
                   <strong style={{ color: "var(--text)" }}>Research Finding: </strong>
                   {insight.keyTakeaway}
@@ -663,14 +663,14 @@ export default function BenchmarkView({ onNavigate }: Props) {
                               transition: "all 0.15s ease",
                             }}
                           >
-                            🔍 Meta-Task Inspector ({filteredTasks.length})
+                            Meta-Task Inspector ({filteredTasks.length})
                           </button>
                         </div>
 
                         {/* Legend */}
                         <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.7rem", color: "var(--text-subtle)" }}>
                           <span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
-                            <span style={{ color: "var(--emerald)", fontWeight: 700 }}>★</span> SOTA Top
+                            <span style={{ color: "var(--emerald)", fontWeight: 700 }}>SOTA Top</span>
                           </span>
                           <span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
                             <span style={{ width: 8, height: 8, borderRadius: 2, background: "rgba(16, 185, 129, 0.5)" }} /> ≥80%
@@ -823,7 +823,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                                     }}>
                                       <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                         {isHuman ? (
-                                          <span style={{ color: "var(--emerald)", fontSize: "0.85rem" }}>👤</span>
+                                          <span style={{ color: "var(--emerald)", fontSize: "0.75rem", fontWeight: 700 }}>HUMAN</span>
                                         ) : (
                                           <span style={{ width: 6, height: 6, borderRadius: "50%", background: r.color }} />
                                         )}
@@ -879,7 +879,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                                           }}
                                         >
                                           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
-                                            {isLeader && <span style={{ fontSize: "0.65rem", color: "var(--emerald)" }}>★</span>}
+                                            {isLeader && <span style={{ fontSize: "0.65rem", color: "var(--emerald)", fontWeight: 700 }}>SOTA</span>}
                                             <span>{score.toFixed(1)}</span>
                                           </div>
                                         </td>
@@ -914,7 +914,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                           color: "var(--text-subtle)",
                           padding: "0 4px",
                         }}>
-                          <span>💡 <em>Click any column header or cell in Table 3 to inspect comprehensive matrix details below.</em></span>
+                          <span><em>Click any column header or cell in Table 3 to inspect comprehensive matrix details below.</em></span>
                           <span style={{ color: "var(--cyan)", fontWeight: 600 }}>Active Inspector: {activeTask.code} ({activeTask.name})</span>
                         </div>
 
@@ -1012,7 +1012,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                                 border: "1px solid rgba(16, 185, 129, 0.3)",
                                 fontSize: "0.72rem",
                               }}>
-                                <span style={{ color: "var(--text-subtle)", marginRight: "4px" }}>🥇 SOTA Leader:</span>
+                                <span style={{ color: "var(--text-subtle)", marginRight: "4px" }}>SOTA Leader:</span>
                                 <strong style={{ color: "var(--emerald)" }}>{activeTask.leaderModel} ({activeTask.leaderScore.toFixed(1)}%)</strong>
                               </div>
 
@@ -1024,7 +1024,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                                 border: "1px solid rgba(14, 165, 233, 0.25)",
                                 fontSize: "0.72rem",
                               }}>
-                                <span style={{ color: "var(--text-subtle)", marginRight: "4px" }}>🥈 Runner-Up:</span>
+                                <span style={{ color: "var(--text-subtle)", marginRight: "4px" }}>Runner-Up:</span>
                                 <strong style={{ color: "var(--cyan)" }}>{activeTask.secondModel} ({activeTask.secondScore.toFixed(1)}%)</strong>
                               </div>
 
@@ -1036,7 +1036,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                                 border: `1px solid ${aiDeltaVsHuman >= 0 ? "rgba(16, 185, 129, 0.25)" : "rgba(245, 158, 11, 0.25)"}`,
                                 fontSize: "0.72rem",
                               }}>
-                                <span style={{ color: "var(--text-subtle)", marginRight: "4px" }}>👤 Human:</span>
+                                <span style={{ color: "var(--text-subtle)", marginRight: "4px" }}>Human:</span>
                                 <strong style={{ color: "var(--text)" }}>{humanScoreForActive.toFixed(1)}%</strong>
                                 <span style={{
                                   marginLeft: "6px",
@@ -1065,7 +1065,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                               lineHeight: 1.5,
                             }}>
                               <div style={{ color: "var(--cyan)", fontWeight: 700, marginBottom: "4px", display: "flex", alignItems: "center", gap: "6px" }}>
-                                <span>🎯</span> Evaluation Task Definition
+                                Evaluation Task Definition
                               </div>
                               <div style={{ color: "var(--text-dim)" }}>
                                 {activeTask.description}
@@ -1080,7 +1080,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                               lineHeight: 1.5,
                             }}>
                               <div style={{ color: "var(--emerald)", fontWeight: 700, marginBottom: "4px", display: "flex", alignItems: "center", gap: "6px" }}>
-                                <span>⚡</span> Insurance Operational Impact
+                                Insurance Operational Impact
                               </div>
                               <div style={{ color: "var(--text-dim)" }}>
                                 {activeTask.operationalImpact}
@@ -1282,13 +1282,13 @@ export default function BenchmarkView({ onNavigate }: Props) {
                                 background: "rgba(255, 255, 255, 0.025)",
                               }}>
                                 <div>
-                                  <div style={{ color: "var(--text-subtle)", fontSize: "0.64rem" }}>🥇 SOTA Leader</div>
+                                  <div style={{ color: "var(--text-subtle)", fontSize: "0.64rem" }}>SOTA Leader</div>
                                   <div style={{ fontWeight: 700, color: "var(--emerald)", fontFamily: "var(--font-mono)" }}>
                                     {t.leaderModel}: {t.leaderScore.toFixed(1)}%
                                   </div>
                                 </div>
                                 <div>
-                                  <div style={{ color: "var(--text-subtle)", fontSize: "0.64rem" }}>👤 Human Baseline</div>
+                                  <div style={{ color: "var(--text-subtle)", fontSize: "0.64rem" }}>Human Baseline</div>
                                   <div style={{ fontWeight: 700, color: delta >= 0 ? "var(--text)" : "#fbbf24", fontFamily: "var(--font-mono)" }}>
                                     {hScore.toFixed(1)}% ({delta >= 0 ? `+${delta.toFixed(1)}%` : `-${Math.abs(delta).toFixed(1)}%`})
                                   </div>
@@ -1304,7 +1304,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                                     <div key={r.model} style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
                                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.68rem" }}>
                                         <span style={{ color: isH ? "var(--emerald)" : "var(--text-dim)", fontWeight: i === 0 ? 700 : 500 }}>
-                                          {i === 0 ? "★ " : ""}{r.model}
+                                          {i === 0 ? "[SOTA] " : ""}{r.model}
                                         </span>
                                         <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--text)" }}>
                                           {sc.toFixed(1)}%
@@ -1492,13 +1492,13 @@ export default function BenchmarkView({ onNavigate }: Props) {
                               transition: "all 0.15s ease",
                             }}
                           >
-                            🔍 Pillar Deep Inspector ({filteredPillars.length})
+                            Pillar Deep Inspector ({filteredPillars.length})
                           </button>
                         </div>
 
                         <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.7rem", color: "var(--text-subtle)" }}>
                           <span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
-                            <span style={{ color: "var(--emerald)", fontWeight: 700 }}>★</span> Pillar SOTA
+                            <span style={{ color: "var(--emerald)", fontWeight: 700 }}>Pillar SOTA</span>
                           </span>
                           <span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
                             <span style={{ width: 8, height: 8, borderRadius: 2, background: "rgba(16, 185, 129, 0.5)" }} /> ≥90
@@ -1664,7 +1664,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                                           }}
                                         >
                                           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
-                                            {isLeader && <span style={{ fontSize: "0.65rem", color: "var(--emerald)" }}>★</span>}
+                                            {isLeader && <span style={{ fontSize: "0.65rem", color: "var(--emerald)", fontWeight: 700 }}>SOTA</span>}
                                             <span>{score.toFixed(2)}</span>
                                           </div>
                                         </td>
@@ -1698,7 +1698,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                           color: "var(--text-subtle)",
                           padding: "0 4px",
                         }}>
-                          <span>💡 <em>Click any pillar header or cell in the table to inspect all sub-indicators and detailed analysis below.</em></span>
+                          <span><em>Click any pillar header or cell in the table to inspect all sub-indicators and detailed analysis below.</em></span>
                           <span style={{ color: "var(--cyan)", fontWeight: 600 }}>Active Inspector: {activePillar.name} ({activePillar.code})</span>
                         </div>
 
@@ -1794,7 +1794,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                                 border: "1px solid rgba(16, 185, 129, 0.3)",
                                 fontSize: "0.72rem",
                               }}>
-                                <span style={{ color: "var(--text-subtle)", marginRight: "4px" }}>🥇 SOTA Leader:</span>
+                                <span style={{ color: "var(--text-subtle)", marginRight: "4px" }}>SOTA Leader:</span>
                                 <strong style={{ color: "var(--emerald)" }}>{activePillar.leaderModel} ({activePillar.leaderScore.toFixed(2)} pts)</strong>
                               </div>
                               <div style={{
@@ -1804,7 +1804,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                                 border: "1px solid rgba(14, 165, 233, 0.25)",
                                 fontSize: "0.72rem",
                               }}>
-                                <span style={{ color: "var(--text-subtle)", marginRight: "4px" }}>🥈 Runner-Up:</span>
+                                <span style={{ color: "var(--text-subtle)", marginRight: "4px" }}>Runner-Up:</span>
                                 <strong style={{ color: "var(--cyan)" }}>{activePillar.secondModel} ({activePillar.secondScore.toFixed(2)} pts)</strong>
                               </div>
                             </div>
@@ -1826,7 +1826,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                               lineHeight: 1.5,
                             }}>
                               <div style={{ color: "var(--cyan)", fontWeight: 700, marginBottom: "4px", display: "flex", alignItems: "center", gap: "6px" }}>
-                                <span>🎯</span> Evaluation Scope & Definition
+                                Evaluation Scope & Definition
                               </div>
                               <div style={{ color: "var(--text-dim)" }}>
                                 {activePillar.description}
@@ -1841,7 +1841,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                               lineHeight: 1.5,
                             }}>
                               <div style={{ color: "#f87171", fontWeight: 700, marginBottom: "4px", display: "flex", alignItems: "center", gap: "6px" }}>
-                                <span>⚠️</span> Industry Bottleneck & Finding
+                                Industry Bottleneck & Finding
                               </div>
                               <div style={{ color: "var(--text-dim)" }}>
                                 {activePillar.industryBottleneck}
@@ -2028,7 +2028,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                                 background: "rgba(255, 255, 255, 0.025)",
                               }}>
                                 <div>
-                                  <span style={{ color: "var(--text-subtle)" }}>🥇 SOTA Leader: </span>
+                                  <span style={{ color: "var(--text-subtle)" }}>SOTA Leader: </span>
                                   <strong style={{ color: "var(--emerald)" }}>{p.leaderModel}</strong>
                                 </div>
                                 <div style={{ fontWeight: 700, color: "var(--emerald)", fontFamily: "var(--font-mono)" }}>
@@ -2044,7 +2044,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                                     <div key={r.model} style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
                                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.68rem" }}>
                                         <span style={{ color: i === 0 ? "var(--emerald)" : "var(--text-dim)", fontWeight: i === 0 ? 700 : 500 }}>
-                                          {i === 0 ? "★ " : ""}{r.model}
+                                          {i === 0 ? "[SOTA] " : ""}{r.model}
                                         </span>
                                         <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--text)" }}>
                                           {sc.toFixed(2)} pts
@@ -2171,12 +2171,12 @@ export default function BenchmarkView({ onNavigate }: Props) {
                               transition: "all 0.15s ease",
                             }}
                           >
-                            🔍 Architecture Inspector ({filteredRows.length})
+                            Architecture Inspector ({filteredRows.length})
                           </button>
                         </div>
 
                         <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.7rem", color: "var(--text-subtle)" }}>
-                          <span style={{ color: "var(--emerald)", fontWeight: 700 }}>★ Table 3 SOTA (63.4%)</span>
+                          <span style={{ color: "var(--emerald)", fontWeight: 700 }}>Table 3 SOTA (63.4%)</span>
                           <span>•</span>
                           <span style={{ color: "var(--cyan)", fontWeight: 600 }}>500 Candidates / Question</span>
                         </div>
@@ -2236,7 +2236,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                                     </td>
                                     <td style={{ padding: "7px 12px", textAlign: "left", fontWeight: 600 }}>
                                       <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
-                                        {isSota && <span style={{ color: "var(--emerald)", fontWeight: 700 }}>★</span>}
+                                        {isSota && <span style={{ color: "var(--emerald)", fontWeight: 700 }}>SOTA</span>}
                                         <span style={{ color: isSelected ? "var(--cyan)" : isSota ? "var(--emerald)" : "var(--text)" }}>
                                           {r.architecture}
                                         </span>
@@ -2279,7 +2279,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                           color: "var(--text-subtle)",
                           padding: "0 4px",
                         }}>
-                          <span>💡 <em>Click any architecture in the table to inspect detailed formulation, convolutional kernels, and similarity metric benchmarks below.</em></span>
+                          <span><em>Click any architecture in the table to inspect detailed formulation, convolutional kernels, and similarity metric benchmarks below.</em></span>
                           <span style={{ color: "var(--cyan)", fontWeight: 600 }}>Active Inspector: {activeArch.architecture}</span>
                         </div>
 
@@ -2675,16 +2675,16 @@ export default function BenchmarkView({ onNavigate }: Props) {
                               transition: "all 0.15s ease",
                             }}
                           >
-                            🔍 Actuarial Inspector ({filteredTasks.length})
+                            Actuarial Inspector ({filteredTasks.length})
                           </button>
                         </div>
 
                         <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.7rem", color: "var(--text-subtle)" }}>
                           <span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
-                            <span style={{ color: "var(--emerald)", fontWeight: 700 }}>★</span> SOTA Top
+                            <span style={{ color: "var(--emerald)", fontWeight: 700 }}>SOTA Top</span>
                           </span>
                           <span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
-                            <span style={{ color: "var(--emerald)", fontSize: "0.85rem" }}>👤</span> Human Baseline (83.0%)
+                            <span style={{ color: "var(--emerald)", fontSize: "0.75rem", fontWeight: 700 }}>HUMAN</span> Human Baseline (83.0%)
                           </span>
                         </div>
                       </div>
@@ -2822,7 +2822,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                                     }}>
                                       <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                         {isHuman ? (
-                                          <span style={{ color: "var(--emerald)", fontSize: "0.85rem" }}>👤</span>
+                                          <span style={{ color: "var(--emerald)", fontSize: "0.75rem", fontWeight: 700 }}>HUMAN</span>
                                         ) : (
                                           <span style={{ width: 6, height: 6, borderRadius: "50%", background: r.color }} />
                                         )}
@@ -2877,7 +2877,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                                           }}
                                         >
                                           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "2px" }}>
-                                            {isLeader && <span style={{ fontSize: "0.65rem", color: "var(--emerald)" }}>★</span>}
+                                            {isLeader && <span style={{ fontSize: "0.65rem", color: "var(--emerald)", fontWeight: 700 }}>SOTA</span>}
                                             <span>{score.toFixed(1)}</span>
                                           </div>
                                         </td>
@@ -2911,7 +2911,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                           color: "var(--text-subtle)",
                           padding: "0 4px",
                         }}>
-                          <span>💡 <em>Click any task column or cell to inspect syllabus mapping, operational impact, and model ranking below.</em></span>
+                          <span><em>Click any task column or cell to inspect syllabus mapping, operational impact, and model ranking below.</em></span>
                           <span style={{ color: "var(--cyan)", fontWeight: 600 }}>Active Inspector: {activeTask.code} ({activeTask.name})</span>
                         </div>
 
@@ -2998,7 +2998,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                                 </span>
                               </div>
                               <div style={{ fontSize: "0.72rem", color: "var(--cyan)", marginTop: "4px" }}>
-                                🏛️ Syllabus Mapping: {activeTask.associationMapping}
+                                Syllabus Mapping: {activeTask.associationMapping}
                               </div>
                             </div>
 
@@ -3010,7 +3010,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                                 border: "1px solid rgba(16, 185, 129, 0.3)",
                                 fontSize: "0.72rem",
                               }}>
-                                <span style={{ color: "var(--text-subtle)", marginRight: "4px" }}>🥇 SOTA Leader:</span>
+                                <span style={{ color: "var(--text-subtle)", marginRight: "4px" }}>SOTA Leader:</span>
                                 <strong style={{ color: "var(--emerald)" }}>{activeTask.leaderModel} ({activeTask.leaderScore.toFixed(1)}%)</strong>
                               </div>
 
@@ -3021,7 +3021,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                                 border: `1px solid ${aiDeltaVsHuman >= 0 ? "rgba(16, 185, 129, 0.25)" : "rgba(245, 158, 11, 0.25)"}`,
                                 fontSize: "0.72rem",
                               }}>
-                                <span style={{ color: "var(--text-subtle)", marginRight: "4px" }}>👤 Human:</span>
+                                <span style={{ color: "var(--text-subtle)", marginRight: "4px" }}>Human:</span>
                                 <strong style={{ color: "var(--text)" }}>{humanScoreForActive.toFixed(1)}%</strong>
                                 <span style={{
                                   marginLeft: "6px",
@@ -3050,7 +3050,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                               lineHeight: 1.5,
                             }}>
                               <div style={{ color: "var(--cyan)", fontWeight: 700, marginBottom: "4px", display: "flex", alignItems: "center", gap: "6px" }}>
-                                <span>🎯</span> Actuarial Exam Scope & Mathematical Content
+                                Actuarial Exam Scope & Mathematical Content
                               </div>
                               <div style={{ color: "var(--text-dim)" }}>
                                 {activeTask.description}
@@ -3065,7 +3065,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                               lineHeight: 1.5,
                             }}>
                               <div style={{ color: "var(--emerald)", fontWeight: 700, marginBottom: "4px", display: "flex", alignItems: "center", gap: "6px" }}>
-                                <span>⚡</span> Insurer Operational Role & Capital Impact
+                                Insurer Operational Role & Capital Impact
                               </div>
                               <div style={{ color: "var(--text-dim)" }}>
                                 {activeTask.operationalImpact}
@@ -3264,13 +3264,13 @@ export default function BenchmarkView({ onNavigate }: Props) {
                                 background: "rgba(255, 255, 255, 0.025)",
                               }}>
                                 <div>
-                                  <div style={{ color: "var(--text-subtle)", fontSize: "0.64rem" }}>🥇 SOTA Leader</div>
+                                  <div style={{ color: "var(--text-subtle)", fontSize: "0.64rem" }}>SOTA Leader</div>
                                   <div style={{ fontWeight: 700, color: "var(--emerald)", fontFamily: "var(--font-mono)" }}>
                                     {t.leaderModel}: {t.leaderScore.toFixed(1)}%
                                   </div>
                                 </div>
                                 <div>
-                                  <div style={{ color: "var(--text-subtle)", fontSize: "0.64rem" }}>👤 Human Baseline</div>
+                                  <div style={{ color: "var(--text-subtle)", fontSize: "0.64rem" }}>Human Baseline</div>
                                   <div style={{ fontWeight: 700, color: delta >= 0 ? "var(--text)" : "#fbbf24", fontFamily: "var(--font-mono)" }}>
                                     {hScore.toFixed(1)}% ({delta >= 0 ? `+${delta.toFixed(1)}%` : `-${Math.abs(delta).toFixed(1)}%`})
                                   </div>
@@ -3285,7 +3285,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                                     <div key={r.model} style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
                                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.68rem" }}>
                                         <span style={{ color: isH ? "var(--emerald)" : "var(--text-dim)", fontWeight: i === 0 ? 700 : 500 }}>
-                                          {i === 0 ? "★ " : ""}{r.model}
+                                          {i === 0 ? "[SOTA] " : ""}{r.model}
                                         </span>
                                         <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--text)" }}>
                                           {sc.toFixed(1)}%

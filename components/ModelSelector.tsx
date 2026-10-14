@@ -58,22 +58,22 @@ const PRESETS = [
 
 const COMPARE_PRESETS = [
   {
-    label: "⚡ Top 4 Benchmark",
+    label: "Top 4 Benchmark",
     models: ["openai/gpt-4o-mini", "meta-llama/llama-3.3-70b-instruct", "deepseek/deepseek-chat", "anthropic/claude-3-haiku"],
     desc: "4 fast, production-reliable models that avoid free-tier daily caps",
   },
   {
-    label: "⚡ Frontier Trio",
+    label: "Frontier Trio",
     models: ["openai/gpt-4o-mini", "meta-llama/llama-3.3-70b-instruct", "deepseek/deepseek-chat"],
     desc: "Top frontier reasoning & instruct models",
   },
   {
-    label: "🏠 Local Models",
+    label: "Local Models",
     models: ["llama3.2:3b", "mistral-small3.1:24b", "nemotron3:33b"],
     desc: "Zero-cost local Ollama models",
   },
   {
-    label: "🧮 Fast & Efficient",
+    label: "Fast & Efficient",
     models: ["openai/gpt-4o-mini", "meta-llama/llama-3.3-70b-instruct"],
     desc: "Fast & reliable executors",
   },
@@ -766,7 +766,7 @@ function ModelSelectorComponent({ mode, selected, onChange, onCustomEndpointsCha
 
                 {formError && (
                   <div style={{ color: "var(--rose)", fontSize: 12, padding: "4px 0" }}>
-                    ⚠ {formError}
+                    Error: {formError}
                   </div>
                 )}
               </div>

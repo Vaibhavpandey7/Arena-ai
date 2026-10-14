@@ -9,7 +9,7 @@ interface Props {
 const MODULES = [
   {
     tab: "head-to-head" as Tab,
-    icon: "⚖️",
+    icon: "01",
     title: "Head-to-Head",
     desc: "Compare two models side-by-side across 8 insurance use cases. Inspect reasoning traces, token usage, and domain-specific scoring criteria aligned to EIOPA and Solvency II.",
     tags: [
@@ -21,7 +21,7 @@ const MODULES = [
   },
   {
     tab: "chat-arena" as Tab,
-    icon: "💬",
+    icon: "02",
     title: "Chat Arena",
     desc: "An interactive agentic workspace for underwriters, claims handlers, and compliance officers. Select a model, activate insurance plugins, and run complex workflows conversationally.",
     tags: [
@@ -33,7 +33,7 @@ const MODULES = [
   },
   {
     tab: "benchmark" as Tab,
-    icon: "📊",
+    icon: "03",
     title: "Insurance Benchmark",
     desc: "Standardised evaluation across INS-MMBench, CUFEInse, InsuranceQA, and INS-ActBench datasets. Track verified paper benchmarks, actuarial tool reasoning, ROUGE/BLEU, and domain scores across models.",
     tags: [
@@ -93,7 +93,9 @@ export default function HomeView({ onNavigate }: Props) {
               onClick={() => onNavigate(mod.tab)}
               style={{ border: "none", textAlign: "left" }}
             >
-              <div className="home-card-icon">{mod.icon}</div>
+              <div className="home-card-icon" style={{ fontSize: "15px", fontWeight: 800, fontFamily: "var(--font-mono)", color: "var(--accent)" }}>
+                {mod.icon}
+              </div>
 
               <h2 className="home-card-title">{mod.title}</h2>
               <p className="home-card-desc">{mod.desc}</p>

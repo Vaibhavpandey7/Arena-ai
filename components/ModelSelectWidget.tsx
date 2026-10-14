@@ -620,7 +620,7 @@ export default function ModelSelectWidget({
                     flexShrink: 0,
                   }}
                 >
-                  🧠 REASON
+                  REASON
                 </span>
               ) : null}
             </>
@@ -673,8 +673,8 @@ export default function ModelSelectWidget({
           {/* Search input header */}
           <div style={{ padding: "12px 14px", borderBottom: "1px solid var(--border)", background: "rgba(11, 22, 40, 0.8)", boxSizing: "border-box" }}>
             <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-              <span style={{ position: "absolute", left: "10px", color: "var(--text-muted)", fontSize: "0.85rem" }}>
-                🔍
+              <span style={{ position: "absolute", left: "10px", color: "var(--text-muted)", fontSize: "0.75rem", fontWeight: 700 }}>
+                FIND
               </span>
               <input
                 ref={searchInputRef}
@@ -729,11 +729,11 @@ export default function ModelSelectWidget({
           >
             {[
               { id: "featured", label: "Featured", count: featuredCount },
-              { id: "free", label: "⭐ Free", count: freeCount },
-              { id: "reasoning", label: "🧠 Reasoning", count: reasoningCount },
-              { id: "domain", label: "🛡 Domain", count: domainCount },
-              { id: "fast", label: "⚡ Fast", count: fastCount },
-              { id: "multimodal", label: "🌐 Vision", count: visionCount },
+              { id: "free", label: "Free", count: freeCount },
+              { id: "reasoning", label: "Reasoning", count: reasoningCount },
+              { id: "domain", label: "Domain", count: domainCount },
+              { id: "fast", label: "Fast", count: fastCount },
+              { id: "multimodal", label: "Vision", count: visionCount },
               { id: "all", label: "All Models", count: allUnified.length },
             ].map((tab) => {
               const isActive = activeTab === tab.id;
@@ -925,7 +925,7 @@ export default function ModelSelectWidget({
                               flexShrink: 0,
                             }}
                           >
-                            🧠 REASONING
+                            REASONING
                           </span>
                         )}
 
@@ -942,7 +942,7 @@ export default function ModelSelectWidget({
                               flexShrink: 0,
                             }}
                           >
-                            🛡 DOMAIN
+                            DOMAIN
                           </span>
                         )}
                       </div>

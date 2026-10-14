@@ -140,7 +140,6 @@ export default function GroundTruthPanel({
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <span style={{ fontSize: "1rem" }}>🎯</span>
           <div>
             <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--text)", display: "flex", alignItems: "center", gap: "8px" }}>
               Ground Truth Alignment
@@ -193,7 +192,7 @@ export default function GroundTruthPanel({
               fontWeight: 600,
             }}
           >
-            📂 Upload Custom GT
+            Upload Custom GT
           </button>
           <button
             onClick={() => setIsExpanded(!isExpanded)}
@@ -380,7 +379,7 @@ export default function GroundTruthPanel({
             {goldEval.missingKeyTerms.length > 0 && (
               <div>
                 <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", fontWeight: 600, marginRight: "6px" }}>
-                  ⚠ Unmentioned Domain Terms ({goldEval.missingKeyTerms.length}):
+                  Unmentioned Domain Terms ({goldEval.missingKeyTerms.length}):
                 </span>
                 <span style={{ display: "inline-flex", flexWrap: "wrap", gap: "4px" }}>
                   {goldEval.missingKeyTerms.slice(0, 8).map((t, idx) => (

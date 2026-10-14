@@ -378,31 +378,31 @@ export const MODEL_GROUPS: {
 }[] = [
   {
     id: "free",
-    icon: "⭐",
+    icon: "",
     label: "Free & Open-Source",
     filter: (m) => m.isFree,
   },
   {
     id: "reasoning",
-    icon: "🧠",
+    icon: "",
     label: "Reasoning Models",
     filter: (m) => m.tags.includes("reasoning") || m.tags.includes("extended-thinking"),
   },
   {
     id: "premium",
-    icon: "💎",
+    icon: "",
     label: "Premium",
     filter: (m) => m.tier === "premium",
   },
   {
     id: "fast",
-    icon: "⚡",
+    icon: "",
     label: "Fast & Efficient",
     filter: (m) => m.tags.includes("fast") && m.tier !== "premium",
   },
   {
     id: "multimodal",
-    icon: "🌐",
+    icon: "",
     label: "Multimodal",
     filter: (m) => m.tags.includes("multimodal"),
   },
@@ -416,11 +416,11 @@ export const TIER_COLORS: Record<ModelTier, string> = {
 };
 
 export const TAG_LABELS: Record<ModelTag, string> = {
-  reasoning: "🧠 Reasoning",
-  "extended-thinking": "🔭 Ext. Think",
-  fast: "⚡ Fast",
-  multimodal: "🌐 Multimodal",
-  "domain-specific": "🛡 Domain",
-  "open-source": "📖 Open",
-  "long-context": "📜 Long Ctx",
+  reasoning: "Reasoning",
+  "extended-thinking": "Ext. Think",
+  fast: "Fast",
+  multimodal: "Multimodal",
+  "domain-specific": "Domain",
+  "open-source": "Open",
+  "long-context": "Long Ctx",
 };

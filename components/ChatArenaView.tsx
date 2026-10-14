@@ -31,7 +31,7 @@ interface PluginDef {
 const PLUGINS: PluginDef[] = [
   {
     id: "regulatory-check",
-    icon: "⚖️",
+    icon: "01",
     name: "Regulatory Check",
     sub: "Solvency II, CDR 2015/35 & EU AI Act RAG",
     connections: [
@@ -42,7 +42,7 @@ const PLUGINS: PluginDef[] = [
   },
   {
     id: "premium-calculator",
-    icon: "🧮",
+    icon: "02",
     name: "Premium Calculator",
     sub: "Pure premium & risk margin",
     connections: [
@@ -52,7 +52,7 @@ const PLUGINS: PluginDef[] = [
   },
   {
     id: "policy-extractor",
-    icon: "📄",
+    icon: "03",
     name: "Policy Extractor",
     sub: "Structured clause extraction",
     connections: [
@@ -62,14 +62,14 @@ const PLUGINS: PluginDef[] = [
   },
   {
     id: "fx-converter",
-    icon: "💱",
+    icon: "04",
     name: "FX Converter",
     sub: "Multi-currency conversion",
     connections: [{ type: "web", label: "FX Feed" }],
   },
   {
     id: "fraud-signal",
-    icon: "🕵️",
+    icon: "05",
     name: "Fraud Signal Checker",
     sub: "CFIT / SIU signal matrix",
     connections: [
@@ -79,7 +79,7 @@ const PLUGINS: PluginDef[] = [
   },
   {
     id: "actuarial-tables",
-    icon: "📐",
+    icon: "06",
     name: "Actuarial Tables",
     sub: "Ogden / mortality / dev factors",
     connections: [
@@ -131,10 +131,10 @@ const ConnTag = React.memo(function ConnTag({
   type: "db" | "web" | "mail" | "agent";
   label: string;
 }) {
-  const icons = { db: "🗄", web: "🌐", mail: "📧", agent: "🤖" };
+  const icons = { db: "DB", web: "WEB", mail: "MAIL", agent: "AGENT" };
   return (
     <span className={`arena-conn-tag ${type}`}>
-      {icons[type]} {label}
+      {label}
     </span>
   );
 });
@@ -146,7 +146,7 @@ const ToolCallBlock = React.memo(function ToolCallBlock({ events }: { events: To
       {events.map((ev, i) => (
         <div key={i} className="arena-tool-call">
           <div className="arena-tool-call-header">
-            <span className="arena-tool-call-icon">⚙️</span>
+            <span className="arena-tool-call-icon">TOOL</span>
             <span className="arena-tool-call-name">{ev.name}()</span>
             <span className="arena-tool-call-type">
               {ev.type === "call" ? "→ Tool Call" : "← Result"}
@@ -176,8 +176,8 @@ const MessageBubble = React.memo(function MessageBubble({
 }) {
   return (
     <div className={`arena-msg ${msg.role}`}>
-      <div className="arena-msg-avatar">
-        {msg.role === "user" ? "👤" : "🤖"}
+      <div className="arena-msg-avatar" style={{ fontSize: "11px", fontWeight: 700 }}>
+        {msg.role === "user" ? "YOU" : "AI"}
       </div>
       <div className="arena-msg-body">
         {msg.toolEvents && msg.toolEvents.length > 0 && (
@@ -205,7 +205,7 @@ const MessageBubble = React.memo(function MessageBubble({
                 onClick={() => onPreviewDoc(msg.attachedDoc!)}
                 title="Preview document content"
               >
-                👁️ View
+                View
               </button>
             )}
           </div>
@@ -225,17 +225,16 @@ const MessageBubble = React.memo(function MessageBubble({
         {msg.role === "assistant" && !msg.isStreaming && (
           <div className="arena-msg-metrics">
             {msg.promptTokens != null && msg.promptTokens > 0 && (
-              <span>🔢 {msg.promptTokens.toLocaleString()} in</span>
+              <span>{msg.promptTokens.toLocaleString()} in</span>
             )}
             {msg.completionTokens != null && msg.completionTokens > 0 && (
-              <span>📤 {msg.completionTokens.toLocaleString()} out</span>
+              <span>{msg.completionTokens.toLocaleString()} out</span>
             )}
             {msg.latencyMs != null && msg.latencyMs > 0 && (
-              <span>⏱ {(msg.latencyMs / 1000).toFixed(2)}s</span>
+              <span>{(msg.latencyMs / 1000).toFixed(2)}s</span>
             )}
             {msg.estCostUsd != null && msg.estCostUsd > 0 && (
               <span>
-                💵{" "}
                 {msg.estCostUsd < 0.0001
                   ? `$${msg.estCostUsd.toExponential(2)}`
                   : `$${msg.estCostUsd.toFixed(4)}`}
@@ -489,7 +488,7 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
               break;
             case "error": {
               const errMsg = String(event.error || "Inference error");
-              answer = answer ? `${answer}\n\n⚠ ${errMsg}` : `⚠ ${errMsg}`;
+              answer = answer ? `${answer}\n\n[Error: ${errMsg}]` : `[Error: ${errMsg}]`;
               setMessages((prev) => {
                 const next = [...prev];
                 const last = next[next.length - 1];
@@ -554,7 +553,7 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
       }
     } catch (err) {
       if ((err as Error).name === "AbortError") return;
-      answer = "⚠ An error occurred. Please try again.";
+      answer = "[Error] An error occurred. Please try again.";
     } finally {
       const latencyMs = Date.now() - startTime;
       setMessages((prev) => {
@@ -705,14 +704,14 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
                   className="arena-context-btn"
                   onClick={() => setPreviewDoc(attachedDoc)}
                 >
-                  👁️ Preview
+                  Preview
                 </button>
                 <button
                   type="button"
                   className="arena-context-btn highlight"
                   onClick={() => setShowIngestModal(true)}
                 >
-                  💾 Ingest
+                  Ingest
                 </button>
               </div>
             </div>
@@ -724,7 +723,7 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
             >
-              <span style={{ fontSize: 20 }}>🗂</span>
+              <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--accent)", letterSpacing: "0.06em" }}>ATTACH</span>
               <span>
                 Attach policy doc,
                 <br />
@@ -743,7 +742,7 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
         {/* Header */}
         <div className="arena-header">
           <div className="arena-header-model">
-            <div className="arena-header-model-icon">🤖</div>
+            <div className="arena-header-model-icon">AI</div>
             <div>
               <div className="arena-header-model-name">
                 {modelInfo?.label ?? selectedModel}
@@ -847,7 +846,7 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
           {/* Upload error banner */}
           {uploadError && (
             <div className="doc-upload-error-banner">
-              <span>⚠️ {uploadError}</span>
+              <span>Error: {uploadError}</span>
               <button
                 type="button"
                 onClick={() => setUploadError(null)}
@@ -888,7 +887,7 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
                   onClick={() => setPreviewDoc(attachedDoc)}
                   title="Preview extracted document text"
                 >
-                  👁️ Preview Text
+                  Preview Text
                 </button>
                 <button
                   type="button"
@@ -896,7 +895,7 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
                   onClick={() => setShowIngestModal(true)}
                   title="Ingest document to insurance data lake"
                 >
-                  💾 Ingest to Lake
+                  Ingest to Lake
                 </button>
                 <button
                   type="button"
@@ -927,9 +926,9 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
               {isUploadingDoc ? (
                 <div className="arena-btn-spinner" />
               ) : attachedDoc ? (
-                "📄"
+                "DOC"
               ) : (
-                "📎"
+                "+"
               )}
             </button>
             <textarea

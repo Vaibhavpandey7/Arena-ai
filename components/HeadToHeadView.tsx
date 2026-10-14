@@ -18,76 +18,60 @@ import { DocumentIngestModal } from "./DocumentIngestModal";
 const USE_CASES: { id: InsuranceUseCaseId; icon: string; label: string; prompt: string; goldKey?: string }[] = [
   {
     id: "data-extraction",
-    icon: "📄",
+    icon: "01",
     label: "1. Data Extraction",
-    prompt:
-      "Extract all key coverage terms, policy limits, exclusions, deductibles, and renewal conditions from this insurance policy document. Present findings in a structured table.",
+    prompt: "",
     goldKey: "SC-001",
   },
   {
     id: "policy-translation",
-    icon: "🌐",
+    icon: "02",
     label: "2. Policy Translation / Understanding",
-    prompt:
-      "Translate the following French insurance policy clause into English: 'Déchéance de garantie en cas de déclaration tardive sauf cas fortuit ou force majeure.' Identify legal nuances, preserve coverage obligations, and advise on enforceability.",
+    prompt: "",
     goldKey: "SC-002",
   },
   {
     id: "ai-triage",
-    icon: "🚨",
+    icon: "03",
     label: "3. AI Triage",
-    prompt:
-      "Assess the following FNOL notification and triage it: classify coverage trigger, identify potential policy defences (warranty breach), flag subrogation opportunities, calculate initial reserve, and assign SLA track.",
+    prompt: "",
     goldKey: "SC-003",
   },
   {
     id: "claim-assessment",
-    icon: "🔍",
+    icon: "04",
     label: "4. Claim Assessment",
-    prompt:
-      "Assess this motor total loss claim: verify constructive total loss (CTL) threshold, calculate pre-accident agreed value payout, determine finance shortfall, and assess GAP insurance trigger conditions.",
+    prompt: "",
     goldKey: "SC-004",
   },
   {
     id: "eiopa-regulatory",
-    icon: "⚖️",
+    icon: "05",
     label: "5. EIOPA Regulatory Check",
-    prompt:
-      "Audit the following SFCR narrative extract against EIOPA Guidelines 21–26 and Solvency II Directive 2009/138/EC. Identify what is present and absent, cite legal articles, rank findings by supervisory materiality, and recommend an internal audit notice.",
+    prompt: "",
     goldKey: "SC-005",
   },
   {
     id: "underwriting-risk",
-    icon: "🏗️",
+    icon: "06",
     label: "6. Underwriting Risk Assessment",
-    prompt:
-      "Evaluate this commercial property underwriting submission: compute composite risk profile, assess sum insured adequacy against RICS benchmarks, calculate Estimated Maximum Loss (EML), and provide conditional accept/decline terms.",
+    prompt: "",
     goldKey: "SC-006",
   },
   {
     id: "fraud-detection",
-    icon: "🕵️",
+    icon: "07",
     label: "7. Fraud Detection",
-    prompt:
-      "Analyse this personal injury claim file for fraud indicators. Classify signals as primary vs. corroborative, evaluate against Insurance Fraud Bureau (IFB) intelligence flags, compute a fraud propensity score, and outline an SIU 14-day action plan.",
+    prompt: "",
     goldKey: "SC-007",
   },
   {
     id: "actuarial-reasoning",
-    icon: "📐",
+    icon: "08",
     label: "8. Actuarial Reasoning",
-    prompt:
-      "Using the chain ladder method, project ultimate losses from the provided paid loss triangle. Apply EIOPA mandatory adjustments (inflation and Ogden discount rate), calculate IBNR, discount to best estimate liabilities per Solvency II Article 77, and evaluate risk margin.",
+    prompt: "",
     goldKey: "SC-008",
   },
-];
-
-const QUICK_CHIPS = [
-  "Assess this property claim for coverage",
-  "Extract key clauses from this policy slip",
-  "Check EIOPA Solvency II compliance",
-  "Locate reserve using chain ladder",
-  "Triage and classify this FNOL notification",
 ];
 
 export interface ModelState {
@@ -251,7 +235,7 @@ function ModelColumn({
                 fontWeight: 700,
               }}
             >
-              🧠 REASONING
+              REASONING
             </span>
           )}
           {state.isRunning && (
@@ -282,7 +266,7 @@ function ModelColumn({
                 fontWeight: 600,
               }}
             >
-              ⚡ {(state.latencyMs / 1000).toFixed(2)}s
+              {(state.latencyMs / 1000).toFixed(2)}s
             </span>
           )}
         </div>
@@ -312,7 +296,7 @@ function ModelColumn({
               style={{ fontSize: "11px", padding: "3px 8px" }}
               title="Copy model response to clipboard"
             >
-              {copied ? "✓ Copied" : "📋 Copy"}
+              {copied ? "Copied" : "Copy"}
             </button>
           )}
 
@@ -371,8 +355,7 @@ function ModelColumn({
               textAlign: "center",
             }}
           >
-            <div style={{ fontSize: "2rem", marginBottom: "8px" }}>🤖</div>
-            <div style={{ fontSize: "14px", fontWeight: 600, color: "var(--text-main)", marginBottom: "4px" }}>
+            <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--accent)", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
               Ready for Evaluation
             </div>
             <div style={{ fontSize: "12px", color: "var(--text-subtle)", maxWidth: "260px", lineHeight: 1.4 }}>
@@ -445,7 +428,7 @@ function ModelColumn({
                     color: "var(--violet)",
                   }}
                 >
-                  <span>🧠 Thinking Process ({state.reasoning.split(/\s+/).length} words)</span>
+                  <span>Thinking Process ({state.reasoning.split(/\s+/).length} words)</span>
                   <span>{showThinking ? "▲" : "▼"}</span>
                 </div>
                 {showThinking && (
@@ -484,12 +467,12 @@ function ModelColumn({
             {/* Metrics footer when finished */}
             {state.answer && !state.isRunning && (
               <div className="arena-msg-metrics" style={{ marginTop: "4px", paddingTop: "8px", borderTop: "1px solid var(--border-subtle)" }}>
-                {state.promptTokens > 0 && <span>🔢 {state.promptTokens.toLocaleString()} in</span>}
-                {state.completionTokens > 0 && <span>📤 {state.completionTokens.toLocaleString()} out</span>}
-                {state.latencyMs > 0 && <span>⏱ {(state.latencyMs / 1000).toFixed(2)}s</span>}
+                {state.promptTokens > 0 && <span>{state.promptTokens.toLocaleString()} in</span>}
+                {state.completionTokens > 0 && <span>{state.completionTokens.toLocaleString()} out</span>}
+                {state.latencyMs > 0 && <span>{(state.latencyMs / 1000).toFixed(2)}s</span>}
                 {state.estCostUsd !== undefined && (
                   <span>
-                    💵 {isFree ? "FREE" : state.estCostUsd < 0.0001 ? `$${state.estCostUsd.toExponential(2)}` : `$${state.estCostUsd.toFixed(4)}`}
+                    {isFree ? "FREE" : state.estCostUsd < 0.0001 ? `$${state.estCostUsd.toExponential(2)}` : `$${state.estCostUsd.toFixed(4)}`}
                   </span>
                 )}
               </div>
@@ -523,7 +506,7 @@ function ModelColumn({
                   }}
                   title="Show Ground Truth and Domain Metrics"
                 >
-                  <span>📊 View Analytics</span>
+                  <span>View Analytics</span>
                 </button>
               </div>
             )}
@@ -588,7 +571,7 @@ function UseCaseScorecard({
                 fontWeight: 600,
               }}
             >
-              📚 {config.recommendedBenchmark.name} · {config.recommendedBenchmark.source}
+              {config.recommendedBenchmark.name} · {config.recommendedBenchmark.source}
             </span>
           </div>
           <h3 style={{ fontSize: "16px", fontWeight: 700, fontFamily: "var(--font-display-new)", color: "var(--text-main)", margin: "4px 0 0 0" }}>
@@ -753,7 +736,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
   ]);
   const [states, setStates] = useState<ModelState[]>([emptyModelState(), emptyModelState()]);
   const [activeUseCase, setActiveUseCase] = useState<InsuranceUseCaseId>("data-extraction");
-  const [prompt, setPrompt] = useState(initialPrompt || USE_CASES[0].prompt);
+  const [prompt, setPrompt] = useState(initialPrompt || "");
   const [attachedDoc, setAttachedDoc] = useState<ParsedDocument | null>(null);
   const [isUploadingDoc, setIsUploadingDoc] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -851,7 +834,6 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
 
   const handleUseCaseSelect = (uc: typeof USE_CASES[0]) => {
     setActiveUseCase(uc.id);
-    setPrompt(uc.prompt);
   };
 
   // Stream a single model
@@ -975,7 +957,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                   const next = [...prev];
                   next[index] = {
                     ...next[index],
-                    answer: next[index].answer ? `${next[index].answer}\n\n⚠ ${errMsg}` : `⚠ ${errMsg}`,
+                    answer: next[index].answer ? `${next[index].answer}\n\n[Error: ${errMsg}]` : `[Error: ${errMsg}]`,
                     isRunning: false,
                   };
                   return next;
@@ -1254,14 +1236,14 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                   className="arena-context-btn"
                   onClick={() => setShowDocPreview(true)}
                 >
-                  👁️ Preview
+                  Preview
                 </button>
                 <button
                   type="button"
                   className="arena-context-btn highlight"
                   onClick={() => setShowDocIngestModal(true)}
                 >
-                  💾 Ingest
+                  Ingest
                 </button>
               </div>
             </div>
@@ -1273,7 +1255,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
             >
-              <span style={{ fontSize: 20 }}>🗂</span>
+              <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--accent)", letterSpacing: "0.06em" }}>ATTACH</span>
               <span>
                 Attach policy doc,
                 <br />
@@ -1293,7 +1275,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
         <div className="arena-header">
           <div className="arena-header-model">
             <div className="arena-header-model-icon">
-              {currentUseCaseConfig?.icon || "⚖️"}
+              {currentUseCaseConfig?.icon || "01"}
             </div>
             <div>
               <div className="arena-header-model-name">
@@ -1332,7 +1314,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                 }}
                 title="Stack models vertically in full-width cards"
               >
-                ☰ Stacked
+                Stacked
               </button>
               <button
                 type="button"
@@ -1350,7 +1332,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                 }}
                 title="Display models side-by-side in columns"
               >
-                ⊞ Columns
+                Columns
               </button>
             </div>
 
@@ -1370,7 +1352,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
               }}
               title="Toggle Ground Truth metrics, latency, token costs, and comparative scorecard"
             >
-              <span>📊 Scorecard</span>
+              <span>Scorecard</span>
               {showAnalytics && (
                 <span style={{ fontSize: "9px", background: "var(--accent)", color: "var(--text-inverted)", padding: "1px 5px", borderRadius: "6px", fontWeight: 800 }}>
                   ON
@@ -1391,7 +1373,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                   fontWeight: 700,
                 }}
               >
-                ⏹ Stop
+                Stop
               </button>
             ) : hasAnyResults ? (
               <button
@@ -1400,7 +1382,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                 className="arena-header-btn"
                 title="Clear answers and return to prompt workspace"
               >
-                🔄 New Comparison
+                New Comparison
               </button>
             ) : null}
           </div>
@@ -1424,7 +1406,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                    <span style={{ fontSize: "1.2rem" }}>{currentUseCaseConfig.icon}</span>
+                    <span style={{ fontSize: "11px", fontWeight: 700, padding: "2px 6px", borderRadius: "4px", background: "var(--accent-dim)", color: "var(--accent)" }}>{currentUseCaseConfig.icon}</span>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                       <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--text-main)" }}>
                         {cfg.title}
@@ -1443,7 +1425,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                           gap: "5px",
                         }}
                       >
-                        <span>📚 Benchmark:</span>
+                        <span>Benchmark:</span>
                         <strong style={{ color: "var(--text-main)" }}>{cfg.recommendedBenchmark.name}</strong>
                       </span>
                       <span
@@ -1531,7 +1513,6 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0, flex: 1 }}>
-                <span style={{ fontSize: "15px" }}>💬</span>
                 <span
                   style={{
                     fontSize: "13px",
@@ -1557,7 +1538,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                       fontWeight: 600,
                     }}
                   >
-                    📄 {attachedDoc.name}
+                    {attachedDoc.name}
                   </span>
                 )}
               </div>
@@ -1567,7 +1548,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                 onClick={() => setIsPromptCollapsed(false)}
                 style={{ fontSize: "12px", flexShrink: 0 }}
               >
-                ✏️ Edit Prompt
+                Edit Prompt
               </button>
             </div>
           ) : (
@@ -1605,7 +1586,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                       </>
                     ) : (
                       <>
-                        <span>📎 Upload Document</span>
+                        <span>Upload Document</span>
                         <span style={{ fontSize: "10px", opacity: 0.7 }}>PDF, OCR, TXT</span>
                       </>
                     )}
@@ -1618,7 +1599,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                       onClick={() => setIsPromptCollapsed(true)}
                       style={{ fontSize: "12px" }}
                     >
-                      ▲ Collapse
+                      Collapse
                     </button>
                   )}
                   {isAnyRunning && (
@@ -1633,7 +1614,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                         fontWeight: 700,
                       }}
                     >
-                      ⏹ Stop Stream
+                      Stop Stream
                     </button>
                   )}
                 </div>
@@ -1653,7 +1634,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                     justifyContent: "space-between",
                   }}
                 >
-                  <span>⚠️ {uploadError}</span>
+                  <span>Error: {uploadError}</span>
                   <button
                     type="button"
                     onClick={() => setUploadError(null)}
@@ -1681,7 +1662,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                     onClick={() => setShowDocPreview(true)}
                     title="Preview extracted document text"
                   >
-                    👁️ View
+                    View
                   </button>
                   <button
                     type="button"
@@ -1689,7 +1670,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                     onClick={() => setShowDocIngestModal(true)}
                     title="Ingest document to insurance data lake"
                   >
-                    💾 Ingest
+                    Ingest
                   </button>
                   <button
                     type="button"
@@ -1725,7 +1706,6 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                       backdropFilter: "blur(4px)",
                     }}
                   >
-                    <span style={{ fontSize: "2rem" }}>📄</span>
                     <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--accent)" }}>
                       Drop Insurance Document Here
                     </span>
@@ -1741,7 +1721,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder={
                     attachedDoc
-                      ? `Document "${attachedDoc.name}" attached. Type evaluation task or leave as is to evaluate policy terms...`
+                      ? `Document "${attachedDoc.name}" attached. Type evaluation task or leave blank to evaluate policy terms...`
                       : "Type insurance prompt or policy clauses to evaluate, or upload a document above..."
                   }
                   style={{
@@ -1760,30 +1740,8 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                 />
               </div>
 
-              {/* Quick chips & Run action */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", marginTop: "4px" }}>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                  {QUICK_CHIPS.map((chip, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => setPrompt(chip)}
-                      style={{
-                        fontSize: "11px",
-                        padding: "3px 9px",
-                        borderRadius: "var(--radius-full)",
-                        background: "var(--bg-surface)",
-                        border: "1px solid var(--border-subtle)",
-                        color: "var(--text-subtle)",
-                        cursor: "pointer",
-                        transition: "all var(--transition-fast)",
-                      }}
-                    >
-                      + {chip}
-                    </button>
-                  ))}
-                </div>
-
+              {/* Run action */}
+              <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginTop: "4px" }}>
                 <button
                   type="button"
                   onClick={handleRunAll}
@@ -1804,7 +1762,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                     opacity: (!prompt.trim() && !attachedDoc) || isAnyRunning ? 0.5 : 1,
                   }}
                 >
-                  <span>▶ Run Comparison</span>
+                  <span>Run Comparison</span>
                 </button>
               </div>
             </div>
@@ -1826,7 +1784,6 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <span style={{ fontSize: "2rem" }}>⚡</span>
                 <div>
                   <div style={{ fontSize: "16px", fontWeight: 700, color: "var(--text-main)" }}>
                     Ready to Evaluate {models.length} Models Side-by-Side
@@ -1932,7 +1889,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                     </span>
                   ) : (
                     <span style={{ fontSize: "12px", color: "var(--emerald)", fontWeight: 600 }}>
-                      ✓ Responses Complete
+                      Responses Complete
                     </span>
                   )}
                 </div>
@@ -1950,7 +1907,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                         fontWeight: 700,
                       }}
                     >
-                      ⏹ Stop
+                      Stop
                     </button>
                   ) : (
                     <button
@@ -1959,7 +1916,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                       className="arena-header-btn"
                       title="Clear answers and return to prompt workspace"
                     >
-                      🔄 New Comparison
+                      New Comparison
                     </button>
                   )}
                 </div>

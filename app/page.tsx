@@ -55,11 +55,11 @@ const BenchmarkView = dynamic(() => import("@/components/BenchmarkView"), {
 
 type Tab = "home" | "head-to-head" | "chat-arena" | "benchmark";
 
-const TABS: { id: Tab; icon: string; label: string }[] = [
-  { id: "home", icon: "⌂", label: "Home" },
-  { id: "head-to-head", icon: "⚖️", label: "Head-to-Head" },
-  { id: "chat-arena", icon: "💬", label: "Chat Arena" },
-  { id: "benchmark", icon: "📊", label: "Insurance Benchmark" },
+const TABS: { id: Tab; label: string }[] = [
+  { id: "home", label: "Home" },
+  { id: "head-to-head", label: "Head-to-Head" },
+  { id: "chat-arena", label: "Chat Arena" },
+  { id: "benchmark", label: "Insurance Benchmark" },
 ];
 
 export default function Page() {
@@ -117,7 +117,6 @@ export default function Page() {
               className={`studio-nav-tab${activeTab === tab.id ? " active" : ""}`}
               onClick={() => setActiveTab(tab.id)}
             >
-              <span className="tab-icon">{tab.icon}</span>
               {tab.label}
             </button>
           ))}

@@ -91,7 +91,6 @@ export default function ToolSandboxModal({ isOpen, onClose, onSendToPrompt }: Pr
       >
         <div className="modal-header">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 22 }}>⚡</span>
             <div>
               <div className="modal-title">Direct Tool Sandbox</div>
               <div style={{ fontSize: 11, color: "var(--text-subtle)" }}>
@@ -116,7 +115,6 @@ export default function ToolSandboxModal({ isOpen, onClose, onSendToPrompt }: Pr
                   className={`sandbox-tool-tab${isSel ? " active" : ""}`}
                   onClick={() => setSelectedTool(tool)}
                 >
-                  <span>{tool.icon}</span>
                   <span>{tool.title}</span>
                   <span className="sandbox-tag">{tool.category}</span>
                 </button>
@@ -176,10 +174,7 @@ export default function ToolSandboxModal({ isOpen, onClose, onSendToPrompt }: Pr
                   <span>Executing…</span>
                 </>
               ) : (
-                <>
-                  <span>Execute Tool</span>
-                  <span>⚡</span>
-                </>
+                <span>Execute Tool</span>
               )}
             </button>
           </div>
@@ -187,7 +182,7 @@ export default function ToolSandboxModal({ isOpen, onClose, onSendToPrompt }: Pr
           {/* Error Message */}
           {error && (
             <div className="sandbox-error">
-              ⚠ {error}
+              Error: {error}
             </div>
           )}
 

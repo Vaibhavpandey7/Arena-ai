@@ -189,7 +189,7 @@ function DatasetBrowser({ onLoadRecord, modelAnswer, activeRecord: externalActiv
               onClick={() => setShowIngestModal(true)}
               title="Upload an insurance policy or document to ingest into the Data Lake"
             >
-              <span>📄 Ingest Document</span>
+              <span>Ingest Document</span>
             </button>
           </div>
         </div>
@@ -198,7 +198,7 @@ function DatasetBrowser({ onLoadRecord, modelAnswer, activeRecord: externalActiv
         <div className="studio-toolbar">
           <div className="toolbar-left">
             <div className="studio-search-wrapper">
-              <span className="search-icon">🔍</span>
+              <span className="search-icon" style={{ fontSize: "10px", fontWeight: 700 }}>FIND</span>
               <input
                 id="dataset-search-input"
                 name="datasetSearch"
@@ -333,7 +333,7 @@ function DatasetBrowser({ onLoadRecord, modelAnswer, activeRecord: externalActiv
                     {goldAlignment.evidenceMatched ? (
                       <span className="gt-evidence-verified">✓ Verified Citation</span>
                     ) : (
-                      <span className="gt-evidence-uncited">⚠ Uncited Evidence</span>
+                      <span className="gt-evidence-uncited">Uncited Evidence</span>
                     )}
                   </div>
 

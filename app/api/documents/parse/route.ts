@@ -238,7 +238,7 @@ function extractTextFromPdfBuffer(buffer: Buffer): string {
   const isImageScan = buffer.includes(Buffer.from("/Image")) || buffer.includes(Buffer.from("/Subtype /Image"));
   if (isImageScan) {
     return (
-      "⚠️ Scanned / Image-Only PDF Detected:\n\n" +
+      "[Notice] Scanned / Image-Only PDF Detected:\n\n" +
       "This document consists of scanned images or photos without an embedded digital text layer.\n\n" +
       "Why this happens:\n" +
       "• When physical insurance documents are scanned or photographed without OCR (Optical Character Recognition), the PDF stores raster pixel images (JPEG/PNG) rather than digital text characters.\n" +

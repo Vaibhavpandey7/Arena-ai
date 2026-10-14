@@ -121,7 +121,7 @@ export function DocumentPreviewModal({ document, isOpen, onClose, onSaveToLake }
                   onClick={() => setViewMode("visual")}
                   title="View original visual PDF layout"
                 >
-                  📄 Visual PDF
+                  Visual PDF
                 </button>
                 <button
                   type="button"
@@ -129,7 +129,7 @@ export function DocumentPreviewModal({ document, isOpen, onClose, onSaveToLake }
                   onClick={() => setViewMode("text")}
                   title="View line-by-line extracted OCR text"
                 >
-                  📝 Extracted Text & OCR
+                  Extracted Text & OCR
                 </button>
               </div>
             )}
@@ -144,7 +144,7 @@ export function DocumentPreviewModal({ document, isOpen, onClose, onSaveToLake }
         <div className="doc-modal-toolbar">
           {viewMode === "text" ? (
             <div className="doc-search-box">
-              <span className="doc-search-icon">🔍</span>
+              <span className="doc-search-icon" style={{ fontSize: "10px", fontWeight: 700 }}>FIND</span>
               <input
                 type="text"
                 placeholder="Search within extracted text…"
@@ -186,7 +186,7 @@ export function DocumentPreviewModal({ document, isOpen, onClose, onSaveToLake }
                   style={{ textDecoration: "none", display: "inline-flex", alignItems: "center" }}
                   title="Download original file"
                 >
-                  ⬇ Download Original
+                  Download Original
                 </a>
               </>
             )}
@@ -196,11 +196,11 @@ export function DocumentPreviewModal({ document, isOpen, onClose, onSaveToLake }
               onClick={handleDownloadTxt}
               title="Download extracted plain text file"
             >
-              📥 Download .TXT
+              Download .TXT
             </button>
 
             <button className="doc-btn-secondary" onClick={handleCopy}>
-              {copied ? "✓ Copied to Clipboard" : "📋 Copy Text"}
+              {copied ? "Copied to Clipboard" : "Copy Text"}
             </button>
 
             {onSaveToLake && (
@@ -211,7 +211,7 @@ export function DocumentPreviewModal({ document, isOpen, onClose, onSaveToLake }
                   onSaveToLake();
                 }}
               >
-                💾 Save to Data Lake
+                Save to Data Lake
               </button>
             )}
           </div>
