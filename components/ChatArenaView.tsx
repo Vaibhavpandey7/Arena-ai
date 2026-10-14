@@ -291,62 +291,6 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
     });
   };
 
-  const openRegulatoryDocPreview = (docKey: "solvency_ii" | "delegated_reg_2015_35" | "eu_ai_act") => {
-    const meta = {
-      solvency_ii: {
-        name: "SOLVENCY II DIRECTIVE.pdf",
-        formattedSize: "1.2 MB",
-        size: 1217666,
-        type: "Official Directive",
-        fileUrl: "/api/documents/raw?doc=solvency_ii",
-        wordCount: 97000,
-        charCount: 626710,
-        tokenCount: 156677,
-        preview: "Directive 2009/138/EC of the European Parliament and of the Council on the taking-up and pursuit of the business of Insurance and Reinsurance (Solvency II).",
-        text: "Official Solvency II Directive (2009/138/EC) EIOPA Rulebook (Articles 1 - 312). Available for interactive preview in Visual PDF Mode.",
-      },
-      delegated_reg_2015_35: {
-        name: "DELEGATED REGULATION (EU) 201535.pdf",
-        formattedSize: "1.0 MB",
-        size: 1030368,
-        type: "Delegated Regulation",
-        fileUrl: "/api/documents/raw?doc=delegated_reg_2015_35",
-        wordCount: 137000,
-        charCount: 877096,
-        tokenCount: 219274,
-        preview: "Commission Delegated Regulation (EU) 2015/35 supplementing Directive 2009/138/EC with technical standards for Solvency II.",
-        text: "Official Commission Delegated Regulation (EU) 2015/35 EIOPA Rulebook (Articles 1 - 380+). Available for interactive preview in Visual PDF Mode.",
-      },
-      eu_ai_act: {
-        name: "EU AI ACT EIOPA.pdf",
-        formattedSize: "2.5 MB",
-        size: 2583319,
-        type: "EU AI Regulation",
-        fileUrl: "/api/documents/raw?doc=eu_ai_act",
-        wordCount: 91000,
-        charCount: 597311,
-        tokenCount: 149327,
-        preview: "Regulation (EU) 2024/1689 laying down harmonised rules on artificial intelligence (Artificial Intelligence Act), including Annex III high-risk insurance underwriting provisions.",
-        text: "Official EU AI Act (Regulation (EU) 2024/1689) (Articles 1 - 113 & Annexes I - XIII). Available for interactive preview in Visual PDF Mode.",
-      },
-    }[docKey];
-
-    setPreviewDoc({
-      id: `reg_${docKey}`,
-      name: meta.name,
-      formattedSize: meta.formattedSize,
-      size: meta.size,
-      type: meta.type,
-      fileUrl: meta.fileUrl,
-      wordCount: meta.wordCount,
-      charCount: meta.charCount,
-      tokenCount: meta.tokenCount,
-      preview: meta.preview,
-      text: meta.text,
-      mimeType: "application/pdf",
-    });
-  };
-
   const handleDocUpload = async (file: File) => {
     setIsUploadingDoc(true);
     setUploadError(null);
@@ -704,42 +648,6 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
                     {plugin.connections.map((c, i) => (
                       <ConnTag key={i} type={c.type} label={c.label} />
                     ))}
-                  </div>
-                )}
-                {isOn && plugin.id === "regulatory-check" && (
-                  <div style={{ marginTop: "8px", paddingTop: "6px", borderTop: "1px dashed var(--border-subtle)" }}>
-                    <div style={{ fontSize: "10.5px", color: "var(--accent)", marginBottom: "4px", fontWeight: 600 }}>
-                      📚 Official Regulatory PDFs:
-                    </div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
-                      <button
-                        type="button"
-                        className="arena-msg-doc-view-btn"
-                        onClick={() => openRegulatoryDocPreview("solvency_ii")}
-                        title="Preview official Solvency II Directive (2009/138/EC)"
-                        style={{ fontSize: "10px", padding: "2px 6px" }}
-                      >
-                        👁️ Solvency II
-                      </button>
-                      <button
-                        type="button"
-                        className="arena-msg-doc-view-btn"
-                        onClick={() => openRegulatoryDocPreview("delegated_reg_2015_35")}
-                        title="Preview official Delegated Regulation (EU) 2015/35"
-                        style={{ fontSize: "10px", padding: "2px 6px" }}
-                      >
-                        👁️ CDR 2015/35
-                      </button>
-                      <button
-                        type="button"
-                        className="arena-msg-doc-view-btn"
-                        onClick={() => openRegulatoryDocPreview("eu_ai_act")}
-                        title="Preview official EU AI Act (Regulation (EU) 2024/1689)"
-                        style={{ fontSize: "10px", padding: "2px 6px" }}
-                      >
-                        👁️ EU AI Act
-                      </button>
-                    </div>
                   </div>
                 )}
               </div>
