@@ -431,8 +431,7 @@ export async function chatCompletionStream(params: ChatParams): Promise<Response
     });
 
     if (!res.ok && body.tools && (res.status === 400 || res.status === 404)) {
-      const errClone = res.clone();
-      const errText = await errClone.text().catch(() => "");
+      const errText = await res.text().catch(() => "");
       if (errText.toLowerCase().includes("support tools") || errText.toLowerCase().includes("tools")) {
         const bodyNoTools = { ...body, tools: undefined };
         return await fetch(endpointUrl, {
@@ -441,6 +440,11 @@ export async function chatCompletionStream(params: ChatParams): Promise<Response
           body: JSON.stringify(bodyNoTools),
         });
       }
+      return new Response(errText, {
+        status: res.status,
+        statusText: res.statusText,
+        headers: res.headers,
+      });
     }
     return res;
   } catch (err) {
