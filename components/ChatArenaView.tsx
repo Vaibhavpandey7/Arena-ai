@@ -98,22 +98,12 @@ const PLUGINS: PluginDef[] = [
   },
 ];
 
-const QUICK_CHIPS = [
-  "Analyse subrogation rights",
-  "Explain ORSA requirements",
-  "Check SCR ratio",
-  "Classify claim severity",
-  "Translate policy to plain English",
-];
-
-const USE_CASE_CHIPS = [
-  "Data extraction on new policy",
-  "Regulatory check — EIOPA compliance",
-  "Underwriting risk assessment",
-  "Actuarial reserve calculation",
-  "Fraud signal analysis",
-  "Policy clause translation",
-];
+const CHAT_ARENA_SYSTEM_PROMPT =
+  "Assign role to the model as an insurance expert and perform tasks as per insurance market. " +
+  "You are a senior insurance AI specialist with deep expertise in underwriting, claims adjudication, " +
+  "actuarial principles, policy extraction, and regulatory compliance (including Solvency II and EIOPA). " +
+  "Analyze queries and documents according to standard insurance market practices, providing accurate, " +
+  "evidence-grounded, and professional answers.";
 
 /* ── Types ─────────────────────────────────────────────────────────────────── */
 interface ToolEvent {
@@ -448,6 +438,7 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
         body: JSON.stringify({
           model: selectedModel,
           prompt: effectivePrompt,
+          systemPrompt: CHAT_ARENA_SYSTEM_PROMPT,
           useTools: activePluginCount > 0,
           selectedTools: ["calculator", "solvency_ratio_checker", "insurance_knowledge_search", "currency_converter"],
         }),
@@ -819,18 +810,6 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
                   </>
                 )}
               </div>
-              {/* Use case chips */}
-              <div className="arena-welcome-chips">
-                {USE_CASE_CHIPS.map((chip) => (
-                  <button
-                    key={chip}
-                    className="arena-welcome-chip"
-                    onClick={() => handleSend(chip)}
-                  >
-                    {chip}
-                  </button>
-                ))}
-              </div>
             </div>
           ) : (
             messages.map((msg, i) => (
@@ -851,20 +830,6 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          {/* Quick chips */}
-          <div className="arena-quick-chips">
-            {QUICK_CHIPS.map((chip) => (
-              <button
-                key={chip}
-                className="arena-quick-chip"
-                onClick={() => handleSend(chip)}
-                disabled={isStreaming || isUploadingDoc}
-              >
-                {chip}
-              </button>
-            ))}
-          </div>
-
           {/* Upload progress indicator */}
           {isUploadingDoc && (
             <div className="arena-upload-status">

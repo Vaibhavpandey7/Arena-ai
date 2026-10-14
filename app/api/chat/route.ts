@@ -65,9 +65,13 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  const fallbackSystemPrompt =
+    "Assign role to the model as an insurance expert and perform tasks as per insurance market. Provide accurate, professional, and evidence-grounded insurance analysis.";
+  const resolvedSystemPrompt = systemPrompt || fallbackSystemPrompt;
+
   const effectiveSystemPrompt = forcedToolName
-    ? `${systemPrompt ? systemPrompt + "\n\n" : ""}CRITICAL INSTRUCTION: You MUST invoke the '${forcedToolName}' tool to compute, evaluate, or retrieve the necessary data to answer the user prompt.`
-    : systemPrompt;
+    ? `${resolvedSystemPrompt}\n\nCRITICAL INSTRUCTION: You MUST invoke the '${forcedToolName}' tool to compute, evaluate, or retrieve the necessary data to answer the user prompt.`
+    : resolvedSystemPrompt;
 
   const messages: ChatMessage[] = [{ role: "user", content: prompt }];
 
