@@ -990,13 +990,6 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
     }
   }, [initialPrompt, onReady]);
 
-  // Starter suggestion cards handler
-  const handleSuggestionClick = (promptText: string) => {
-    setInput(promptText);
-    setTimeout(() => {
-      chatInputRef.current?.focus();
-    }, 50);
-  };
 
   return (
     <div className="gemini-layout">
@@ -1265,87 +1258,13 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
         >
           <div className="gemini-chat-centered">
             {messages.length === 0 ? (
-              /* Welcome Hero & Gemini Starter Suggestion Cards */
+              /* Welcome Hero without predefined prompt cards */
               <div className="gemini-hero">
                 <div className="gemini-hero-greeting">
                   Hello, Insurance Specialist
                 </div>
                 <div className="gemini-hero-sub">
                   How can I help you analyze policies, cross-examine clauses, or assess risk today?
-                </div>
-
-                <div className="gemini-suggestion-grid">
-                  <div
-                    className="gemini-suggestion-card"
-                    onClick={() =>
-                      handleSuggestionClick(
-                        "What are the standard exclusions and conditions under an All-Risks commercial property policy?"
-                      )
-                    }
-                  >
-                    <div>
-                      <div className="gemini-suggestion-title">📑 Analyze Policy Exclusions</div>
-                      <div className="gemini-suggestion-sub">
-                        Cross-examine standard exclusions in an All-Risks property wording
-                      </div>
-                    </div>
-                    <div className="gemini-suggestion-icon-wrap">
-                      <div className="gemini-suggestion-icon">↗</div>
-                    </div>
-                  </div>
-
-                  <div
-                    className="gemini-suggestion-card"
-                    onClick={() =>
-                      handleSuggestionClick(
-                        "Evaluate capital adequacy and regulatory compliance under Solvency II Article 191."
-                      )
-                    }
-                  >
-                    <div>
-                      <div className="gemini-suggestion-title">⚖️ Solvency II & EIOPA Check</div>
-                      <div className="gemini-suggestion-sub">
-                        Evaluate capital adequacy & compliance under CDR 2015/35
-                      </div>
-                    </div>
-                    <div className="gemini-suggestion-icon-wrap">
-                      <div className="gemini-suggestion-icon">↗</div>
-                    </div>
-                  </div>
-
-                  <div
-                    className="gemini-suggestion-card"
-                    onClick={() =>
-                      handleSuggestionClick(
-                        "Calculate burning cost, pure premium, and risk margin for a commercial fleet policy."
-                      )
-                    }
-                  >
-                    <div>
-                      <div className="gemini-suggestion-title">🧮 Calculate Pure Premium</div>
-                      <div className="gemini-suggestion-sub">
-                        Compute burning cost and risk margin for commercial lines
-                      </div>
-                    </div>
-                    <div className="gemini-suggestion-icon-wrap">
-                      <div className="gemini-suggestion-icon">↗</div>
-                    </div>
-                  </div>
-
-                  <div
-                    className="gemini-suggestion-card"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <div>
-                      <div className="gemini-suggestion-title">🔍 Multi-Document Comparison</div>
-                      <div className="gemini-suggestion-sub">
-                        Attach policy schedule & endorsements to compare deductibles
-                      </div>
-                    </div>
-                    <div className="gemini-suggestion-icon-wrap">
-                      <div className="gemini-suggestion-icon">+</div>
-                    </div>
-                  </div>
                 </div>
               </div>
             ) : (

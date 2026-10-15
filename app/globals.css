@@ -7980,10 +7980,12 @@ body {
 
 /* ── Welcome Hero (Gemini Signature Gradient) ── */
 .gemini-hero {
-  padding: 40px 0 20px;
+  padding: 80px 0 20px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  min-height: 25vh;
+  justify-content: center;
 }
 
 .gemini-hero-greeting {
