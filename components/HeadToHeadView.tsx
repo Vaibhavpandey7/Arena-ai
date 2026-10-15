@@ -725,7 +725,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
   // Support up to 4 models (defaulted to 100% free models to preserve user credits)
   const [models, setModels] = useState<string[]>([
     "openrouter/free",
-    "qwen/qwen3.8-27b:free",
+    "nvidia/nemotron-3-super-120b-a12b:free",
   ]);
   const [states, setStates] = useState<ModelState[]>([emptyModelState(), emptyModelState()]);
   const [activeUseCase, setActiveUseCase] = useState<InsuranceUseCaseId>("data-extraction");
@@ -809,8 +809,8 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
   const handleAddModel = () => {
     if (models.length >= 4) return;
     const candidates = [
+      "nvidia/nemotron-3-super-120b-a12b:free",
       "nvidia/nemotron-3.5-lightning:free",
-      "qwen/qwen3.8-27b:free",
       "openrouter/free",
       "openai/gpt-4o-mini",
     ];

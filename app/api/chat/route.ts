@@ -167,6 +167,24 @@ function parseOpenRouterError(status: number, errText: string, modelName: string
     code === 429 ||
     /rate[- ]limit|quota|exceeded|too many requests|capacity/i.test(raw + " " + baseMessage);
 
+  if (code === 402 || /credits|payment|afford|fewer max_tokens/i.test(baseMessage)) {
+    return {
+      message: `Insufficient Credits (402): Model "${modelName}" requires paid OpenRouter credits (${baseMessage}). Switch to "Free Models Router" (openrouter/free) or "NVIDIA Nemotron (Free)" for unlimited free evaluations, or add credits to your OpenRouter account.`,
+      isRateLimit: false,
+      provider,
+      raw,
+    };
+  }
+
+  if (code === 404 || /unavailable for free|not found|does not exist/i.test(baseMessage)) {
+    return {
+      message: `Model Unavailable (404): Model "${modelName}" is unavailable or deprecated upstream (${baseMessage}). Please select an active model such as "Free Models Router" (openrouter/free) or "NVIDIA Nemotron (Free)".`,
+      isRateLimit: false,
+      provider,
+      raw,
+    };
+  }
+
   if (baseMessage.includes("Provider returned error") || isRateLimit) {
     if (raw && /rate[- ]limited|rate[- ]limit/i.test(raw)) {
       return {
@@ -230,24 +248,36 @@ function parseOpenRouterError(status: number, errText: string, modelName: string
             const errText = await orResponse.text();
             const parsedErr = parseOpenRouterError(orResponse.status, errText, activeModel);
 
-            // Auto-fallback: If a free model hit upstream rate limits or provider outage,
-            // seamlessly redirect to OpenRouter's Free Router so user doesn't get blocked
+            // Auto-fallback: If a free model hit upstream rate limits, provider outage, or deprecation (404/unavailable),
+            // seamlessly redirect to OpenRouter's Free Router so the user's evaluation succeeds without error
             const isFreeModel = activeModel.endsWith(":free") || activeModel.includes("free");
-            if (
+            const isUnavailableFree =
+              isFreeModel &&
+              (orResponse.status === 404 ||
+                /unavailable for free|not found|does not exist/i.test(errText));
+
+            const canFallback =
               isFreeModel &&
               activeModel !== "openrouter/free" &&
-              (parsedErr.isRateLimit || orResponse.status === 429 || orResponse.status === 503 || errText.includes("Provider returned error"))
-            ) {
-              console.warn(`[chat-route] Model ${activeModel} hit upstream rate limit. Auto-falling back to openrouter/free.`);
+              (parsedErr.isRateLimit ||
+                orResponse.status === 429 ||
+                orResponse.status === 503 ||
+                isUnavailableFree ||
+                errText.includes("Provider returned error"));
+
+            if (canFallback) {
+              const noticeReason = isUnavailableFree
+                ? "is currently unavailable on OpenRouter's free tier"
+                : `is temporarily rate-limited upstream${parsedErr.provider ? ` by ${parsedErr.provider}` : ""}`;
+
+              console.warn(`[chat-route] Model ${activeModel} ${noticeReason}. Auto-falling back to openrouter/free.`);
               send({
                 type: "content",
-                delta: `> ℹ️ **Notice**: Selected model \`${activeModel}\` is temporarily rate-limited upstream${
-                  parsedErr.provider ? ` by ${parsedErr.provider}` : ""
-                }. Automatically redirected through **Free Models Router** so your evaluation completes.\n\n`,
+                delta: `> ℹ️ **Notice**: Selected model \`${activeModel}\` ${noticeReason}. Automatically redirected through **Free Models Router** so your evaluation completes.\n\n`,
               });
 
               activeModel = "openrouter/free";
-              orResponse = await chatCompletionStream({
+              const fallbackResponse = await chatCompletionStream({
                 model: activeModel,
                 messages,
                 tools,
@@ -255,12 +285,19 @@ function parseOpenRouterError(status: number, errText: string, modelName: string
                 systemPrompt: effectiveSystemPrompt,
                 customEndpoint,
               });
-            }
 
-            if (!orResponse.ok) {
-              const fallbackErrText = await orResponse.text();
-              const fallbackParsed = parseOpenRouterError(orResponse.status, fallbackErrText, activeModel);
-              send({ type: "error", error: fallbackParsed.message });
+              if (!fallbackResponse.ok) {
+                const fallbackErrText = await fallbackResponse.text();
+                const fallbackParsed = parseOpenRouterError(fallbackResponse.status, fallbackErrText, activeModel);
+                send({ type: "error", error: fallbackParsed.message });
+                break;
+              }
+
+              // Overwrite with the fresh fallback response so the stream reader below can consume its unread body
+              orResponse = fallbackResponse;
+            } else {
+              // No fallback: send the parsed error message directly without re-reading the already-consumed body stream
+              send({ type: "error", error: parsedErr.message });
               break;
             }
           }

@@ -32,8 +32,8 @@ interface Props {
 
 const FEATURED_IDS = [
   "openrouter/free",
-  "qwen/qwen3.8-27b:free",
   "nvidia/nemotron-3-super-120b-a12b:free",
+  "nvidia/nemotron-3.5-lightning:free",
   "deepseek/deepseek-r1",
   "openai/gpt-4o",
   "meta-llama/llama-3.3-70b-instruct",
