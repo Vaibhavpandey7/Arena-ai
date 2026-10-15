@@ -169,7 +169,7 @@ function parseOpenRouterError(status: number, errText: string, modelName: string
 
   if (code === 402 || /credits|payment|afford|fewer max_tokens/i.test(baseMessage)) {
     return {
-      message: `Insufficient Credits (402): Model "${modelName}" requires paid OpenRouter credits (${baseMessage}). Switch to "Free Models Router" (openrouter/free) or "NVIDIA Nemotron (Free)" for unlimited free evaluations, or add credits to your OpenRouter account.`,
+      message: `Credit Limit Exceeded (402): Model "${modelName}" requires additional credits (${baseMessage}). Please select an alternate model from the list or top up your API key.`,
       isRateLimit: false,
       provider,
       raw,
@@ -178,7 +178,7 @@ function parseOpenRouterError(status: number, errText: string, modelName: string
 
   if (code === 404 || /unavailable for free|not found|does not exist/i.test(baseMessage)) {
     return {
-      message: `Model Unavailable (404): Model "${modelName}" is unavailable or deprecated upstream (${baseMessage}). Please select an active model such as "Free Models Router" (openrouter/free) or "NVIDIA Nemotron (Free)".`,
+      message: `Model Unavailable (404): Model "${modelName}" is currently unavailable upstream. Please select an alternate model from the selector.`,
       isRateLimit: false,
       provider,
       raw,
@@ -188,9 +188,9 @@ function parseOpenRouterError(status: number, errText: string, modelName: string
   if (baseMessage.includes("Provider returned error") || isRateLimit) {
     if (raw && /rate[- ]limited|rate[- ]limit/i.test(raw)) {
       return {
-        message: `Upstream Rate Limit: This free model (${modelName}) is temporarily rate-limited upstream${
+        message: `Rate Limit Exceeded: Model "${modelName}" is temporarily rate-limited upstream${
           provider ? ` by ${provider}` : ""
-        } due to high shared community traffic. Switch to "Free Models Router" (openrouter/free) or NVIDIA Nemotron (free), or retry shortly.`,
+        }. Please select another model or retry shortly.`,
         isRateLimit: true,
         provider,
         raw,
@@ -208,7 +208,7 @@ function parseOpenRouterError(status: number, errText: string, modelName: string
       return {
         message: `Upstream Rate Limit (429)${
           provider ? ` from ${provider}` : ""
-        }: The upstream provider reached its free tier capacity limit. Switch to "Free Models Router" (openrouter/free) or try again in a few moments.`,
+        }: The upstream provider reached its concurrency limit. Please try another model or retry shortly.`,
         isRateLimit: true,
         provider,
         raw,
@@ -266,15 +266,7 @@ function parseOpenRouterError(status: number, errText: string, modelName: string
                 errText.includes("Provider returned error"));
 
             if (canFallback) {
-              const noticeReason = isUnavailableFree
-                ? "is currently unavailable on OpenRouter's free tier"
-                : `is temporarily rate-limited upstream${parsedErr.provider ? ` by ${parsedErr.provider}` : ""}`;
-
-              console.warn(`[chat-route] Model ${activeModel} ${noticeReason}. Auto-falling back to openrouter/free.`);
-              send({
-                type: "content",
-                delta: `> ℹ️ **Notice**: Selected model \`${activeModel}\` ${noticeReason}. Automatically redirected through **Free Models Router** so your evaluation completes.\n\n`,
-              });
+              console.warn(`[chat-route] Model ${activeModel} unavailable or rate-limited upstream. Seamlessly routing via fallback router.`);
 
               activeModel = "openrouter/free";
               const fallbackResponse = await chatCompletionStream({

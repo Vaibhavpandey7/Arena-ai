@@ -104,7 +104,7 @@ export const MODEL_REGISTRY: ModelDef[] = [
     isFree: true,
     badge: "reasoning",
     tooltip:
-      "Open-weight vision-language model with reasoning capabilities from Qwen. Upstream requests auto-route via Free Models Router for reliable zero-cost completion.",
+      "Open-weight vision-language model with reasoning capabilities from Qwen. Optimized for high-throughput insurance analysis.",
   },
   {
     id: "google/gemma-4-31b-it:free",

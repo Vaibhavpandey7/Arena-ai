@@ -350,10 +350,10 @@ export async function chatCompletion(params: ChatParams): Promise<ChatResponse> 
       errMsg = parsed.error?.message || parsed.message || err;
     } catch {}
     if (res?.status === 402 || /credits|payment|afford|fewer max_tokens/i.test(errMsg)) {
-      throw new Error(`Insufficient Credits (402): Model "${params.model}" requires paid OpenRouter credits (${errMsg}). Switch to "Free Models Router" (openrouter/free) or "NVIDIA Nemotron (Free)" for zero-cost evaluations.`);
+      throw new Error(`Credit Limit Exceeded (402): Model "${params.model}" requires additional credits (${errMsg}). Please select an alternate model from the list or top up your API key.`);
     }
     if (res?.status === 404 || /unavailable for free/i.test(errMsg)) {
-      throw new Error(`Model Unavailable (404): Model "${params.model}" is unavailable upstream (${errMsg}). Please select "Free Models Router" (openrouter/free) or "NVIDIA Nemotron (Free)".`);
+      throw new Error(`Model Unavailable (404): Model "${params.model}" is currently unavailable upstream. Please select an alternate model from the selector.`);
     }
     throw new Error(`Model inference failed: ${res?.status ?? 500} — ${errMsg}`);
   }
