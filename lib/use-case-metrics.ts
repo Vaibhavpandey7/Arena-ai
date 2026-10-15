@@ -27,7 +27,7 @@ export interface MetricDefinition {
 export interface RecommendedBenchmark {
   name: string;
   description: string;
-  source: string;
+  source?: string;
   url?: string;
 }
 
@@ -47,8 +47,6 @@ export const INSURANCE_USE_CASES: Record<InsuranceUseCaseId, UseCaseConfig> = {
     recommendedBenchmark: {
       name: "Policy Extraction Testbench",
       description: "Insurance policy extraction with human-reviewed reference fields.",
-      source: "GitHub",
-      url: "https://github.com",
     },
     primaryMetricsList: ["Field-level Exact Match", "Precision", "Recall", "F1", "Completeness"],
     primaryMetric: {
@@ -73,8 +71,6 @@ export const INSURANCE_USE_CASES: Record<InsuranceUseCaseId, UseCaseConfig> = {
     recommendedBenchmark: {
       name: "InsLogicBench",
       description: "Insurance clause reasoning, exceptions and evidence-linked decisions.",
-      source: "ACL Anthology",
-      url: "https://aclanthology.org",
     },
     primaryMetricsList: ["Answer Accuracy", "Clause-level Accuracy", "Evidence-grounding Accuracy"],
     primaryMetric: {
@@ -97,8 +93,6 @@ export const INSURANCE_USE_CASES: Record<InsuranceUseCaseId, UseCaseConfig> = {
     recommendedBenchmark: {
       name: "AgentDS-Insurance",
       description: "Insurance claims-complexity prediction tasks.",
-      source: "Hugging Face",
-      url: "https://huggingface.co/datasets",
     },
     primaryMetricsList: ["Macro-F1", "Recall", "Precision", "Confusion Matrix"],
     primaryMetric: {
@@ -122,8 +116,6 @@ export const INSURANCE_USE_CASES: Record<InsuranceUseCaseId, UseCaseConfig> = {
     recommendedBenchmark: {
       name: "InsClaimBench",
       description: "End-to-end insurance claim adjudication and payout decisions.",
-      source: "arXiv",
-      url: "https://arxiv.org",
     },
     primaryMetricsList: ["Decision Accuracy", "Joint Decision–Amount Accuracy", "Payout MAE"],
     primaryMetric: {
@@ -146,8 +138,6 @@ export const INSURANCE_USE_CASES: Record<InsuranceUseCaseId, UseCaseConfig> = {
     recommendedBenchmark: {
       name: "EIOPA Solvency II Single Rulebook",
       description: "Official, versioned rules as reference corpus for regulatory QA benchmark.",
-      source: "EIOPA Official",
-      url: "https://www.eiopa.europa.eu",
     },
     primaryMetricsList: ["Regulatory Answer Accuracy", "Citation Precision", "Citation Recall", "Applicability Accuracy"],
     primaryMetric: {
@@ -171,8 +161,6 @@ export const INSURANCE_USE_CASES: Record<InsuranceUseCaseId, UseCaseConfig> = {
     recommendedBenchmark: {
       name: "InsureBench",
       description: "Document-grounded underwriting and coverage workflows.",
-      source: "AI Benchmark for Insurance Work",
-      url: "https://insurebench.org",
     },
     primaryMetricsList: ["Decision Accuracy (pass@1)", "Risk Classification Accuracy", "Evidence-grounding Accuracy"],
     primaryMetric: {
@@ -195,8 +183,6 @@ export const INSURANCE_USE_CASES: Record<InsuranceUseCaseId, UseCaseConfig> = {
     recommendedBenchmark: {
       name: "Auto Insurance Fraud Detection",
       description: "Public insurance fraud dataset.",
-      source: "figshare.com",
-      url: "https://figshare.com",
     },
     primaryMetricsList: ["Precision", "Recall", "F1", "PR-AUC", "False-positive Rate"],
     primaryMetric: {
@@ -220,8 +206,6 @@ export const INSURANCE_USE_CASES: Record<InsuranceUseCaseId, UseCaseConfig> = {
     recommendedBenchmark: {
       name: "INS-ActBench",
       description: "Actuarial knowledge, case reasoning, and spreadsheet/R-code tasks.",
-      source: "arXiv",
-      url: "https://arxiv.org/abs/2607.24273",
     },
     primaryMetricsList: ["Numerical Accuracy", "Formula Accuracy", "MAE", "Case-level Exact Match"],
     primaryMetric: {

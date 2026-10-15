@@ -5,12 +5,15 @@ import { DomainType, RawRecordInput, ValidationError, QualityError } from "@/lib
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+interface DocumentInput {
+  name: string;
+  text: string;
+  type?: string;
+}
+
 interface IngestRequestBody {
-  document: {
-    name: string;
-    text: string;
-    type?: string;
-  };
+  document?: DocumentInput;
+  documents?: DocumentInput[];
   domain?: DomainType;
   question?: string;
   instruction?: string;
@@ -47,57 +50,66 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { document, domain = "insurance_documents", question, instruction, evidence, autoChunk = false } = body;
+  const { document, documents, domain = "insurance_documents", question, instruction, evidence, autoChunk = false } = body;
 
-  if (!document || !document.name || !document.text) {
-    return NextResponse.json({ error: "document with name and text is required" }, { status: 400 });
+  const targetDocs: DocumentInput[] = [];
+  if (Array.isArray(documents) && documents.length > 0) {
+    targetDocs.push(...documents.filter((d) => d && d.name && d.text?.trim()));
+  } else if (document && document.name && document.text?.trim()) {
+    targetDocs.push(document);
   }
 
-  const cleanText = document.text.trim();
-  if (cleanText.length === 0) {
-    return NextResponse.json({ error: "Document content is empty" }, { status: 400 });
+  if (targetDocs.length === 0) {
+    return NextResponse.json(
+      { error: "At least one document with name and non-empty text is required" },
+      { status: 400 }
+    );
   }
 
   try {
     const recordsToCreate: RawRecordInput[] = [];
-    const baseSourceId = `doc_${document.name.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 30)}`;
 
-    if (autoChunk && cleanText.length > 2500) {
-      const chunks = splitIntoParagraphChunks(cleanText, 2000);
-      chunks.forEach((chunk, idx) => {
-        const firstLine = chunk.split("\n")[0].slice(0, 100).replace(/[#*]/g, "").trim();
-        const sectionTitle = firstLine ? `Section: ${firstLine}` : `Clause ${idx + 1}`;
-        const chunkEvidence = chunk.slice(0, 300).trim();
+    for (const doc of targetDocs) {
+      const cleanText = doc.text.trim();
+      const baseSourceId = `doc_${doc.name.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 30)}`;
 
+      if (autoChunk && cleanText.length > 2500) {
+        const chunks = splitIntoParagraphChunks(cleanText, 2000);
+        chunks.forEach((chunk, idx) => {
+          const firstLine = chunk.split("\n")[0].slice(0, 100).replace(/[#*]/g, "").trim();
+          const sectionTitle = firstLine ? `Section: ${firstLine}` : `Clause ${idx + 1}`;
+          const chunkEvidence = chunk.slice(0, 300).trim();
+
+          recordsToCreate.push({
+            task: "document_clause_analysis",
+            domain,
+            instruction: instruction || `Analyze terms and conditions in ${doc.name} (${sectionTitle}).`,
+            question: question ? `${question} (${sectionTitle})?` : `What are the key policy specifications in ${doc.name} (${sectionTitle})?`,
+            context: chunk,
+            evidence: evidence || chunkEvidence,
+            response: `According to ${doc.name} (${sectionTitle}):\n\n${chunk.slice(0, 800)}\n\nThis provision governs applicable limits, conditions precedent, and coverage scope under the policy agreement.`,
+            source_id: `${baseSourceId}_c${idx + 1}`,
+            capabilities: ["document-reasoning", "policy-analysis", "clause-interpretation"],
+            difficulty: "medium",
+            requires_retrieval: true,
+          });
+        });
+      } else {
+        const docEvidence = evidence || cleanText.slice(0, 400).trim();
         recordsToCreate.push({
-          task: "document_clause_analysis",
+          task: "policy_document_retrieval",
           domain,
-          instruction: instruction || `Analyze terms and conditions in ${document.name} (${sectionTitle}).`,
-          question: question ? `${question} (${sectionTitle})?` : `What are the key policy specifications in ${document.name} (${sectionTitle})?`,
-          context: chunk,
-          evidence: evidence || chunkEvidence,
-          response: `According to ${document.name} (${sectionTitle}):\n\n${chunk.slice(0, 800)}\n\nThis provision governs applicable limits, conditions precedent, and coverage scope under the policy agreement.`,
-          source_id: `${baseSourceId}_c${idx + 1}`,
-          capabilities: ["document-reasoning", "policy-analysis", "clause-interpretation"],
+          instruction: instruction || `Extract policy coverage terms, exclusions, or regulatory conditions from ${doc.name}.`,
+          question: question || `What coverage details, exclusions, and conditions are stipulated in ${doc.name}?`,
+          context: cleanText.length > 4000 ? cleanText.slice(0, 4000) + "… [content truncated for context]" : cleanText,
+          evidence: docEvidence,
+          response: `Based on the ingested document "${doc.name}":\n\n${cleanText.slice(0, 1200)}\n\nSummary: Document established with verified underwriting terms, operational guidelines, and policy governance.`,
+          source_id: baseSourceId,
+          capabilities: ["document-reasoning", "retrieval", "insurance-analysis"],
           difficulty: "medium",
           requires_retrieval: true,
         });
-      });
-    } else {
-      const docEvidence = evidence || cleanText.slice(0, 400).trim();
-      recordsToCreate.push({
-        task: "policy_document_retrieval",
-        domain,
-        instruction: instruction || `Extract policy coverage terms, exclusions, or regulatory conditions from ${document.name}.`,
-        question: question || `What coverage details, exclusions, and conditions are stipulated in ${document.name}?`,
-        context: cleanText.length > 4000 ? cleanText.slice(0, 4000) + "… [content truncated for context]" : cleanText,
-        evidence: docEvidence,
-        response: `Based on the ingested document "${document.name}":\n\n${cleanText.slice(0, 1200)}\n\nSummary: Document established with verified underwriting terms, operational guidelines, and policy governance.`,
-        source_id: baseSourceId,
-        capabilities: ["document-reasoning", "retrieval", "insurance-analysis"],
-        difficulty: "medium",
-        requires_retrieval: true,
-      });
+      }
     }
 
     const createdIds: string[] = [];
@@ -110,7 +122,8 @@ export async function POST(req: NextRequest) {
       success: true,
       recordsIngested: createdIds.length,
       recordIds: createdIds,
-      documentName: document.name,
+      documentName: targetDocs.length === 1 ? targetDocs[0].name : `${targetDocs.length} documents`,
+      documentNames: targetDocs.map((d) => d.name),
       domain,
     });
   } catch (err) {

@@ -16,7 +16,8 @@ export async function POST(req: NextRequest) {
   const encoder = new TextEncoder();
   let body: {
     model: string;
-    prompt: string;
+    prompt?: string;
+    messages?: ChatMessage[];
     systemPrompt?: string;
     useTools?: boolean;
     selectedTools?: string[];
@@ -34,13 +35,26 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { model, prompt, systemPrompt, useTools, selectedTools, toolChoice, activePlugins, customEndpoint } = body;
+  const { model, prompt, messages: inputMessages, systemPrompt, useTools, selectedTools, toolChoice, activePlugins, customEndpoint } = body;
 
-  if (!model || !prompt) {
+  if (!model || (!prompt && (!inputMessages || inputMessages.length === 0))) {
     return new Response(
-      sseEvent({ type: "error", error: "model and prompt are required" }),
+      sseEvent({ type: "error", error: "model and prompt (or messages array) are required" }),
       { status: 400, headers: { "Content-Type": "text/event-stream" } }
     );
+  }
+
+  // Build full conversational thread messages
+  let conversationMessages: ChatMessage[] = [];
+  if (inputMessages && inputMessages.length > 0) {
+    conversationMessages = inputMessages.map((m) => ({
+      role: m.role,
+      content: m.content,
+      tool_call_id: m.tool_call_id,
+      tool_calls: m.tool_calls,
+    }));
+  } else if (prompt) {
+    conversationMessages = [{ role: "user", content: prompt }];
   }
 
   // Ensure regulatory_check_rag is enabled if regulatory-check plugin is active
@@ -84,7 +98,14 @@ export async function POST(req: NextRequest) {
   if (isRegulatoryCheckActive) {
     try {
       const { searchRegulatoryHybrid } = await import("@/lib/regulatory-rag");
-      const regMatches = await searchRegulatoryHybrid(prompt, { topK: 3 });
+      const latestUserQuery =
+        prompt ||
+        [...conversationMessages]
+          .reverse()
+          .find((m) => m.role === "user" && typeof m.content === "string")?.content ||
+        "";
+
+      const regMatches = await searchRegulatoryHybrid(latestUserQuery, { topK: 3 });
       if (regMatches.length > 0) {
         const regulatoryContext =
           "\n\n[OFFICIAL EU REGULATORY CORPUS — GROUND TRUTH EVIDENCE]\n" +
@@ -109,7 +130,7 @@ export async function POST(req: NextRequest) {
     ? `${resolvedSystemPrompt}\n\nCRITICAL INSTRUCTION: You MUST invoke the '${forcedToolName}' tool to compute, evaluate, or retrieve the necessary data to answer the user prompt.`
     : resolvedSystemPrompt;
 
-  const messages: ChatMessage[] = [{ role: "user", content: prompt }];
+  const messages: ChatMessage[] = [...conversationMessages];
 
   const stream = new ReadableStream({
     async start(controller) {

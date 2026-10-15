@@ -104,10 +104,11 @@ interface ToolEvent {
   timestamp: number;
 }
 
-interface ChatMessage {
+export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
-  attachedDoc?: ParsedDocument;
+  attachedDocs?: ParsedDocument[];
+  attachedDoc?: ParsedDocument; // Backward compatibility
   toolEvents?: ToolEvent[];
   promptTokens?: number;
   completionTokens?: number;
@@ -116,6 +117,30 @@ interface ChatMessage {
   isStreaming?: boolean;
 }
 
+export interface ChatThread {
+  id: string;
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+  model: string;
+  activePlugins: string[];
+  messages: ChatMessage[];
+  attachedDocs: ParsedDocument[]; // Staged in composer
+  threadDocs: ParsedDocument[];   // All documents uploaded in this thread
+}
+
+interface UploadingFile {
+  id: string;
+  name: string;
+  size: number;
+  status: "parsing" | "ocr" | "done" | "error";
+  error?: string;
+}
+
+const STORAGE_KEY_THREADS = "dil_chat_threads_v2";
+const STORAGE_KEY_ACTIVE = "dil_active_thread_id_v2";
+const STORAGE_KEY_SIDEBAR = "dil_gemini_sidebar_collapsed";
+
 function formatDocType(type?: string): string {
   if (!type) return "DOC";
   const upper = type.toUpperCase();
@@ -123,125 +148,247 @@ function formatDocType(type?: string): string {
   return type.replace(/\bAI\s*OCR\b/gi, "OCR");
 }
 
-/* ── Connection tag component ───────────────────────────────────────────────── */
-const ConnTag = React.memo(function ConnTag({
-  type,
-  label,
-}: {
-  type: "db" | "web" | "mail" | "agent";
-  label: string;
-}) {
-  const icons = { db: "DB", web: "WEB", mail: "MAIL", agent: "AGENT" };
-  return (
-    <span className={`arena-conn-tag ${type}`}>
-      {label}
-    </span>
-  );
-});
+function createDefaultThread(initialTitle?: string): ChatThread {
+  const id = `thread_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  return {
+    id,
+    title: initialTitle || "New Insurance Thread",
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    model: "openrouter/free",
+    activePlugins: ["regulatory-check", "premium-calculator"],
+    messages: [],
+    attachedDocs: [],
+    threadDocs: [],
+  };
+}
 
-/* ── Tool call display ─────────────────────────────────────────────────────── */
-const ToolCallBlock = React.memo(function ToolCallBlock({ events }: { events: ToolEvent[] }) {
+function loadSavedThreads(): { threads: ChatThread[]; activeId: string } {
+  if (typeof window === "undefined") {
+    const t = createDefaultThread();
+    return { threads: [t], activeId: t.id };
+  }
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_THREADS);
+    if (raw) {
+      const parsed: ChatThread[] = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const savedActive = localStorage.getItem(STORAGE_KEY_ACTIVE);
+        const activeId = parsed.some((t) => t.id === savedActive)
+          ? (savedActive as string)
+          : parsed[0].id;
+        return { threads: parsed, activeId };
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to load threads from localStorage:", err);
+  }
+  const defaultT = createDefaultThread();
+  return { threads: [defaultT], activeId: defaultT.id };
+}
+
+/* ── Gemini Sparkle Icon (4-point gradient star) ──────────────────────────── */
+function GeminiSparkleIcon({ size = 20, className = "" }: { size?: number; className?: string }) {
   return (
-    <>
-      {events.map((ev, i) => (
-        <div key={i} className="arena-tool-call">
-          <div className="arena-tool-call-header">
-            <span className="arena-tool-call-icon">TOOL</span>
-            <span className="arena-tool-call-name">{ev.name}()</span>
-            <span className="arena-tool-call-type">
-              {ev.type === "call" ? "→ Tool Call" : "← Result"}
-            </span>
-          </div>
-          {ev.data && (
-            <div className="arena-tool-call-args">
-              {ev.data.length > 300 ? ev.data.slice(0, 300) + "…" : ev.data}
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M12 2C12 7.52285 7.52285 12 2 12C7.52285 12 12 16.4772 12 22C12 16.4772 16.4772 12 22 12C16.4772 12 12 7.52285 12 2Z"
+        fill="url(#gemini_sparkle_gradient)"
+      />
+      <defs>
+        <linearGradient
+          id="gemini_sparkle_gradient"
+          x1="2"
+          y1="2"
+          x2="22"
+          y2="22"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop stopColor="#4285F4" />
+          <stop offset="0.33" stopColor="#9B72CB" />
+          <stop offset="0.66" stopColor="#D96570" />
+          <stop offset="1" stopColor="#F59E0B" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
+
+/* ── Tool / Extension call display ────────────────────────────────────────── */
+const GeminiExtensionBlock = React.memo(function GeminiExtensionBlock({ events }: { events: ToolEvent[] }) {
+  const [openMap, setOpenMap] = useState<Record<number, boolean>>({});
+
+  const toggle = (idx: number) => {
+    setOpenMap((prev) => ({ ...prev, [idx]: !prev[idx] }));
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "14px" }}>
+      {events.map((ev, i) => {
+        const isOpen = openMap[i] ?? false;
+        return (
+          <div key={i} className="gemini-extension-call-card">
+            <div className="gemini-extension-call-header" onClick={() => toggle(i)}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span style={{ fontSize: "12px", color: "var(--accent-light)" }}>⚙️</span>
+                <span style={{ fontWeight: 600, color: "var(--text-main)" }}>
+                  {ev.name}()
+                </span>
+                <span style={{ fontSize: "10.5px", color: "var(--text-subtle)", padding: "1px 6px", borderRadius: "4px", background: "rgba(255, 255, 255, 0.05)" }}>
+                  {ev.type === "call" ? "Invoking Extension" : "Result Ready"}
+                </span>
+              </div>
+              <span style={{ fontSize: "11px", color: "var(--text-subtle)", transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>
+                ▼
+              </span>
             </div>
-          )}
-        </div>
-      ))}
-    </>
+            {isOpen && ev.data && (
+              <div className="gemini-extension-call-body">
+                {ev.data}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
   );
 });
 
 /* ── Message bubble ─────────────────────────────────────────────────────────── */
-// React.memo prevents re-rendering completed messages when only the last
-// streaming message changes. This is the single biggest re-render win during
-// long AI streaming responses.
-const MessageBubble = React.memo(function MessageBubble({
+const GeminiMessageRow = React.memo(function GeminiMessageRow({
   msg,
   onPreviewDoc,
 }: {
   msg: ChatMessage;
   onPreviewDoc?: (doc: ParsedDocument) => void;
 }) {
-  return (
-    <div className={`arena-msg ${msg.role}`}>
-      <div className="arena-msg-avatar" style={{ fontSize: "11px", fontWeight: 700 }}>
-        {msg.role === "user" ? "YOU" : "AI"}
+  const [copied, setCopied] = useState(false);
+  const docs = msg.attachedDocs && msg.attachedDocs.length > 0
+    ? msg.attachedDocs
+    : msg.attachedDoc
+    ? [msg.attachedDoc]
+    : [];
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(msg.content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  };
+
+  if (msg.role === "user") {
+    return (
+      <div className="gemini-msg-row user">
+        <div className="gemini-user-bubble">
+          {docs.length > 0 && (
+            <div className="arena-msg-docs-wrap" style={{ marginBottom: "10px" }}>
+              {docs.map((doc, idx) => (
+                <div key={doc.id || idx} className="arena-msg-doc-pill">
+                  <span
+                    className={`doc-badge doc-badge-${formatDocType(doc.type)
+                      .toLowerCase()
+                      .replace(/[^a-z0-9_-]/g, "-")}`}
+                  >
+                    {formatDocType(doc.type)}
+                  </span>
+                  <span className="arena-msg-doc-name" title={doc.name}>
+                    {doc.name}
+                  </span>
+                  <span className="arena-msg-doc-meta">
+                    {doc.formattedSize}
+                  </span>
+                  {onPreviewDoc && (
+                    <button
+                      type="button"
+                      className="arena-msg-doc-view-btn"
+                      onClick={() => onPreviewDoc(doc)}
+                    >
+                      View
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{ whiteSpace: "pre-wrap" }}>{msg.content}</div>
+        </div>
       </div>
-      <div className="arena-msg-body">
-        {msg.toolEvents && msg.toolEvents.length > 0 && (
-          <ToolCallBlock events={msg.toolEvents} />
-        )}
-        {msg.attachedDoc && (
-          <div className="arena-msg-doc-pill">
-            <span
-              className={`doc-badge doc-badge-${formatDocType(msg.attachedDoc.type)
-                .toLowerCase()
-                .replace(/[^a-z0-9_-]/g, "-")}`}
-            >
-              {formatDocType(msg.attachedDoc.type)}
-            </span>
-            <span className="arena-msg-doc-name" title={msg.attachedDoc.name}>
-              {msg.attachedDoc.name}
-            </span>
-            <span className="arena-msg-doc-meta">
-              {msg.attachedDoc.formattedSize} · {msg.attachedDoc.wordCount.toLocaleString()} words
-            </span>
-            {onPreviewDoc && (
-              <button
-                type="button"
-                className="arena-msg-doc-view-btn"
-                onClick={() => onPreviewDoc(msg.attachedDoc!)}
-                title="Preview document content"
-              >
-                View
-              </button>
-            )}
-          </div>
-        )}
-        <div className="arena-msg-bubble">
+    );
+  }
+
+  // Assistant Turn
+  return (
+    <div className="gemini-msg-row assistant">
+      <div className="gemini-assistant-row">
+        <div className="gemini-assistant-avatar" title="Insurance AI Assistant">
+          <GeminiSparkleIcon size={18} />
+        </div>
+        <div className="gemini-assistant-body">
+          {msg.toolEvents && msg.toolEvents.length > 0 && (
+            <GeminiExtensionBlock events={msg.toolEvents} />
+          )}
+
           {msg.isStreaming && !msg.content ? (
-            <div className="arena-typing">
+            <div className="arena-typing" style={{ marginTop: 8 }}>
               <div className="arena-typing-dot" />
               <div className="arena-typing-dot" />
               <div className="arena-typing-dot" />
             </div>
           ) : (
-            <ReactMarkdown>{msg.content}</ReactMarkdown>
+            <div className="gemini-markdown-container">
+              <ReactMarkdown>{msg.content}</ReactMarkdown>
+            </div>
+          )}
+
+          {/* Metrics & Copy Footer */}
+          {!msg.isStreaming && msg.content && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "14px", paddingTop: "8px", borderTop: "1px solid rgba(255, 255, 255, 0.05)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "11px", color: "var(--text-subtle)", fontFamily: "var(--font-mono)" }}>
+                {msg.promptTokens != null && msg.promptTokens > 0 && (
+                  <span>{msg.promptTokens.toLocaleString()} in</span>
+                )}
+                {msg.completionTokens != null && msg.completionTokens > 0 && (
+                  <span>{msg.completionTokens.toLocaleString()} out</span>
+                )}
+                {msg.latencyMs != null && msg.latencyMs > 0 && (
+                  <span>{(msg.latencyMs / 1000).toFixed(2)}s</span>
+                )}
+                {msg.estCostUsd != null && msg.estCostUsd > 0 && (
+                  <span>
+                    {msg.estCostUsd < 0.0001
+                      ? `$${msg.estCostUsd.toExponential(2)}`
+                      : `$${msg.estCostUsd.toFixed(4)}`}
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={handleCopy}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: copied ? "var(--accent-light)" : "var(--text-subtle)",
+                  fontSize: "11.5px",
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  padding: "2px 6px",
+                  borderRadius: "4px",
+                }}
+                title="Copy response text"
+              >
+                {copied ? "✓ Copied" : "📋 Copy"}
+              </button>
+            </div>
           )}
         </div>
-        {/* Metrics footer */}
-        {msg.role === "assistant" && !msg.isStreaming && (
-          <div className="arena-msg-metrics">
-            {msg.promptTokens != null && msg.promptTokens > 0 && (
-              <span>{msg.promptTokens.toLocaleString()} in</span>
-            )}
-            {msg.completionTokens != null && msg.completionTokens > 0 && (
-              <span>{msg.completionTokens.toLocaleString()} out</span>
-            )}
-            {msg.latencyMs != null && msg.latencyMs > 0 && (
-              <span>{(msg.latencyMs / 1000).toFixed(2)}s</span>
-            )}
-            {msg.estCostUsd != null && msg.estCostUsd > 0 && (
-              <span>
-                {msg.estCostUsd < 0.0001
-                  ? `$${msg.estCostUsd.toExponential(2)}`
-                  : `$${msg.estCostUsd.toFixed(4)}`}
-              </span>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );
@@ -254,101 +401,282 @@ interface ChatArenaProps {
 }
 
 export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps = {}) {
-  const [selectedModel, setSelectedModel] = useState("openrouter/free");
-  const [activePlugins, setActivePlugins] = useState<Set<string>>(
-    new Set(["regulatory-check", "premium-calculator"])
-  );
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [threads, setThreads] = useState<ChatThread[]>(() => loadSavedThreads().threads);
+  const [activeThreadId, setActiveThreadId] = useState<string>(() => loadSavedThreads().activeId);
+
+  // Collapsible sidebar state (persisted)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem(STORAGE_KEY_SIDEBAR) === "true";
+    }
+    return false;
+  });
+
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
-  const [attachedDoc, setAttachedDoc] = useState<ParsedDocument | null>(null);
-  const [isUploadingDoc, setIsUploadingDoc] = useState(false);
+  const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [previewDoc, setPreviewDoc] = useState<ParsedDocument | null>(null);
+
+  // Modals state
+  const [previewDocs, setPreviewDocs] = useState<ParsedDocument[]>([]);
+  const [previewActiveId, setPreviewActiveId] = useState<string | undefined>(undefined);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+
+  const [ingestDocs, setIngestDocs] = useState<ParsedDocument[]>([]);
   const [showIngestModal, setShowIngestModal] = useState(false);
+
   const [isDragging, setIsDragging] = useState(false);
-  const initialSentRef = useRef(false);
+  const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
 
   const abortRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const chatInputRef = useRef<HTMLTextAreaElement | null>(null);
 
+  // Active Thread Reference
+  const activeThread = threads.find((t) => t.id === activeThreadId) || threads[0] || createDefaultThread();
+  const messages = activeThread.messages || [];
+  const attachedDocs = activeThread.attachedDocs || [];
+  const threadDocs = activeThread.threadDocs || [];
+  const selectedModel = activeThread.model || "openrouter/free";
+  const activePlugins = new Set(activeThread.activePlugins || ["regulatory-check", "premium-calculator"]);
+
   const modelInfo = MODELS.find((m) => m.id === selectedModel);
   const activePluginCount = activePlugins.size;
+
+  const totalAttachedTokens = attachedDocs.reduce((acc, d) => acc + (d.tokenCount || 0), 0);
 
   // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, isStreaming]);
+
+  // Persist threads to localStorage
+  useEffect(() => {
+    if (typeof window === "undefined" || threads.length === 0) return;
+    try {
+      localStorage.setItem(STORAGE_KEY_THREADS, JSON.stringify(threads));
+      localStorage.setItem(STORAGE_KEY_ACTIVE, activeThreadId);
+    } catch (err) {
+      console.warn("Failed to save threads to localStorage:", err);
+    }
+  }, [threads, activeThreadId]);
+
+  // Persist sidebar collapsed state
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(STORAGE_KEY_SIDEBAR, String(isSidebarCollapsed));
+    }
+  }, [isSidebarCollapsed]);
+
+  // Helper to update active thread
+  const updateActiveThread = useCallback(
+    (updater: (prev: ChatThread) => ChatThread) => {
+      setThreads((prevThreads) => {
+        const found = prevThreads.some((t) => t.id === activeThreadId);
+        if (!found) {
+          const newT = updater(createDefaultThread());
+          return [newT, ...prevThreads];
+        }
+        return prevThreads.map((t) => (t.id === activeThreadId ? updater(t) : t));
+      });
+    },
+    [activeThreadId]
+  );
+
+  const setSelectedModel = (model: string) => {
+    updateActiveThread((t) => ({ ...t, model, updatedAt: Date.now() }));
+  };
 
   const togglePlugin = (id: string) => {
-    setActivePlugins((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
+    updateActiveThread((t) => {
+      const nextPlugins = new Set(t.activePlugins);
+      nextPlugins.has(id) ? nextPlugins.delete(id) : nextPlugins.add(id);
+      return { ...t, activePlugins: Array.from(nextPlugins), updatedAt: Date.now() };
     });
   };
 
-  const handleDocUpload = async (file: File) => {
-    setIsUploadingDoc(true);
-    setUploadError(null);
-    const localFileUrl = URL.createObjectURL(file);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await fetch("/api/documents/parse", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "Failed to parse document");
-      }
+  /* ── Thread Actions ────────────────────────────────────────────────────────── */
+  const createNewThread = () => {
+    abortRef.current?.abort();
+    setIsStreaming(false);
+    const newT = createDefaultThread();
+    setThreads((prev) => [newT, ...prev]);
+    setActiveThreadId(newT.id);
+    setInput("");
+    setTimeout(() => chatInputRef.current?.focus(), 50);
+  };
 
-      // If server signals that it needs client-side page rendering (e.g. deployed on Vercel without poppler)
-      if (data.needsClientOcr && (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf"))) {
+  const switchThread = (id: string) => {
+    if (id === activeThreadId) return;
+    abortRef.current?.abort();
+    setIsStreaming(false);
+    setActiveThreadId(id);
+    setInput("");
+  };
+
+  const deleteThread = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setThreads((prev) => {
+      const filtered = prev.filter((t) => t.id !== id);
+      if (filtered.length === 0) {
+        const fallback = createDefaultThread();
+        setActiveThreadId(fallback.id);
+        return [fallback];
+      }
+      if (activeThreadId === id) {
+        setActiveThreadId(filtered[0].id);
+      }
+      return filtered;
+    });
+  };
+
+  const startRenameThread = (thread: ChatThread, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingThreadId(thread.id);
+    setEditingTitle(thread.title);
+  };
+
+  const saveRenameThread = (id: string) => {
+    const trimmed = editingTitle.trim() || "Untitled Thread";
+    setThreads((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, title: trimmed, updatedAt: Date.now() } : t))
+    );
+    setEditingThreadId(null);
+  };
+
+  /* ── Multi-File Upload Handler ─────────────────────────────────────────────── */
+  const handleMultiDocUpload = async (files: FileList | File[]) => {
+    const fileList = Array.from(files);
+    if (fileList.length === 0) return;
+
+    setUploadError(null);
+    const queueItems: UploadingFile[] = fileList.map((f, i) => ({
+      id: `upload_${Date.now()}_${i}_${f.name}`,
+      name: f.name,
+      size: f.size,
+      status: "parsing",
+    }));
+    setUploadingFiles(queueItems);
+
+    const parsedResults: ParsedDocument[] = [];
+    const errors: string[] = [];
+
+    await Promise.all(
+      fileList.map(async (file, idx) => {
+        const qId = queueItems[idx].id;
+        const localFileUrl = URL.createObjectURL(file);
         try {
-          const { renderPdfPagesToImages } = await import("@/lib/client-pdf-renderer");
-          const renderedPages = await renderPdfPagesToImages(file, 5);
-          if (renderedPages.length > 0) {
-            const ocrFormData = new FormData();
-            ocrFormData.append("file", file);
-            ocrFormData.append("pageImages", JSON.stringify(renderedPages));
-            const ocrRes = await fetch("/api/documents/parse", {
-              method: "POST",
-              body: ocrFormData,
-            });
-            const ocrData = await ocrRes.json();
-            if (ocrData.success && ocrData.document) {
-              setAttachedDoc({
-                ...ocrData.document,
-                fileUrl: localFileUrl || ocrData.document.fileUrl,
-                mimeType: file.type || "application/pdf",
-                type: formatDocType(ocrData.document.type),
-              });
-              return;
+          const formData = new FormData();
+          formData.append("file", file);
+          const res = await fetch("/api/documents/parse", {
+            method: "POST",
+            body: formData,
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) {
+            throw new Error(data.error || "Failed to parse document");
+          }
+
+          let doc: ParsedDocument = {
+            ...data.document,
+            id: data.document.id || `doc_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 6)}`,
+            fileUrl: localFileUrl || data.document.fileUrl,
+            mimeType: file.type || "application/pdf",
+            type: formatDocType(data.document.type),
+          };
+
+          // Client-side OCR fallback for PDFs without server-side poppler
+          if (data.needsClientOcr && (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf"))) {
+            setUploadingFiles((prev) =>
+              prev.map((item) => (item.id === qId ? { ...item, status: "ocr" } : item))
+            );
+            try {
+              const { renderPdfPagesToImages } = await import("@/lib/client-pdf-renderer");
+              const renderedPages = await renderPdfPagesToImages(file, 5);
+              if (renderedPages.length > 0) {
+                const ocrFormData = new FormData();
+                ocrFormData.append("file", file);
+                ocrFormData.append("pageImages", JSON.stringify(renderedPages));
+                const ocrRes = await fetch("/api/documents/parse", {
+                  method: "POST",
+                  body: ocrFormData,
+                });
+                const ocrData = await ocrRes.json();
+                if (ocrData.success && ocrData.document) {
+                  doc = {
+                    ...ocrData.document,
+                    id: doc.id,
+                    fileUrl: localFileUrl || ocrData.document.fileUrl,
+                    mimeType: file.type || "application/pdf",
+                    type: formatDocType(ocrData.document.type),
+                  };
+                }
+              }
+            } catch (clientOcrErr) {
+              console.warn("Client-side PDF rendering fallback failed:", clientOcrErr);
             }
           }
-        } catch (clientOcrErr) {
-          console.warn("Client-side PDF rendering fallback failed:", clientOcrErr);
-        }
-      }
 
-      setAttachedDoc({
-        ...data.document,
-        fileUrl: localFileUrl || data.document.fileUrl,
-        mimeType: file.type || "application/pdf",
-        type: formatDocType(data.document.type),
+          setUploadingFiles((prev) =>
+            prev.map((item) => (item.id === qId ? { ...item, status: "done" } : item))
+          );
+          parsedResults.push(doc);
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : "Failed to parse";
+          errors.push(`${file.name}: ${msg}`);
+          setUploadingFiles((prev) =>
+            prev.map((item) => (item.id === qId ? { ...item, status: "error", error: msg } : item))
+          );
+        }
+      })
+    );
+
+    if (parsedResults.length > 0) {
+      updateActiveThread((t) => {
+        const existingAttachedKeys = new Set(t.attachedDocs.map((d) => `${d.name}_${d.size}`));
+        const newAttached = parsedResults.filter((d) => !existingAttachedKeys.has(`${d.name}_${d.size}`));
+
+        const existingThreadKeys = new Set(t.threadDocs.map((d) => `${d.name}_${d.size}`));
+        const newThreadDocs = parsedResults.filter((d) => !existingThreadKeys.has(`${d.name}_${d.size}`));
+
+        return {
+          ...t,
+          attachedDocs: [...t.attachedDocs, ...newAttached],
+          threadDocs: [...t.threadDocs, ...newThreadDocs],
+          updatedAt: Date.now(),
+        };
       });
-    } catch (err: unknown) {
-      setUploadError(err instanceof Error ? err.message : "Failed to upload document");
-    } finally {
-      setIsUploadingDoc(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
     }
+
+    if (errors.length > 0) {
+      setUploadError(errors.join(" | "));
+    }
+
+    setTimeout(() => {
+      setUploadingFiles((prev) => prev.filter((p) => p.status === "error"));
+    }, 1500);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const removeAttachedDoc = (docId: string) => {
+    updateActiveThread((t) => ({
+      ...t,
+      attachedDocs: t.attachedDocs.filter((d) => d.id !== docId),
+      updatedAt: Date.now(),
+    }));
+  };
+
+  const clearAttachedDocs = () => {
+    updateActiveThread((t) => ({
+      ...t,
+      attachedDocs: [],
+      updatedAt: Date.now(),
+    }));
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -369,226 +697,289 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
     setIsDragging(false);
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
-      handleDocUpload(files[0]);
+      handleMultiDocUpload(files);
     }
   };
 
-  const handleSend = useCallback(async (overridePrompt?: string) => {
-    let text = (overridePrompt ?? input).trim();
-    if ((!text && !attachedDoc) || isStreaming || isUploadingDoc) return;
+  /* ── Send Message in Thread with Context Maintenance ───────────────────────── */
+  const handleSend = useCallback(
+    async (overridePrompt?: string) => {
+      const text = (overridePrompt ?? input).trim();
+      const currentDocs = activeThread.attachedDocs;
+      if ((!text && currentDocs.length === 0) || isStreaming || uploadingFiles.length > 0) return;
 
-    const currentDoc = attachedDoc;
-    let effectivePrompt = text;
+      // Format current turn user prompt with attached documents
+      let promptWithDocs = text;
+      if (currentDocs.length > 0) {
+        const docsHeader = `[ATTACHED INSURANCE DOCUMENTS (${currentDocs.length} file${currentDocs.length > 1 ? "s" : ""})]\n\n` +
+          currentDocs
+            .map(
+              (doc, idx) =>
+                `=== DOCUMENT ${idx + 1} OF ${currentDocs.length}: ${doc.name} (Type: ${doc.type} | Size: ${doc.formattedSize} | ~${doc.tokenCount.toLocaleString()} tokens) ===\n--- DOCUMENT CONTENT START ---\n${doc.text}\n--- DOCUMENT CONTENT END ---`
+            )
+            .join("\n\n") +
+          `\n\n[USER INQUIRY / TASK]\n` +
+          (text ||
+            "Please analyze the attached insurance documents in detail. Identify and compare key terms, coverage limits, deductibles, conditions, exclusions, and legal/underwriting implications.");
+        promptWithDocs = docsHeader;
+      }
 
-    if (currentDoc) {
-      const docHeader = `[ATTACHED POLICY / DOCUMENT: ${currentDoc.name} | Type: ${currentDoc.type} | Size: ${currentDoc.formattedSize}]\n--- DOCUMENT CONTENT START ---\n${currentDoc.text}\n--- DOCUMENT CONTENT END ---\n\n`;
-      effectivePrompt =
-        docHeader +
-        (text ||
-          "Please analyze this attached insurance document, extract key terms, coverage limits, deductibles, conditions, and exclusions.");
-    }
+      // Auto-compute thread title if first message
+      const isFirstMessage = activeThread.messages.length === 0;
+      const computedTitle = isFirstMessage
+        ? text
+          ? text.slice(0, 32) + (text.length > 32 ? "…" : "")
+          : currentDocs.length === 1
+          ? `${currentDocs[0].name.slice(0, 26)} Analysis`
+          : `${currentDocs.length} Policies Analysis`
+        : activeThread.title;
 
-    setAttachedDoc(null);
-    setInput("");
+      // Create new user turn message
+      const userMsg: ChatMessage = {
+        role: "user",
+        content:
+          text ||
+          (currentDocs.length > 0
+            ? `Please analyze the attached ${currentDocs.length} document${currentDocs.length > 1 ? "s" : ""}: ${currentDocs.map((d) => d.name).join(", ")}`
+            : ""),
+        attachedDocs: currentDocs.length > 0 ? [...currentDocs] : undefined,
+      };
 
-    // Add user message
-    const userMsg: ChatMessage = {
-      role: "user",
-      content:
-        text ||
-        (currentDoc
-          ? `Please analyze this attached policy document: **${currentDoc.name}**`
-          : ""),
-      attachedDoc: currentDoc ?? undefined,
-    };
-    setMessages((prev) => [...prev, userMsg]);
+      const nextMessagesWithUser: ChatMessage[] = [...activeThread.messages, userMsg];
 
-    // Add streaming assistant message
-    const assistantMsgId = Date.now();
-    setMessages((prev) => [
-      ...prev,
-      {
+      // Placeholder streaming assistant message
+      const streamingAssistantMsg: ChatMessage = {
         role: "assistant",
         content: "",
         isStreaming: true,
         toolEvents: [],
-      },
-    ]);
-    setIsStreaming(true);
+      };
 
-    const startTime = Date.now();
-    abortRef.current = new AbortController();
+      updateActiveThread((t) => ({
+        ...t,
+        title: computedTitle,
+        messages: [...nextMessagesWithUser, streamingAssistantMsg],
+        attachedDocs: [], // Clear attachments from composer as they are now sent in the message
+        updatedAt: Date.now(),
+      }));
 
-    let reasoning = "";
-    let answer = "";
-    let toolEvents: ToolEvent[] = [];
-    let promptTokens = 0;
-    let completionTokens = 0;
-    let estCostUsd = 0;
+      setInput("");
+      setIsStreaming(true);
 
-    try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: selectedModel,
-          prompt: effectivePrompt,
-          systemPrompt: CHAT_ARENA_SYSTEM_PROMPT,
-          useTools: activePluginCount > 0,
-          activePlugins: Array.from(activePlugins),
-          selectedTools: [
-            "calculator",
-            "regulatory_check_rag",
-            "solvency_ratio_checker",
-            "insurance_knowledge_search",
-            "currency_converter",
-          ],
-        }),
-        signal: abortRef.current.signal,
-      });
+      const startTime = Date.now();
+      abortRef.current = new AbortController();
 
-      if (!res.ok || !res.body) throw new Error("Stream failed");
+      // Build full conversation history for OpenRouter
+      const openRouterMessages: Array<{ role: "user" | "assistant"; content: string }> = [];
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          const data = line.slice(6).trim();
-          if (!data) continue;
-          let event: Record<string, unknown>;
-          try {
-            event = JSON.parse(data);
-          } catch {
-            continue;
+      for (let i = 0; i < nextMessagesWithUser.length; i++) {
+        const m = nextMessagesWithUser[i];
+        if (m.role === "user") {
+          if (i === nextMessagesWithUser.length - 1) {
+            openRouterMessages.push({ role: "user", content: promptWithDocs });
+          } else if (m.attachedDocs && m.attachedDocs.length > 0) {
+            const pastDocBlock = `[ATTACHED INSURANCE DOCUMENTS (${m.attachedDocs.length} file${m.attachedDocs.length > 1 ? "s" : ""})]\n\n` +
+              m.attachedDocs
+                .map(
+                  (doc, idx) =>
+                    `=== DOCUMENT ${idx + 1} OF ${m.attachedDocs!.length}: ${doc.name} (Type: ${doc.type} | Size: ${doc.formattedSize}) ===\n--- DOCUMENT CONTENT START ---\n${doc.text}\n--- DOCUMENT CONTENT END ---`
+                )
+                .join("\n\n") +
+              `\n\n[USER INQUIRY / TASK]\n` +
+              m.content;
+            openRouterMessages.push({ role: "user", content: pastDocBlock });
+          } else {
+            openRouterMessages.push({ role: "user", content: m.content });
           }
-
-          switch (event.type) {
-            case "reasoning":
-              reasoning += event.delta as string;
-              break;
-            case "content":
-              answer += event.delta as string;
-              setMessages((prev) => {
-                const next = [...prev];
-                const last = next[next.length - 1];
-                if (last?.role === "assistant" && last.isStreaming) {
-                  next[next.length - 1] = { ...last, content: answer };
-                }
-                return next;
-              });
-              break;
-            case "error": {
-              const errMsg = String(event.error || "Inference error");
-              answer = answer ? `${answer}\n\n[Error: ${errMsg}]` : `[Error: ${errMsg}]`;
-              setMessages((prev) => {
-                const next = [...prev];
-                const last = next[next.length - 1];
-                if (last?.role === "assistant" && last.isStreaming) {
-                  next[next.length - 1] = { ...last, content: answer };
-                }
-                return next;
-              });
-              break;
-            }
-            case "tool_call":
-              toolEvents = [
-                ...toolEvents,
-                {
-                  type: "call",
-                  name: String(event.name),
-                  data: JSON.stringify(event.args, null, 2),
-                  timestamp: Date.now(),
-                },
-              ];
-              setMessages((prev) => {
-                const next = [...prev];
-                const last = next[next.length - 1];
-                if (last?.role === "assistant" && last.isStreaming) {
-                  next[next.length - 1] = { ...last, toolEvents };
-                }
-                return next;
-              });
-              break;
-            case "tool_result":
-              toolEvents = [
-                ...toolEvents,
-                {
-                  type: "result",
-                  name: String(event.name),
-                  data: String(event.result),
-                  timestamp: Date.now(),
-                },
-              ];
-              setMessages((prev) => {
-                const next = [...prev];
-                const last = next[next.length - 1];
-                if (last?.role === "assistant" && last.isStreaming) {
-                  next[next.length - 1] = { ...last, toolEvents };
-                }
-                return next;
-              });
-              break;
-            case "usage": {
-              const u = event.usage as {
-                prompt_tokens: number;
-                completion_tokens: number;
-                total_cost_usd: number;
-              };
-              promptTokens = u.prompt_tokens;
-              completionTokens = u.completion_tokens;
-              estCostUsd = u.total_cost_usd;
-              break;
-            }
-          }
+        } else if (m.role === "assistant") {
+          openRouterMessages.push({ role: "assistant", content: m.content });
         }
       }
-    } catch (err) {
-      if ((err as Error).name === "AbortError") return;
-      answer = "[Error] An error occurred. Please try again.";
-    } finally {
-      const latencyMs = Date.now() - startTime;
-      setMessages((prev) => {
-        const next = [...prev];
-        const last = next[next.length - 1];
-        if (last?.role === "assistant" && last.isStreaming) {
-          next[next.length - 1] = {
-            role: "assistant",
-            content: answer || "No response generated.",
-            toolEvents,
-            promptTokens,
-            completionTokens,
-            latencyMs,
-            estCostUsd,
-            isStreaming: false,
-          };
+
+      let reasoning = "";
+      let answer = "";
+      let toolEvents: ToolEvent[] = [];
+      let promptTokens = 0;
+      let completionTokens = 0;
+      let estCostUsd = 0;
+
+      try {
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: activeThread.model,
+            messages: openRouterMessages,
+            systemPrompt: CHAT_ARENA_SYSTEM_PROMPT,
+            useTools: activeThread.activePlugins.length > 0,
+            activePlugins: activeThread.activePlugins,
+            selectedTools: [
+              "calculator",
+              "regulatory_check_rag",
+              "solvency_ratio_checker",
+              "insurance_knowledge_search",
+              "currency_converter",
+            ],
+          }),
+          signal: abortRef.current.signal,
+        });
+
+        if (!res.ok || !res.body) throw new Error("Stream failed");
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            const data = line.slice(6).trim();
+            if (!data) continue;
+            let event: Record<string, unknown>;
+            try {
+              event = JSON.parse(data);
+            } catch {
+              continue;
+            }
+
+            switch (event.type) {
+              case "reasoning":
+                reasoning += event.delta as string;
+                break;
+              case "content":
+                answer += event.delta as string;
+                updateActiveThread((t) => {
+                  const msgs = [...t.messages];
+                  const last = msgs[msgs.length - 1];
+                  if (last?.role === "assistant" && last.isStreaming) {
+                    msgs[msgs.length - 1] = { ...last, content: answer };
+                  }
+                  return { ...t, messages: msgs };
+                });
+                break;
+              case "error": {
+                const errMsg = String(event.error || "Inference error");
+                answer = answer ? `${answer}\n\n[Error: ${errMsg}]` : `[Error: ${errMsg}]`;
+                updateActiveThread((t) => {
+                  const msgs = [...t.messages];
+                  const last = msgs[msgs.length - 1];
+                  if (last?.role === "assistant" && last.isStreaming) {
+                    msgs[msgs.length - 1] = { ...last, content: answer };
+                  }
+                  return { ...t, messages: msgs };
+                });
+                break;
+              }
+              case "tool_call":
+                toolEvents = [
+                  ...toolEvents,
+                  {
+                    type: "call",
+                    name: String(event.name),
+                    data: JSON.stringify(event.args, null, 2),
+                    timestamp: Date.now(),
+                  },
+                ];
+                updateActiveThread((t) => {
+                  const msgs = [...t.messages];
+                  const last = msgs[msgs.length - 1];
+                  if (last?.role === "assistant" && last.isStreaming) {
+                    msgs[msgs.length - 1] = { ...last, toolEvents };
+                  }
+                  return { ...t, messages: msgs };
+                });
+                break;
+              case "tool_result":
+                toolEvents = [
+                  ...toolEvents,
+                  {
+                    type: "result",
+                    name: String(event.name),
+                    data: String(event.result),
+                    timestamp: Date.now(),
+                  },
+                ];
+                updateActiveThread((t) => {
+                  const msgs = [...t.messages];
+                  const last = msgs[msgs.length - 1];
+                  if (last?.role === "assistant" && last.isStreaming) {
+                    msgs[msgs.length - 1] = { ...last, toolEvents };
+                  }
+                  return { ...t, messages: msgs };
+                });
+                break;
+              case "usage": {
+                const u = event.usage as {
+                  prompt_tokens: number;
+                  completion_tokens: number;
+                  total_cost_usd: number;
+                };
+                promptTokens = u.prompt_tokens;
+                completionTokens = u.completion_tokens;
+                estCostUsd = u.total_cost_usd;
+                break;
+              }
+            }
+          }
         }
-        return next;
-      });
-      setIsStreaming(false);
-    }
-  }, [input, isStreaming, selectedModel, activePluginCount, attachedDoc, isUploadingDoc]);
+      } catch (err) {
+        if ((err as Error).name === "AbortError") return;
+        answer = "[Error] An error occurred. Please try again.";
+      } finally {
+        const latencyMs = Date.now() - startTime;
+        updateActiveThread((t) => {
+          const msgs = [...t.messages];
+          const last = msgs[msgs.length - 1];
+          if (last?.role === "assistant" && last.isStreaming) {
+            msgs[msgs.length - 1] = {
+              role: "assistant",
+              content: answer || "No response generated.",
+              toolEvents,
+              promptTokens,
+              completionTokens,
+              latencyMs,
+              estCostUsd,
+              isStreaming: false,
+            };
+          }
+          return { ...t, messages: msgs, updatedAt: Date.now() };
+        });
+        setIsStreaming(false);
+      }
+    },
+    [input, isStreaming, uploadingFiles.length, activeThread, updateActiveThread]
+  );
 
   const canSend =
-    (input.trim().length > 0 || attachedDoc !== null) &&
+    (input.trim().length > 0 || attachedDocs.length > 0) &&
     !isStreaming &&
-    !isUploadingDoc;
+    uploadingFiles.length === 0;
 
-  const handleClear = () => {
+  const handleClearCurrentThread = () => {
     abortRef.current?.abort();
-    setMessages([]);
     setIsStreaming(false);
+    updateActiveThread((t) => ({ ...t, messages: [], attachedDocs: [], updatedAt: Date.now() }));
   };
 
-  // Paste initialPrompt into input (e.g. from Benchmark "Open in Arena" button)
+  // Open Preview Modal helpers
+  const openPreviewForDocs = (docs: ParsedDocument[], activeId?: string) => {
+    setPreviewDocs(docs);
+    setPreviewActiveId(activeId || docs[0]?.id);
+    setIsPreviewOpen(true);
+  };
+
+  const openIngestForDocs = (docs: ParsedDocument[]) => {
+    setIngestDocs(docs);
+    setShowIngestModal(true);
+  };
+
+  // Paste initialPrompt into input (e.g. from Benchmark view)
   useEffect(() => {
     if (initialPrompt) {
       setInput(initialPrompt);
@@ -599,399 +990,579 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
     }
   }, [initialPrompt, onReady]);
 
+  // Starter suggestion cards handler
+  const handleSuggestionClick = (promptText: string) => {
+    setInput(promptText);
+    setTimeout(() => {
+      chatInputRef.current?.focus();
+    }, 50);
+  };
+
   return (
-    <div className="arena-layout">
-      {/* Sidebar */}
-      <aside className="arena-sidebar">
-        {/* Active Model */}
-        <div className="arena-sidebar-section">
-          <div className="arena-active-model">
-            <ModelSelectWidget
-              label="Active Model"
-              value={selectedModel}
-              onChange={setSelectedModel}
-            />
+    <div className="gemini-layout">
+      {/* ── Collapsible Left Sidebar Drawer ───────────────────────────── */}
+      <aside className={`gemini-sidebar${isSidebarCollapsed ? " collapsed" : ""}`}>
+        {/* Header with Hamburger */}
+        <div className="gemini-sidebar-header">
+          <button
+            type="button"
+            className="gemini-icon-btn"
+            onClick={() => setIsSidebarCollapsed((prev) => !prev)}
+            title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
 
-            <span className="arena-model-desc">
-              Insurance domain system prompt active.
-              <br />
-              Responses calibrated to insurance workflows only.
-            </span>
-          </div>
-        </div>
-
-        {/* Insurance Plugins */}
-        <div className="arena-sidebar-section">
-          <div className="arena-sidebar-label">Insurance Plugins</div>
-          {PLUGINS.map((plugin) => {
-            const isOn = activePlugins.has(plugin.id);
-            return (
-              <div
-                key={plugin.id}
-                className={`arena-plugin-item${isOn ? " active" : ""}`}
-              >
-                <div className="arena-plugin-row">
-                  <div className="arena-plugin-info">
-                    <div className="arena-plugin-name">{plugin.name}</div>
-                    <div className="arena-plugin-sub">{plugin.sub}</div>
-                  </div>
-                  <div
-                    className={`arena-plugin-toggle${isOn ? " on" : ""}`}
-                    onClick={() => togglePlugin(plugin.id)}
-                    title={isOn ? "Disable plugin" : "Enable plugin"}
-                  />
-                </div>
-                {isOn && (
-                  <div className="arena-plugin-connection-tags">
-                    {plugin.connections.map((c, i) => (
-                      <ConnTag key={i} type={c.type} label={c.label} />
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Context */}
-        <div className="arena-sidebar-section">
-          <div className="arena-sidebar-label">Context</div>
-          <input
-            type="file"
-            ref={fileInputRef}
-            accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.md,.json,.csv"
-            style={{ display: "none" }}
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) handleDocUpload(f);
-              e.target.value = "";
-            }}
-          />
-          {isUploadingDoc ? (
-            <div className="arena-context-drop parsing">
-              <div className="arena-btn-spinner" />
-              <span>Parsing & running OCR...</span>
-            </div>
-          ) : attachedDoc ? (
-            <div className="arena-context-attached-card">
-              <div className="arena-context-attached-header">
-                <span
-                  className={`doc-badge doc-badge-${formatDocType(attachedDoc.type)
-                    .toLowerCase()
-                    .replace(/[^a-z0-9_-]/g, "-")}`}
-                >
-                  {formatDocType(attachedDoc.type)}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setAttachedDoc(null)}
-                  className="attached-remove-btn"
-                  title="Detach document"
-                >
-                  ✕
-                </button>
-              </div>
-              <div className="arena-context-attached-title" title={attachedDoc.name}>
-                {attachedDoc.name}
-              </div>
-              <div className="arena-context-attached-meta">
-                {attachedDoc.formattedSize} · {attachedDoc.wordCount.toLocaleString()} words · ~{attachedDoc.tokenCount.toLocaleString()} tokens
-              </div>
-              <div className="arena-context-attached-actions">
-                <button
-                  type="button"
-                  className="arena-context-btn"
-                  onClick={() => setPreviewDoc(attachedDoc)}
-                >
-                  Preview
-                </button>
-                <button
-                  type="button"
-                  className="arena-context-btn highlight"
-                  onClick={() => setShowIngestModal(true)}
-                >
-                  Ingest
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div
-              className={`arena-context-drop${isDragging ? " dragging" : ""}`}
-              onClick={() => fileInputRef.current?.click()}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-            >
-              <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--accent)", letterSpacing: "0.06em" }}>ATTACH</span>
-              <span>
-                Attach policy doc,
-                <br />
-                claim form, or report
-              </span>
-              <span style={{ fontSize: "10px", color: "var(--text-subtle)", marginTop: "2px" }}>
-                PDF, OCR, Images, TXT, CSV
+          {!isSidebarCollapsed && (
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <GeminiSparkleIcon size={20} />
+              <span style={{ fontSize: "14px", fontWeight: 700, letterSpacing: "-0.01em", color: "var(--text-main)" }}>
+                Insurance <span style={{ color: "var(--accent-light)" }}>Arena</span>
               </span>
             </div>
           )}
         </div>
-      </aside>
 
-      {/* Main chat */}
-      <div className="arena-main">
-        {/* Header */}
-        <div className="arena-header">
-          <div className="arena-header-model">
-            <div className="arena-header-model-icon">AI</div>
-            <div>
-              <div className="arena-header-model-name">
-                {modelInfo?.label ?? selectedModel}
+        {/* New Chat Button */}
+        <div className="gemini-new-chat-wrap">
+          <button
+            type="button"
+            className="gemini-new-chat-pill"
+            onClick={createNewThread}
+            title="Start new conversation thread"
+          >
+            <span style={{ fontSize: "16px", fontWeight: 600, color: "var(--accent-light)" }}>+</span>
+            {!isSidebarCollapsed && <span>New chat</span>}
+          </button>
+        </div>
+
+        {/* Scrollable Sidebar Body */}
+        <div className="gemini-sidebar-scroll">
+          {/* Recent Threads List */}
+          <div>
+            {!isSidebarCollapsed && (
+              <div className="gemini-sidebar-group-label">
+                <span>Recent</span>
+                <span className="arena-threads-badge">{threads.length}</span>
               </div>
-              <div className="arena-header-plugin-count">
-                {activePluginCount} plugin
-                {activePluginCount !== 1 ? "s" : ""} active
-              </div>
+            )}
+            <div className="gemini-threads-nav">
+              {threads.map((thread) => {
+                const isActive = thread.id === activeThreadId;
+                const isEditing = editingThreadId === thread.id;
+
+                if (isSidebarCollapsed) {
+                  return (
+                    <button
+                      key={thread.id}
+                      type="button"
+                      className={`gemini-icon-btn${isActive ? " active" : ""}`}
+                      onClick={() => switchThread(thread.id)}
+                      title={thread.title}
+                      style={{
+                        margin: "2px auto",
+                        background: isActive ? "rgba(66, 133, 244, 0.15)" : "transparent",
+                        color: isActive ? "var(--accent-light)" : "var(--text-subtle)",
+                      }}
+                    >
+                      💬
+                    </button>
+                  );
+                }
+
+                return (
+                  <div
+                    key={thread.id}
+                    className={`gemini-thread-pill${isActive ? " active" : ""}`}
+                    onClick={() => switchThread(thread.id)}
+                  >
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        className="arena-thread-rename-input"
+                        value={editingTitle}
+                        autoFocus
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => setEditingTitle(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") saveRenameThread(thread.id);
+                          if (e.key === "Escape") setEditingThreadId(null);
+                        }}
+                        onBlur={() => saveRenameThread(thread.id)}
+                      />
+                    ) : (
+                      <>
+                        <span style={{ fontSize: "12px", opacity: isActive ? 1 : 0.6 }}>💬</span>
+                        <span className="gemini-thread-title-text" title={thread.title}>
+                          {thread.title}
+                        </span>
+                        <div className="gemini-thread-actions">
+                          <button
+                            type="button"
+                            className="gemini-thread-action-btn"
+                            onClick={(e) => startRenameThread(thread, e)}
+                            title="Rename"
+                          >
+                            ✎
+                          </button>
+                          {threads.length > 1 && (
+                            <button
+                              type="button"
+                              className="gemini-thread-action-btn delete"
+                              onClick={(e) => deleteThread(thread.id, e)}
+                              title="Delete"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
-          <div className="arena-header-actions">
-            <button className="arena-header-btn" onClick={handleClear}>
+
+          {/* Insurance Extensions (Plugins) */}
+          {!isSidebarCollapsed && (
+            <div>
+              <div className="gemini-sidebar-group-label">
+                <span>Extensions</span>
+                <span className="meta-tag" style={{ fontSize: "10px" }}>{activePluginCount} on</span>
+              </div>
+              <div className="gemini-extensions-list">
+                {PLUGINS.map((plugin) => {
+                  const isOn = activePlugins.has(plugin.id);
+                  return (
+                    <div
+                      key={plugin.id}
+                      className={`gemini-extension-row${isOn ? " active" : ""}`}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="gemini-extension-name">{plugin.name}</div>
+                        <div className="gemini-extension-sub" title={plugin.sub}>{plugin.sub}</div>
+                      </div>
+                      <div
+                        className={`arena-plugin-toggle${isOn ? " on" : ""}`}
+                        onClick={() => togglePlugin(plugin.id)}
+                        title={isOn ? "Disable extension" : "Enable extension"}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+        </div>
+      </aside>
+
+      {/* ── Main Chat Viewport ────────────────────────────────────────── */}
+      <div
+        className="gemini-main"
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        {/* Hidden global multi-file picker wired to the + button in composer */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.md,.json,.csv,.docx"
+          multiple
+          style={{ display: "none" }}
+          onChange={(e) => {
+            if (e.target.files && e.target.files.length > 0) {
+              handleMultiDocUpload(e.target.files);
+            }
+          }}
+        />
+
+        {/* Drag & drop visual overlay */}
+        {isDragging && (
+          <div className="drag-drop-overlay">
+            <span style={{ fontSize: "28px" }}>📎</span>
+            <span style={{ fontSize: "16px", fontWeight: 700, color: "var(--accent)" }}>
+              Drop Insurance Documents Here
+            </span>
+            <span style={{ fontSize: "12px", color: "var(--text-subtle)" }}>
+              Batch upload PDF policies, claims, schedules, and spreadsheets
+            </span>
+          </div>
+        )}
+
+        {/* Top Header Bar */}
+        <header className="gemini-top-bar">
+          <div className="gemini-top-left">
+            {isSidebarCollapsed && (
+              <button
+                type="button"
+                className="gemini-icon-btn"
+                onClick={() => setIsSidebarCollapsed(false)}
+                title="Expand sidebar"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="3" y1="12" x2="21" y2="12" />
+                  <line x1="3" y1="6" x2="21" y2="6" />
+                  <line x1="3" y1="18" x2="21" y2="18" />
+                </svg>
+              </button>
+            )}
+
+            {/* Gemini Model Selector Trigger Pill */}
+            <div style={{ position: "relative" }}>
+              <ModelSelectWidget
+                label=""
+                value={selectedModel}
+                onChange={setSelectedModel}
+                compact={true}
+              />
+            </div>
+          </div>
+
+          <div className="gemini-top-right">
+            <div className="gemini-ext-badge-pill" title="Active insurance extensions">
+              <span>🧩</span>
+              <span>{activePluginCount} extensions active</span>
+            </div>
+
+            <button
+              type="button"
+              className="arena-header-btn"
+              onClick={handleClearCurrentThread}
+              title="Clear current thread conversation"
+            >
               Clear
             </button>
+
             <button
+              type="button"
               className="arena-header-btn"
               onClick={() => {
                 const text = messages
-                  .map(
-                    (m) =>
-                      `[${m.role.toUpperCase()}]\n${m.content}\n`
-                  )
+                  .map((m) => `[${m.role.toUpperCase()}]\n${m.content}\n`)
                   .join("\n---\n");
                 navigator.clipboard.writeText(text);
               }}
+              title="Export conversation transcript"
             >
               Export
             </button>
           </div>
-        </div>
+        </header>
 
-        {/* Messages */}
-        <div className="arena-messages">
-          {messages.length === 0 ? (
-            <div className="arena-welcome">
-              <div className="arena-welcome-logos">
-                <div className="welcome-logo-card dil-card" title="DIL Knowledge Engine">
-                  <img src="/dil-logo.png" alt="DIL Logo" className="welcome-logo-img" />
-                </div>
-                <span className="welcome-logo-divider">×</span>
-                <div className="welcome-logo-card globe-card" title="Insurance AI Arena">
-                  <img src="/arena-globe-logo.png" alt="Insurance AI Arena" className="welcome-logo-img" />
-                </div>
-              </div>
-              <div className="arena-welcome-title">
-                Welcome to the Insurance Chat Arena
-              </div>
-              <div className="arena-welcome-desc">
-                I&apos;m operating with an insurance-domain specialisation — I
-                can assist with underwriting analysis, claims processing,
-                regulatory compliance, actuarial calculations, and policy
-                interpretation.
-                <br />
-                <br />
-                {activePluginCount > 0 && (
-                  <>
-                    I have access to{" "}
-                    <strong>
-                      {Array.from(activePlugins)
-                        .map(
-                          (id) =>
-                            PLUGINS.find((p) => p.id === id)?.name ?? id
-                        )
-                        .join(", ")}
-                    </strong>{" "}
-                    tools. Attach a document or describe your task to begin.
-                  </>
-                )}
-              </div>
-            </div>
-          ) : (
-            messages.map((msg, i) => (
-              <MessageBubble
-                key={i}
-                msg={msg}
-                onPreviewDoc={(doc) => setPreviewDoc(doc)}
-              />
-            ))
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Input area */}
+        {/* Centered Scrollable Conversation */}
         <div
-          className={`arena-input-area${isDragging ? " dragging" : ""}`}
+          className={`gemini-chat-scroll${isDragging ? " dragging" : ""}`}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          {/* Upload progress indicator */}
-          {isUploadingDoc && (
-            <div className="arena-upload-status">
-              <div className="arena-upload-spinner" />
-              <div className="arena-upload-status-text">
-                <span className="arena-upload-status-title">Parsing document & running OCR...</span>
-                <span className="arena-upload-status-sub">Extracting policy terms, coverage limits, and clauses</span>
-              </div>
-            </div>
-          )}
+          <div className="gemini-chat-centered">
+            {messages.length === 0 ? (
+              /* Welcome Hero & Gemini Starter Suggestion Cards */
+              <div className="gemini-hero">
+                <div className="gemini-hero-greeting">
+                  Hello, Insurance Specialist
+                </div>
+                <div className="gemini-hero-sub">
+                  How can I help you analyze policies, cross-examine clauses, or assess risk today?
+                </div>
 
-          {/* Upload error banner */}
-          {uploadError && (
-            <div className="doc-upload-error-banner">
-              <span>Error: {uploadError}</span>
-              <button
-                type="button"
-                onClick={() => setUploadError(null)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "inherit",
-                  cursor: "pointer",
-                  fontSize: 14,
-                  padding: "0 4px",
-                }}
-              >
-                ✕
-              </button>
-            </div>
-          )}
+                <div className="gemini-suggestion-grid">
+                  <div
+                    className="gemini-suggestion-card"
+                    onClick={() =>
+                      handleSuggestionClick(
+                        "What are the standard exclusions and conditions under an All-Risks commercial property policy?"
+                      )
+                    }
+                  >
+                    <div>
+                      <div className="gemini-suggestion-title">📑 Analyze Policy Exclusions</div>
+                      <div className="gemini-suggestion-sub">
+                        Cross-examine standard exclusions in an All-Risks property wording
+                      </div>
+                    </div>
+                    <div className="gemini-suggestion-icon-wrap">
+                      <div className="gemini-suggestion-icon">↗</div>
+                    </div>
+                  </div>
 
-          {/* Attached Document Card above input */}
-          {attachedDoc && (
-            <div className="attached-doc-card">
-              <div className="attached-doc-left">
-                <span className={`doc-badge doc-badge-${formatDocType(attachedDoc.type).toLowerCase().replace(/[^a-z0-9_-]/g, "-")}`}>
-                  {formatDocType(attachedDoc.type)}
-                </span>
-                <div className="attached-doc-details">
-                  <span className="attached-doc-name" title={attachedDoc.name}>
-                    {attachedDoc.name}
-                  </span>
-                  <span className="attached-doc-sub">
-                    {attachedDoc.formattedSize} · {attachedDoc.wordCount.toLocaleString()} words · ~{attachedDoc.tokenCount.toLocaleString()} LLM tokens
-                  </span>
+                  <div
+                    className="gemini-suggestion-card"
+                    onClick={() =>
+                      handleSuggestionClick(
+                        "Evaluate capital adequacy and regulatory compliance under Solvency II Article 191."
+                      )
+                    }
+                  >
+                    <div>
+                      <div className="gemini-suggestion-title">⚖️ Solvency II & EIOPA Check</div>
+                      <div className="gemini-suggestion-sub">
+                        Evaluate capital adequacy & compliance under CDR 2015/35
+                      </div>
+                    </div>
+                    <div className="gemini-suggestion-icon-wrap">
+                      <div className="gemini-suggestion-icon">↗</div>
+                    </div>
+                  </div>
+
+                  <div
+                    className="gemini-suggestion-card"
+                    onClick={() =>
+                      handleSuggestionClick(
+                        "Calculate burning cost, pure premium, and risk margin for a commercial fleet policy."
+                      )
+                    }
+                  >
+                    <div>
+                      <div className="gemini-suggestion-title">🧮 Calculate Pure Premium</div>
+                      <div className="gemini-suggestion-sub">
+                        Compute burning cost and risk margin for commercial lines
+                      </div>
+                    </div>
+                    <div className="gemini-suggestion-icon-wrap">
+                      <div className="gemini-suggestion-icon">↗</div>
+                    </div>
+                  </div>
+
+                  <div
+                    className="gemini-suggestion-card"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <div>
+                      <div className="gemini-suggestion-title">🔍 Multi-Document Comparison</div>
+                      <div className="gemini-suggestion-sub">
+                        Attach policy schedule & endorsements to compare deductibles
+                      </div>
+                    </div>
+                    <div className="gemini-suggestion-icon-wrap">
+                      <div className="gemini-suggestion-icon">+</div>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="attached-doc-actions">
+            ) : (
+              messages.map((msg, i) => (
+                <GeminiMessageRow
+                  key={i}
+                  msg={msg}
+                  onPreviewDoc={(doc) => openPreviewForDocs(threadDocs.length > 0 ? threadDocs : [doc], doc.id)}
+                />
+              ))
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+        </div>
+
+        {/* ── Floating Gemini Pill Composer ─────────────────────────────── */}
+        <div className="gemini-floating-composer-anchor">
+          <div className="gemini-composer-pill">
+            {/* Upload Queue Banner */}
+            {uploadingFiles.length > 0 && (
+              <div className="arena-multi-upload-banner" style={{ marginBottom: "10px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div className="arena-upload-spinner" />
+                  <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-main)" }}>
+                    Processing {uploadingFiles.length} file{uploadingFiles.length > 1 ? "s" : ""} (parsing & OCR)…
+                  </span>
+                </div>
+                <div className="arena-multi-upload-items">
+                  {uploadingFiles.map((item) => (
+                    <span key={item.id} className={`arena-multi-upload-item ${item.status}`}>
+                      {item.status === "parsing" || item.status === "ocr" ? "⏳" : item.status === "done" ? "✓" : "✕"}
+                      {" "}{item.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Upload Error Banner */}
+            {uploadError && (
+              <div className="doc-upload-error-banner" style={{ marginBottom: "10px" }}>
+                <span>{uploadError}</span>
                 <button
                   type="button"
-                  className="attached-action-btn"
-                  onClick={() => setPreviewDoc(attachedDoc)}
-                  title="Preview extracted document text"
-                >
-                  Preview Text
-                </button>
-                <button
-                  type="button"
-                  className="attached-action-btn highlight"
-                  onClick={() => setShowIngestModal(true)}
-                  title="Ingest document to insurance data lake"
-                >
-                  Ingest to Lake
-                </button>
-                <button
-                  type="button"
-                  className="attached-remove-btn"
-                  onClick={() => setAttachedDoc(null)}
-                  title="Remove document"
+                  onClick={() => setUploadError(null)}
+                  style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", fontSize: 14 }}
                 >
                   ✕
                 </button>
               </div>
-            </div>
-          )}
+            )}
 
-          <div className="arena-input-row">
-            <button
-              type="button"
-              className={`arena-attach-btn${attachedDoc ? " has-doc" : ""}${isUploadingDoc ? " loading" : ""}`}
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploadingDoc}
-              title={
-                isUploadingDoc
-                  ? "Parsing document..."
-                  : attachedDoc
-                  ? `Attached: ${attachedDoc.name} (Click to replace)`
-                  : "Attach policy document, claim form, or scan"
-              }
-            >
-              {isUploadingDoc ? (
-                <div className="arena-btn-spinner" />
-              ) : attachedDoc ? (
-                "DOC"
-              ) : (
-                "+"
-              )}
-            </button>
-            <textarea
-              ref={chatInputRef}
-              className="arena-input-textarea"
-              placeholder={
-                attachedDoc
-                  ? `Document "${attachedDoc.name}" attached. Ask any question, or press Send to evaluate policy terms...`
-                  : "Ask an insurance question or describe a task for the agent…"
-              }
-              value={input}
-              rows={1}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey && !isStreaming && !isUploadingDoc) {
-                  e.preventDefault();
-                  if (canSend) {
-                    handleSend();
-                  }
+            {/* Attached Multi-Documents Tray Inside Composer */}
+            {attachedDocs.length > 0 && (
+              <div className="arena-multi-doc-tray" style={{ marginBottom: "10px" }}>
+                <div className="arena-multi-doc-header">
+                  <div className="arena-multi-doc-summary">
+                    <span>📎 {attachedDocs.length} {attachedDocs.length === 1 ? "document" : "documents"} attached</span>
+                    <span className="arena-multi-doc-token-pill">~{totalAttachedTokens.toLocaleString()} tokens</span>
+                  </div>
+                  <div className="arena-multi-doc-actions">
+                    <button
+                      type="button"
+                      className="arena-multi-doc-btn"
+                      onClick={() => openPreviewForDocs(attachedDocs)}
+                      title="Preview all attached documents"
+                    >
+                      Preview All
+                    </button>
+                    <button
+                      type="button"
+                      className="arena-multi-doc-btn highlight"
+                      onClick={() => openIngestForDocs(attachedDocs)}
+                      title="Ingest attached files into Data Lake"
+                    >
+                      Ingest All
+                    </button>
+                    <button
+                      type="button"
+                      className="arena-multi-doc-btn danger"
+                      onClick={clearAttachedDocs}
+                      title="Detach all documents"
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                </div>
+
+                <div className="arena-multi-doc-chips">
+                  {attachedDocs.map((doc) => (
+                    <div key={doc.id} className="arena-multi-doc-chip">
+                      <span
+                        className={`doc-badge doc-badge-sm doc-badge-${formatDocType(doc.type)
+                          .toLowerCase()
+                          .replace(/[^a-z0-9_-]/g, "-")}`}
+                      >
+                        {formatDocType(doc.type)}
+                      </span>
+                      <span className="arena-multi-doc-chip-name" title={doc.name}>
+                        {doc.name}
+                      </span>
+                      <span className="arena-multi-doc-chip-meta">
+                        {doc.formattedSize}
+                      </span>
+                      <button
+                        type="button"
+                        className="arena-multi-doc-chip-btn"
+                        onClick={() => openPreviewForDocs(attachedDocs, doc.id)}
+                      >
+                        View
+                      </button>
+                      <button
+                        type="button"
+                        className="arena-multi-doc-chip-remove"
+                        onClick={() => removeAttachedDoc(doc.id)}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Composer Input Row */}
+            <div className="gemini-composer-row">
+              <button
+                type="button"
+                className={`gemini-attach-circle-btn${attachedDocs.length > 0 ? " has-docs" : ""}`}
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingFiles.length > 0}
+                title="Attach multiple policy documents, claims, or endorsements"
+              >
+                {uploadingFiles.length > 0 ? (
+                  <div className="arena-btn-spinner" />
+                ) : (
+                  <span style={{ fontSize: "18px", fontWeight: 500, lineHeight: 1 }}>+</span>
+                )}
+              </button>
+
+              <textarea
+                ref={chatInputRef}
+                className="gemini-composer-textarea"
+                placeholder={
+                  attachedDocs.length > 0
+                    ? `${attachedDocs.length} ${attachedDocs.length === 1 ? "document" : "documents"} attached. Ask anything or press Send...`
+                    : "Ask anything about insurance policies, claims, or attach files..."
                 }
-              }}
-            />
-            <button
-              className="arena-send-btn"
-              onClick={() => (isStreaming ? abortRef.current?.abort() : handleSend())}
-              disabled={!isStreaming && !canSend}
-              title={
-                isStreaming
-                  ? "Stop generation"
-                  : isUploadingDoc
-                  ? "Processing document..."
-                  : attachedDoc && !input.trim()
-                  ? "Send & analyze attached document"
-                  : "Send message"
-              }
-            >
-              {isStreaming ? (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <rect x="6" y="6" width="12" height="12" rx="2" />
-                </svg>
-              ) : (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="22" y1="2" x2="11" y2="13" />
-                  <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                </svg>
-              )}
-            </button>
+                value={input}
+                rows={1}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey && !isStreaming && uploadingFiles.length === 0) {
+                    e.preventDefault();
+                    if (canSend) {
+                      handleSend();
+                    }
+                  }
+                }}
+              />
+
+              <button
+                type="button"
+                className={`gemini-send-circle-btn${isStreaming ? " stop" : ""}`}
+                onClick={() => (isStreaming ? abortRef.current?.abort() : handleSend())}
+                disabled={!isStreaming && !canSend}
+                title={
+                  isStreaming
+                    ? "Stop generation"
+                    : uploadingFiles.length > 0
+                    ? "Processing documents..."
+                    : attachedDocs.length > 0 && !input.trim()
+                    ? `Send & analyze attached ${attachedDocs.length} documents`
+                    : "Send prompt"
+                }
+              >
+                {isStreaming ? (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <rect x="6" y="6" width="12" height="12" rx="2" />
+                  </svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="22" y1="2" x2="11" y2="13" />
+                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                  </svg>
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div className="gemini-disclaimer-text">
+            Insurance AI Studio can make mistakes. Verify critical underwriting limits, policy wordings, and Solvency II regulatory articles.
           </div>
         </div>
       </div>
 
-      {/* Document Preview Modal */}
+      {/* Multi-Document Tabbed Preview Modal */}
       <DocumentPreviewModal
-        document={previewDoc}
-        isOpen={previewDoc !== null}
-        onClose={() => setPreviewDoc(null)}
-        onSaveToLake={() => {
+        documents={previewDocs}
+        initialActiveId={previewActiveId}
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        onSaveToLake={(doc) => {
+          if (doc) {
+            setIngestDocs([doc]);
+            setShowIngestModal(true);
+          }
+        }}
+        onSaveAllToLake={(docs) => {
+          setIngestDocs(docs);
           setShowIngestModal(true);
         }}
       />
 
-      {/* Document Ingest Modal */}
+      {/* Batch Document Ingest Modal */}
       <DocumentIngestModal
-        initialDocument={attachedDoc || previewDoc}
+        initialDocuments={ingestDocs.length > 0 ? ingestDocs : attachedDocs}
         isOpen={showIngestModal}
         onClose={() => setShowIngestModal(false)}
         onIngestSuccess={() => {

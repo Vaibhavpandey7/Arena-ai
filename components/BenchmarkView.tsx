@@ -89,8 +89,8 @@ export default function BenchmarkView({ onNavigate }: Props) {
           style={{
             padding: "16px 20px",
             borderRadius: "10px",
-            background: "linear-gradient(135deg, rgba(11, 22, 40, 0.95), rgba(6, 11, 20, 0.95))",
-            border: "1px solid rgba(0, 212, 255, 0.22)",
+            background: "linear-gradient(135deg, rgba(30, 31, 32, 0.95), rgba(19, 19, 20, 0.95))",
+            border: "1px solid var(--accent-border)",
             marginBottom: "20px",
             boxShadow: "0 4px 20px rgba(0, 0, 0, 0.35)",
           }}
@@ -106,8 +106,8 @@ export default function BenchmarkView({ onNavigate }: Props) {
                     fontSize: "0.7rem",
                     padding: "2px 8px",
                     borderRadius: "12px",
-                    background: "rgba(0, 212, 255, 0.12)",
-                    border: "1px solid rgba(0, 212, 255, 0.3)",
+                    background: "var(--accent-dim)",
+                    border: "1px solid var(--accent-border)",
                     color: "var(--cyan)",
                     fontWeight: 700,
                   }}
@@ -240,7 +240,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                   <span>{currentDataset.comparison.val1Label}</span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <span style={{ width: 12, height: 5, background: "rgba(0, 212, 255, 0.45)", borderRadius: 2 }} />
+                  <span style={{ width: 12, height: 5, background: "rgba(66, 133, 244, 0.45)", borderRadius: 2 }} />
                   <span>{currentDataset.comparison.val2Label}</span>
                 </div>
               </div>
@@ -318,8 +318,8 @@ export default function BenchmarkView({ onNavigate }: Props) {
                     fontSize: "0.72rem",
                     fontWeight: selectedDomainIdx === dIdx ? 700 : 500,
                     borderRadius: "6px",
-                    background: selectedDomainIdx === dIdx ? "rgba(0, 212, 255, 0.15)" : "rgba(255, 255, 255, 0.04)",
-                    border: selectedDomainIdx === dIdx ? "1px solid rgba(0, 212, 255, 0.4)" : "1px solid rgba(255, 255, 255, 0.08)",
+                    background: selectedDomainIdx === dIdx ? "var(--accent-dim)" : "rgba(255, 255, 255, 0.04)",
+                    border: selectedDomainIdx === dIdx ? "1px solid var(--accent-border)" : "1px solid rgba(255, 255, 255, 0.08)",
                     color: selectedDomainIdx === dIdx ? "var(--cyan)" : "var(--text-muted)",
                     cursor: "pointer",
                     whiteSpace: "nowrap",

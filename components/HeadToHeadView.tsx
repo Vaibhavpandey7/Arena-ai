@@ -571,7 +571,7 @@ function UseCaseScorecard({
                 fontWeight: 600,
               }}
             >
-              {config.recommendedBenchmark.name} · {config.recommendedBenchmark.source}
+              {config.recommendedBenchmark.name}
             </span>
           </div>
           <h3 style={{ fontSize: "16px", fontWeight: 700, fontFamily: "var(--font-display-new)", color: "var(--text-main)", margin: "4px 0 0 0" }}>
@@ -1167,9 +1167,6 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                       <span className="h2h-usecase-bench-name">
                         {ucConfig.recommendedBenchmark.name}
                       </span>
-                      <span className="h2h-usecase-bench-tag">
-                        {ucConfig.recommendedBenchmark.source}
-                      </span>
                     </div>
                   )}
                 </div>
@@ -1422,38 +1419,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                         <span>Benchmark:</span>
                         <strong style={{ color: "var(--text-main)" }}>{cfg.recommendedBenchmark.name}</strong>
                       </span>
-                      <span
-                        style={{
-                          fontSize: "10.5px",
-                          padding: "2px 7px",
-                          borderRadius: "4px",
-                          background: "var(--violet-dim)",
-                          color: "var(--violet)",
-                          border: "1px solid rgba(139, 92, 246, 0.3)",
-                          fontWeight: 600,
-                        }}
-                      >
-                        {cfg.recommendedBenchmark.source}
-                      </span>
                     </div>
-
-                  {cfg.recommendedBenchmark.url && (
-                    <a
-                      href={cfg.recommendedBenchmark.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="arena-header-btn"
-                      style={{
-                        textDecoration: "none",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "4px",
-                        fontSize: "11.5px",
-                      }}
-                    >
-                      Dataset Source ↗
-                    </a>
-                  )}
                 </div>
 
                 {/* Show description & full primary metrics list when prompt is not collapsed */}
@@ -1687,7 +1653,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
                     style={{
                       position: "absolute",
                       inset: 0,
-                      background: "rgba(10, 15, 26, 0.92)",
+                      background: "rgba(19, 19, 20, 0.92)",
                       border: "2px dashed var(--accent)",
                       borderRadius: "var(--radius-sm)",
                       zIndex: 10,

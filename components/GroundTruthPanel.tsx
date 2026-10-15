@@ -230,19 +230,6 @@ export default function GroundTruthPanel({
                   <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--cyan-light)" }}>
                     {useCaseEval.recommendedBenchmark.name}
                   </span>
-                  <span
-                    style={{
-                      fontSize: "0.62rem",
-                      padding: "1px 6px",
-                      borderRadius: "3px",
-                      background: "rgba(168, 85, 247, 0.15)",
-                      color: "#c084fc",
-                      border: "1px solid rgba(168, 85, 247, 0.3)",
-                      fontWeight: 600,
-                    }}
-                  >
-                    {useCaseEval.recommendedBenchmark.source}
-                  </span>
                 </div>
                 <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
                   {useCaseEval.primaryMetricsList.map((m, i) => (

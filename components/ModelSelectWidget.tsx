@@ -464,8 +464,8 @@ export default function ModelSelectWidget({
                 width: "5px",
                 height: "5px",
                 borderRadius: "50%",
-                background: "var(--cyan)",
-                boxShadow: "0 0 6px var(--cyan)",
+                background: "var(--accent)",
+                boxShadow: "0 0 6px var(--accent)",
                 flexShrink: 0,
               }}
             />
@@ -527,10 +527,10 @@ export default function ModelSelectWidget({
           width: "100%",
           boxSizing: "border-box",
           padding: compact ? "6px 10px" : "8px 12px",
-          background: "rgba(11, 22, 40, 0.9)",
-          border: isOpen ? "1px solid var(--cyan)" : "1px solid rgba(0, 212, 255, 0.22)",
+          background: "var(--bg-surface-elevated)",
+          border: isOpen ? "1px solid var(--accent)" : "1px solid var(--border-default)",
           borderRadius: "8px",
-          color: "var(--text)",
+          color: "var(--text-main)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -539,7 +539,7 @@ export default function ModelSelectWidget({
           textAlign: "left",
           transition: "all 0.15s ease",
           boxShadow: isOpen
-            ? "0 0 12px rgba(0, 212, 255, 0.25), inset 0 0 8px rgba(0, 212, 255, 0.08)"
+            ? "0 0 12px rgba(66, 133, 244, 0.25)"
             : "0 2px 5px rgba(0, 0, 0, 0.25)",
           overflow: "hidden",
         }}
@@ -563,9 +563,9 @@ export default function ModelSelectWidget({
                   fontWeight: 800,
                   padding: "2px 5px",
                   borderRadius: "4px",
-                  background: selectedModel.isFree ? "rgba(16, 185, 129, 0.18)" : "rgba(0, 212, 255, 0.15)",
-                  color: selectedModel.isFree ? "var(--emerald)" : "var(--cyan)",
-                  border: `1px solid ${selectedModel.isFree ? "rgba(16, 185, 129, 0.35)" : "rgba(0, 212, 255, 0.3)"}`,
+                  background: selectedModel.isFree ? "rgba(52, 168, 83, 0.15)" : "rgba(66, 133, 244, 0.14)",
+                  color: selectedModel.isFree ? "var(--emerald)" : "var(--accent-light)",
+                  border: `1px solid ${selectedModel.isFree ? "rgba(52, 168, 83, 0.3)" : "rgba(66, 133, 244, 0.3)"}`,
                   flexShrink: 0,
                   lineHeight: 1.2,
                 }}
@@ -583,23 +583,23 @@ export default function ModelSelectWidget({
                   whiteSpace: "nowrap",
                   flex: 1,
                   minWidth: 0,
-                  color: "var(--text)",
+                  color: "var(--text-main)",
                 }}
                 title={selectedModel.label}
               >
                 {selectedModel.label}
               </span>
 
-              {/* Status Badge (prioritized single badge so it never crowds or bursts the box) */}
+              {/* Status Badge */}
               {selectedModel.isFree ? (
                 <span
                   style={{
                     fontSize: "0.58rem",
                     padding: "1px 5px",
                     borderRadius: "3px",
-                    background: "rgba(16, 185, 129, 0.15)",
+                    background: "rgba(52, 168, 83, 0.15)",
                     color: "var(--emerald)",
-                    border: "1px solid rgba(16, 185, 129, 0.3)",
+                    border: "1px solid rgba(52, 168, 83, 0.3)",
                     fontWeight: 800,
                     flexShrink: 0,
                     letterSpacing: "0.04em",
@@ -613,9 +613,9 @@ export default function ModelSelectWidget({
                     fontSize: "0.58rem",
                     padding: "1px 5px",
                     borderRadius: "3px",
-                    background: "rgba(14, 165, 233, 0.15)",
-                    color: "var(--cyan-light)",
-                    border: "1px solid rgba(14, 165, 233, 0.3)",
+                    background: "rgba(66, 133, 244, 0.15)",
+                    color: "var(--accent-light)",
+                    border: "1px solid rgba(66, 133, 244, 0.3)",
                     fontWeight: 700,
                     flexShrink: 0,
                   }}
@@ -638,7 +638,7 @@ export default function ModelSelectWidget({
             alignItems: "center",
             paddingLeft: "6px",
             flexShrink: 0,
-            color: isOpen ? "var(--cyan)" : "var(--text-muted)",
+            color: isOpen ? "var(--accent-light)" : "var(--text-muted)",
             transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
             transition: "transform 0.2s ease, color 0.15s ease",
             fontSize: "0.62rem",
@@ -659,10 +659,10 @@ export default function ModelSelectWidget({
             width: coords.width,
             maxWidth: "calc(100vw - 24px)",
             maxHeight: "520px",
-            background: "#081222",
-            border: "1px solid rgba(0, 212, 255, 0.4)",
-            borderRadius: "12px",
-            boxShadow: "0 24px 60px rgba(0, 0, 0, 0.92), 0 0 30px rgba(0, 212, 255, 0.22)",
+            background: "var(--bg-surface-elevated)",
+            border: "1px solid rgba(66, 133, 244, 0.35)",
+            borderRadius: "14px",
+            boxShadow: "0 24px 60px rgba(0, 0, 0, 0.85), 0 0 24px rgba(66, 133, 244, 0.18)",
             zIndex: 99999,
             display: "flex",
             flexDirection: "column",
@@ -671,9 +671,9 @@ export default function ModelSelectWidget({
           }}
         >
           {/* Search input header */}
-          <div style={{ padding: "12px 14px", borderBottom: "1px solid var(--border)", background: "rgba(11, 22, 40, 0.8)", boxSizing: "border-box" }}>
+          <div style={{ padding: "12px 14px", borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-surface)", boxSizing: "border-box" }}>
             <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-              <span style={{ position: "absolute", left: "10px", color: "var(--text-muted)", fontSize: "0.75rem", fontWeight: 700 }}>
+              <span style={{ position: "absolute", left: "10px", color: "var(--accent)", fontSize: "0.75rem", fontWeight: 700 }}>
                 FIND
               </span>
               <input
@@ -687,9 +687,9 @@ export default function ModelSelectWidget({
                   padding: "8px 12px 8px 34px",
                   fontSize: "0.82rem",
                   borderRadius: "7px",
-                  background: "rgba(255, 255, 255, 0.05)",
-                  border: "1px solid var(--border)",
-                  color: "var(--text)",
+                  background: "rgba(255, 255, 255, 0.04)",
+                  border: "1px solid var(--border-default)",
+                  color: "var(--text-main)",
                   outline: "none",
                   boxSizing: "border-box",
                 }}
@@ -718,8 +718,8 @@ export default function ModelSelectWidget({
           <div
             style={{
               padding: "10px 14px",
-              borderBottom: "1px solid var(--border)",
-              background: "rgba(6, 14, 28, 0.95)",
+              borderBottom: "1px solid var(--border-subtle)",
+              background: "var(--bg-surface)",
               display: "flex",
               flexWrap: "wrap",
               gap: "8px",
@@ -747,10 +747,10 @@ export default function ModelSelectWidget({
                     padding: "6px 13px",
                     borderRadius: "20px",
                     border: isActive
-                      ? "1px solid var(--cyan)"
-                      : "1px solid rgba(255, 255, 255, 0.09)",
+                      ? "1px solid var(--accent)"
+                      : "1px solid var(--border-subtle)",
                     background: isActive
-                      ? "linear-gradient(135deg, rgba(0, 212, 255, 0.22), rgba(0, 150, 255, 0.12))"
+                      ? "linear-gradient(135deg, rgba(66, 133, 244, 0.25), rgba(155, 114, 203, 0.18))"
                       : "rgba(255, 255, 255, 0.03)",
                     color: isActive ? "#ffffff" : "var(--text-muted)",
                     fontWeight: isActive ? 700 : 500,
@@ -760,12 +760,12 @@ export default function ModelSelectWidget({
                     gap: "6px",
                     whiteSpace: "nowrap",
                     transition: "all 0.15s ease",
-                    boxShadow: isActive ? "0 0 10px rgba(0, 212, 255, 0.25)" : "none",
+                    boxShadow: isActive ? "0 0 10px rgba(66, 133, 244, 0.25)" : "none",
                   }}
                   onMouseEnter={(e) => {
                     if (!isActive) {
                       e.currentTarget.style.background = "rgba(255, 255, 255, 0.08)";
-                      e.currentTarget.style.color = "var(--text)";
+                      e.currentTarget.style.color = "var(--text-main)";
                     }
                   }}
                   onMouseLeave={(e) => {
@@ -782,7 +782,7 @@ export default function ModelSelectWidget({
                       padding: "1px 6px",
                       borderRadius: "10px",
                       background: isActive
-                        ? "rgba(0, 212, 255, 0.35)"
+                        ? "rgba(66, 133, 244, 0.35)"
                         : "rgba(255, 255, 255, 0.08)",
                       color: isActive ? "#ffffff" : "var(--text-subtle)",
                       fontWeight: 700,
@@ -799,8 +799,8 @@ export default function ModelSelectWidget({
           <div
             style={{
               padding: "7px 14px",
-              background: "rgba(0, 0, 0, 0.35)",
-              borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
+              background: "rgba(0, 0, 0, 0.25)",
+              borderBottom: "1px solid var(--border-subtle)",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
@@ -811,11 +811,11 @@ export default function ModelSelectWidget({
           >
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
               <span>Filtered by:</span>
-              <span style={{ color: "var(--cyan)", fontWeight: 700, textTransform: "capitalize" }}>
+              <span style={{ color: "var(--accent-light)", fontWeight: 700, textTransform: "capitalize" }}>
                 {activeTab === "all" ? "All Models" : activeTab === "free" ? "Free & Open-Source" : activeTab}
               </span>
               <span>·</span>
-              <span style={{ color: "var(--text)" }}>
+              <span style={{ color: "var(--text-main)" }}>
                 {filteredModels.length} {filteredModels.length === 1 ? "model" : "models"} available
               </span>
             </div>
@@ -831,7 +831,7 @@ export default function ModelSelectWidget({
                 style={{
                   background: "none",
                   border: "none",
-                  color: "var(--cyan)",
+                  color: "var(--accent-light)",
                   cursor: "pointer",
                   fontSize: "0.7rem",
                   textDecoration: "underline",
@@ -861,8 +861,8 @@ export default function ModelSelectWidget({
                       padding: "8px 12px",
                       borderRadius: "6px",
                       cursor: "pointer",
-                      background: isSelected ? "rgba(0, 212, 255, 0.12)" : "transparent",
-                      border: isSelected ? "1px solid rgba(0, 212, 255, 0.35)" : "1px solid transparent",
+                      background: isSelected ? "rgba(66, 133, 244, 0.14)" : "transparent",
+                      border: isSelected ? "1px solid rgba(66, 133, 244, 0.4)" : "1px solid transparent",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "space-between",
@@ -885,7 +885,7 @@ export default function ModelSelectWidget({
                           style={{
                             fontSize: "0.82rem",
                             fontWeight: 600,
-                            color: "var(--text)",
+                            color: "var(--text-main)",
                             overflow: "hidden",
                             textOverflow: "ellipsis",
                             whiteSpace: "nowrap",
@@ -902,9 +902,9 @@ export default function ModelSelectWidget({
                               fontWeight: 800,
                               padding: "1px 5px",
                               borderRadius: "3px",
-                              background: "rgba(16, 185, 129, 0.15)",
+                              background: "rgba(52, 168, 83, 0.15)",
                               color: "var(--emerald)",
-                              border: "1px solid rgba(16, 185, 129, 0.3)",
+                              border: "1px solid rgba(52, 168, 83, 0.3)",
                               flexShrink: 0,
                             }}
                           >
@@ -919,9 +919,9 @@ export default function ModelSelectWidget({
                               fontWeight: 700,
                               padding: "1px 5px",
                               borderRadius: "3px",
-                              background: "rgba(14, 165, 233, 0.15)",
-                              color: "var(--cyan-light)",
-                              border: "1px solid rgba(14, 165, 233, 0.3)",
+                              background: "rgba(66, 133, 244, 0.15)",
+                              color: "var(--accent-light)",
+                              border: "1px solid rgba(66, 133, 244, 0.3)",
                               flexShrink: 0,
                             }}
                           >
@@ -984,7 +984,7 @@ export default function ModelSelectWidget({
                     </div>
 
                     {isSelected && (
-                      <span style={{ color: "var(--cyan)", fontWeight: 800, fontSize: "0.9rem", flexShrink: 0 }}>
+                      <span style={{ color: "var(--accent-light)", fontWeight: 800, fontSize: "0.9rem", flexShrink: 0 }}>
                         ✓
                       </span>
                     )}

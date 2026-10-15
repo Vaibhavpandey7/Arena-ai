@@ -19,61 +19,92 @@ export interface ParsedDocument {
 }
 
 interface Props {
-  document: ParsedDocument | null;
+  document?: ParsedDocument | null;
+  documents?: ParsedDocument[];
+  initialActiveId?: string;
   isOpen: boolean;
   onClose: () => void;
-  onSaveToLake?: () => void;
+  onSaveToLake?: (doc?: ParsedDocument) => void;
+  onSaveAllToLake?: (docs: ParsedDocument[]) => void;
 }
 
-export function DocumentPreviewModal({ document, isOpen, onClose, onSaveToLake }: Props) {
+export function DocumentPreviewModal({
+  document,
+  documents,
+  initialActiveId,
+  isOpen,
+  onClose,
+  onSaveToLake,
+  onSaveAllToLake,
+}: Props) {
   const [copied, setCopied] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<"visual" | "text">("visual");
 
+  const allDocs: ParsedDocument[] =
+    documents && documents.length > 0 ? documents : document ? [document] : [];
+
+  const [activeDocId, setActiveDocId] = useState<string | null>(
+    initialActiveId || document?.id || allDocs[0]?.id || null
+  );
+
+  useEffect(() => {
+    if (initialActiveId) {
+      setActiveDocId(initialActiveId);
+    } else if (document?.id) {
+      setActiveDocId(document.id);
+    } else if (allDocs.length > 0 && (!activeDocId || !allDocs.some((d) => d.id === activeDocId))) {
+      setActiveDocId(allDocs[0].id);
+    }
+  }, [initialActiveId, document?.id, allDocs]);
+
+  const activeDoc: ParsedDocument | null =
+    allDocs.find((d) => d.id === activeDocId) || allDocs[0] || null;
+
   const isPdf =
-    document?.name.toLowerCase().endsWith(".pdf") ||
-    document?.type?.toLowerCase().includes("pdf") ||
-    document?.mimeType === "application/pdf" ||
-    document?.fileUrl?.toLowerCase().includes(".pdf");
+    activeDoc?.name.toLowerCase().endsWith(".pdf") ||
+    activeDoc?.type?.toLowerCase().includes("pdf") ||
+    activeDoc?.mimeType === "application/pdf" ||
+    activeDoc?.fileUrl?.toLowerCase().includes(".pdf");
 
   const isImage =
-    document?.mimeType?.startsWith("image/") ||
-    document?.name.match(/\.(jpe?g|png|webp|gif|svg)$/i) ||
-    document?.type?.toLowerCase().includes("image");
+    activeDoc?.mimeType?.startsWith("image/") ||
+    activeDoc?.name.match(/\.(jpe?g|png|webp|gif|svg)$/i) ||
+    activeDoc?.type?.toLowerCase().includes("image");
 
   // Determine effective file URL for iframe or download
   const resolvedFileUrl =
-    document?.fileUrl ||
-    (document?.hash
-      ? `/api/documents/raw?hash=${document.hash}&name=${encodeURIComponent(document.name)}`
+    activeDoc?.fileUrl ||
+    (activeDoc?.hash
+      ? `/api/documents/raw?hash=${activeDoc.hash}&name=${encodeURIComponent(activeDoc.name)}`
       : undefined);
 
   const hasVisual = !!resolvedFileUrl && (isPdf || isImage);
 
   // Set default view mode based on availability of visual file
   useEffect(() => {
-    if (document) {
+    if (activeDoc) {
       setViewMode(hasVisual ? "visual" : "text");
       setSearchTerm("");
     }
-  }, [document?.id, hasVisual]);
+  }, [activeDoc?.id, hasVisual]);
 
-  if (!isOpen || !document) return null;
+  if (!isOpen || !activeDoc) return null;
 
   function handleCopy() {
-    if (!document) return;
-    navigator.clipboard.writeText(document.text);
+    if (!activeDoc) return;
+    navigator.clipboard.writeText(activeDoc.text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
 
   function handleDownloadTxt() {
-    if (!document) return;
-    const blob = new Blob([document.text], { type: "text/plain;charset=utf-8" });
+    if (!activeDoc) return;
+    const blob = new Blob([activeDoc.text], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = window.document.createElement("a");
     a.href = url;
-    a.download = `${document.name.replace(/\.[^/.]+$/, "")}_extracted_ocr.txt`;
+    a.download = `${activeDoc.name.replace(/\.[^/.]+$/, "")}_extracted_ocr.txt`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -84,7 +115,7 @@ export function DocumentPreviewModal({ document, isOpen, onClose, onSaveToLake }
     }
   }
 
-  const lines = document.text ? document.text.split("\n") : [];
+  const lines = activeDoc.text ? activeDoc.text.split("\n") : [];
   const filteredLines = searchTerm.trim()
     ? lines.filter((l) => l.toLowerCase().includes(searchTerm.toLowerCase()))
     : lines;
@@ -92,21 +123,26 @@ export function DocumentPreviewModal({ document, isOpen, onClose, onSaveToLake }
   return (
     <div className="doc-modal-backdrop" onClick={onClose}>
       <div
-        className={`doc-modal-content doc-modal-pdf-expanded`}
+        className="doc-modal-content doc-modal-pdf-expanded"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="doc-modal-header">
           <div className="doc-modal-title-wrap">
             <span
-              className={`doc-badge doc-badge-${(document.type?.toUpperCase().includes("OCR") ? "ocr" : document.type.toLowerCase()).replace(/[^a-z0-9_-]/g, "-")}`}
+              className={`doc-badge doc-badge-${(activeDoc.type?.toUpperCase().includes("OCR") ? "ocr" : activeDoc.type.toLowerCase()).replace(/[^a-z0-9_-]/g, "-")}`}
             >
-              {document.type?.toUpperCase().includes("OCR") ? "OCR" : document.type}
+              {activeDoc.type?.toUpperCase().includes("OCR") ? "OCR" : activeDoc.type}
             </span>
             <div className="doc-modal-title-text">
-              <h3>{document.name}</h3>
+              <h3>{activeDoc.name}</h3>
               <p className="doc-modal-subtitle">
-                {document.formattedSize} · {document.wordCount?.toLocaleString() ?? 0} words · ~{document.tokenCount?.toLocaleString() ?? 0} LLM tokens
+                {activeDoc.formattedSize} · {activeDoc.wordCount?.toLocaleString() ?? 0} words · ~{activeDoc.tokenCount?.toLocaleString() ?? 0} LLM tokens
+                {allDocs.length > 1 && (
+                  <span className="doc-modal-counter-pill">
+                    File {allDocs.findIndex((d) => d.id === activeDoc.id) + 1} of {allDocs.length}
+                  </span>
+                )}
               </p>
             </div>
           </div>
@@ -139,6 +175,32 @@ export function DocumentPreviewModal({ document, isOpen, onClose, onSaveToLake }
             </button>
           </div>
         </div>
+
+        {/* Multi-Document Tab Switcher (if more than 1 file) */}
+        {allDocs.length > 1 && (
+          <div className="doc-modal-doc-tabs">
+            {allDocs.map((doc, idx) => {
+              const isSelected = doc.id === activeDoc.id;
+              const typeLabel = doc.type?.toUpperCase().includes("OCR") ? "OCR" : doc.type || "DOC";
+              return (
+                <button
+                  key={doc.id || idx}
+                  type="button"
+                  className={`doc-modal-doc-tab${isSelected ? " active" : ""}`}
+                  onClick={() => setActiveDocId(doc.id)}
+                  title={`${doc.name} (${doc.formattedSize})`}
+                >
+                  <span
+                    className={`doc-badge doc-badge-sm doc-badge-${typeLabel.toLowerCase().replace(/[^a-z0-9_-]/g, "-")}`}
+                  >
+                    {typeLabel}
+                  </span>
+                  <span className="doc-modal-tab-name">{doc.name}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Toolbar */}
         <div className="doc-modal-toolbar">
@@ -181,7 +243,7 @@ export function DocumentPreviewModal({ document, isOpen, onClose, onSaveToLake }
                 </button>
                 <a
                   href={resolvedFileUrl}
-                  download={document.name}
+                  download={activeDoc.name}
                   className="doc-btn-secondary"
                   style={{ textDecoration: "none", display: "inline-flex", alignItems: "center" }}
                   title="Download original file"
@@ -208,10 +270,24 @@ export function DocumentPreviewModal({ document, isOpen, onClose, onSaveToLake }
                 className="doc-btn-primary"
                 onClick={() => {
                   onClose();
-                  onSaveToLake();
+                  onSaveToLake(activeDoc);
                 }}
+                title="Save this document to Insurance Data Lake"
               >
-                Save to Data Lake
+                Save to Lake
+              </button>
+            )}
+
+            {onSaveAllToLake && allDocs.length > 1 && (
+              <button
+                className="doc-btn-primary highlight"
+                onClick={() => {
+                  onClose();
+                  onSaveAllToLake(allDocs);
+                }}
+                title={`Batch ingest all ${allDocs.length} documents into Insurance Data Lake`}
+              >
+                Save All to Lake ({allDocs.length})
               </button>
             )}
           </div>
@@ -223,13 +299,13 @@ export function DocumentPreviewModal({ document, isOpen, onClose, onSaveToLake }
             {isPdf ? (
               <iframe
                 src={`${resolvedFileUrl}#toolbar=1&navpanes=1&scrollbar=1&view=FitH`}
-                title={document.name}
+                title={activeDoc.name}
                 className="doc-pdf-iframe"
               />
             ) : isImage ? (
               <div className="doc-image-viewer">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={resolvedFileUrl} alt={document.name} className="doc-preview-img" />
+                <img src={resolvedFileUrl} alt={activeDoc.name} className="doc-preview-img" />
               </div>
             ) : null}
           </div>
@@ -254,10 +330,10 @@ export function DocumentPreviewModal({ document, isOpen, onClose, onSaveToLake }
         {/* Footer */}
         <div className="doc-modal-footer">
           <div className="doc-modal-meta-tags">
-            <span className="meta-tag">Character Count: {document.charCount?.toLocaleString() ?? 0}</span>
-            <span className="meta-tag">Estimated Context Window: ~{document.tokenCount?.toLocaleString() ?? 0} tokens</span>
+            <span className="meta-tag">Character Count: {activeDoc.charCount?.toLocaleString() ?? 0}</span>
+            <span className="meta-tag">Estimated Context Window: ~{activeDoc.tokenCount?.toLocaleString() ?? 0} tokens</span>
             <span className="meta-tag">
-              Engine: {document.type?.toUpperCase().includes("OCR") ? "Vision AI OCR + Poppler" : "Poppler PDF Layout"}
+              Engine: {activeDoc.type?.toUpperCase().includes("OCR") ? "Vision AI OCR + Poppler" : "Poppler PDF Layout"}
             </span>
             {resolvedFileUrl && <span className="meta-tag">Visual Layer: Active</span>}
           </div>

@@ -15,13 +15,15 @@ const DOMAINS = [
 
 interface Props {
   initialDocument?: ParsedDocument | null;
+  initialDocuments?: ParsedDocument[];
   isOpen: boolean;
   onClose: () => void;
   onIngestSuccess: (result: { recordsIngested: number; domain: string; documentName: string }) => void;
 }
 
-export function DocumentIngestModal({ initialDocument, isOpen, onClose, onIngestSuccess }: Props) {
-  const [document, setDocument] = useState<ParsedDocument | null>(initialDocument || null);
+export function DocumentIngestModal({ initialDocument, initialDocuments, isOpen, onClose, onIngestSuccess }: Props) {
+  const [documents, setDocuments] = useState<ParsedDocument[]>([]);
+  const [selectedDocIds, setSelectedDocIds] = useState<Set<string>>(new Set());
   const [domain, setDomain] = useState("insurance_documents");
   const [autoChunk, setAutoChunk] = useState(true);
   const [customQuestion, setCustomQuestion] = useState("");
@@ -29,17 +31,26 @@ export function DocumentIngestModal({ initialDocument, isOpen, onClose, onIngest
   const [isUploading, setIsUploading] = useState(false);
   const [isIngesting, setIsIngesting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [successInfo, setSuccessInfo] = useState<{ recordsIngested: number; domain: string } | null>(null);
+  const [successInfo, setSuccessInfo] = useState<{ recordsIngested: number; domain: string; documentNames: string[] } | null>(null);
   const modalFileInputRef = React.useRef<HTMLInputElement | null>(null);
 
-  // Sync initialDocument when modal opens
+  // Sync initialDocument or initialDocuments when modal opens
   React.useEffect(() => {
-    if (initialDocument) {
-      setDocument(initialDocument);
+    if (initialDocuments && initialDocuments.length > 0) {
+      setDocuments(initialDocuments);
+      setSelectedDocIds(new Set(initialDocuments.map((d) => d.id)));
+    } else if (initialDocument) {
+      setDocuments([initialDocument]);
+      setSelectedDocIds(new Set([initialDocument.id]));
+    } else {
+      setDocuments([]);
+      setSelectedDocIds(new Set());
     }
-  }, [initialDocument]);
+  }, [initialDocument, initialDocuments, isOpen]);
 
   if (!isOpen) return null;
+
+  const targetDocs = documents.filter((d) => selectedDocIds.has(d.id));
 
   async function handleFileUpload(file: File) {
     setIsUploading(true);
@@ -55,7 +66,15 @@ export function DocumentIngestModal({ initialDocument, isOpen, onClose, onIngest
       if (!res.ok || !data.success) {
         throw new Error(data.error || "Failed to parse document");
       }
-      setDocument(data.document);
+      setDocuments((prev) => {
+        const next = [...prev, data.document];
+        setSelectedDocIds((s) => {
+          const updated = new Set(s);
+          updated.add(data.document.id);
+          return updated;
+        });
+        return next;
+      });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
@@ -63,8 +82,24 @@ export function DocumentIngestModal({ initialDocument, isOpen, onClose, onIngest
     }
   }
 
+  const toggleSelectDoc = (id: string) => {
+    setSelectedDocIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedDocIds.size === documents.length) {
+      setSelectedDocIds(new Set());
+    } else {
+      setSelectedDocIds(new Set(documents.map((d) => d.id)));
+    }
+  };
+
   async function handleIngest() {
-    if (!document) return;
+    if (targetDocs.length === 0) return;
     setIsIngesting(true);
     setError(null);
     try {
@@ -72,11 +107,11 @@ export function DocumentIngestModal({ initialDocument, isOpen, onClose, onIngest
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          document: {
-            name: document.name,
-            text: document.text,
-            type: document.type,
-          },
+          documents: targetDocs.map((d) => ({
+            name: d.name,
+            text: d.text,
+            type: d.type,
+          })),
           domain,
           autoChunk,
           question: customQuestion.trim() || undefined,
@@ -89,15 +124,17 @@ export function DocumentIngestModal({ initialDocument, isOpen, onClose, onIngest
         throw new Error(data.error || "Ingestion failed");
       }
 
+      const docNames = targetDocs.map((d) => d.name);
       setSuccessInfo({
         recordsIngested: data.recordsIngested,
         domain: data.domain,
+        documentNames: docNames,
       });
 
       onIngestSuccess({
         recordsIngested: data.recordsIngested,
         domain: data.domain,
-        documentName: document.name,
+        documentName: docNames.length === 1 ? docNames[0] : `${docNames.length} documents`,
       });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Ingestion failed");
@@ -120,9 +157,10 @@ export function DocumentIngestModal({ initialDocument, isOpen, onClose, onIngest
           <div className="doc-modal-title-wrap">
             <span className="doc-badge doc-badge-ingest">Data Lake Ingest</span>
             <div className="doc-modal-title-text">
-              <h3>Ingest Document into DIL Knowledge Lake</h3>
+              <h3>Ingest into DIL Knowledge Lake</h3>
               <p className="doc-modal-subtitle">
-                Expand searchable knowledge base & synthetic benchmark records
+                Expand searchable knowledge base & benchmark records
+                {documents.length > 1 && ` · ${documents.length} files queued`}
               </p>
             </div>
           </div>
@@ -138,25 +176,25 @@ export function DocumentIngestModal({ initialDocument, isOpen, onClose, onIngest
           {successInfo ? (
             <div className="doc-ingest-success">
               <div className="success-check-icon">✓</div>
-              <h4>Document Successfully Ingested!</h4>
+              <h4>{successInfo.documentNames.length > 1 ? `${successInfo.documentNames.length} Documents` : "Document"} Successfully Ingested!</h4>
               <p>
                 Created <strong>{successInfo.recordsIngested} verified records</strong> in domain{" "}
                 <code>{successInfo.domain}</code>.
               </p>
               <p className="success-subtext">
-                The document is now indexed and available for autonomous retrieval by the{" "}
+                The documents are now indexed and available for autonomous retrieval by the{" "}
                 <code>search_knowledge_data_lake</code> tool across all arena models.
               </p>
               <div className="success-actions">
                 <button className="doc-btn-primary" onClick={handleResetAndClose}>
-                  View in Data Lake Studio
+                  Done
                 </button>
               </div>
             </div>
           ) : (
             <>
-              {/* Document Selection / Dropzone if no document */}
-              {!document ? (
+              {/* Document Selection / List */}
+              {documents.length === 0 ? (
                 <div className="doc-dropzone">
                   <input
                     type="file"
@@ -181,30 +219,57 @@ export function DocumentIngestModal({ initialDocument, isOpen, onClose, onIngest
                   </div>
                 </div>
               ) : (
-                <div className="ingest-doc-card">
-                  <div className="ingest-doc-info">
-                    <span className={`doc-badge doc-badge-${document.type.toLowerCase()}`}>
-                      {document.type}
+                <div className="ingest-batch-section">
+                  <div className="ingest-batch-header">
+                    <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-main)" }}>
+                      Documents to Ingest ({targetDocs.length}/{documents.length} selected)
                     </span>
-                    <div>
-                      <strong className="ingest-doc-name">{document.name}</strong>
-                      <span className="ingest-doc-meta">
-                        {document.formattedSize} · {document.wordCount.toLocaleString()} words · ~{document.tokenCount.toLocaleString()} tokens
-                      </span>
-                    </div>
+                    {documents.length > 1 && (
+                      <button
+                        type="button"
+                        className="ingest-toggle-all-btn"
+                        onClick={toggleSelectAll}
+                      >
+                        {selectedDocIds.size === documents.length ? "Deselect All" : "Select All"}
+                      </button>
+                    )}
                   </div>
-                  <button
-                    className="doc-btn-change"
-                    onClick={() => setDocument(null)}
-                    title="Choose a different document"
-                  >
-                    Change File
-                  </button>
+
+                  <div className="ingest-batch-list">
+                    {documents.map((doc) => {
+                      const isChecked = selectedDocIds.has(doc.id);
+                      return (
+                        <div
+                          key={doc.id}
+                          className={`ingest-batch-item${isChecked ? " selected" : ""}`}
+                          onClick={() => toggleSelectDoc(doc.id)}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => toggleSelectDoc(doc.id)}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          <span
+                            className={`doc-badge doc-badge-sm doc-badge-${(doc.type?.toUpperCase().includes("OCR") ? "ocr" : doc.type?.toLowerCase() || "doc").replace(/[^a-z0-9_-]/g, "-")}`}
+                          >
+                            {doc.type?.toUpperCase().includes("OCR") ? "OCR" : (doc.type || "DOC").toUpperCase().slice(0, 4)}
+                          </span>
+                          <span className="ingest-batch-name" title={doc.name}>
+                            {doc.name}
+                          </span>
+                          <span className="ingest-batch-meta">
+                            {doc.formattedSize} · ~{doc.tokenCount.toLocaleString()} tokens
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
               {/* Form Options */}
-              {document && (
+              {targetDocs.length > 0 && (
                 <div className="ingest-form-grid">
                   <div className="form-field">
                     <label className="field-label">Target Data Lake Domain</label>
@@ -220,7 +285,7 @@ export function DocumentIngestModal({ initialDocument, isOpen, onClose, onIngest
                       ))}
                     </select>
                     <span className="field-hint">
-                      Select which category will index this document in the benchmark knowledge base.
+                      Select which category will index these documents in the benchmark knowledge base.
                     </span>
                   </div>
 
@@ -244,7 +309,11 @@ export function DocumentIngestModal({ initialDocument, isOpen, onClose, onIngest
                     <input
                       type="text"
                       className="field-input"
-                      placeholder={`e.g. What are the key exclusions in ${document.name}?`}
+                      placeholder={
+                        targetDocs.length === 1
+                          ? `e.g. What are the key exclusions in ${targetDocs[0].name}?`
+                          : "e.g. Compare coverage limits and conditions across policies"
+                      }
                       value={customQuestion}
                       onChange={(e) => setCustomQuestion(e.target.value)}
                     />
@@ -277,9 +346,11 @@ export function DocumentIngestModal({ initialDocument, isOpen, onClose, onIngest
             <button
               className="doc-btn-primary"
               onClick={handleIngest}
-              disabled={!document || isIngesting || isUploading}
+              disabled={targetDocs.length === 0 || isIngesting || isUploading}
             >
-              {isIngesting ? "Ingesting Records…" : "Ingest into Data Lake"}
+              {isIngesting
+                ? `Ingesting ${targetDocs.length} ${targetDocs.length === 1 ? "Document" : "Documents"}…`
+                : `Ingest ${targetDocs.length} ${targetDocs.length === 1 ? "Document" : "Documents"}`}
             </button>
           </div>
         )}
