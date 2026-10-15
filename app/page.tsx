@@ -2,7 +2,6 @@
 import { useState, useCallback, Suspense } from "react";
 import dynamic from "next/dynamic";
 import HomeView from "@/components/HomeView";
-import ThemeToggle from "@/components/ThemeToggle";
 
 // ── Lazy-load heavy views (code-split into separate JS chunks) ────────────────
 // HeadToHeadView ~39KB, BenchmarkView ~33KB, ChatArenaView ~24KB
@@ -134,8 +133,6 @@ export default function Page() {
             <span className="studio-tag-pill">CUFEInse</span>
             <span className="studio-tag-pill">INS-ActBench</span>
           </div>
-
-          <ThemeToggle />
         </div>
       </header>
 

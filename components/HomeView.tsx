@@ -11,7 +11,7 @@ const MODULES = [
     tab: "head-to-head" as Tab,
     icon: "01",
     title: "Head-to-Head",
-    desc: "Compare two models side-by-side across 8 insurance use cases. Inspect reasoning traces, token usage, and domain-specific scoring criteria aligned to EIOPA and Solvency II.",
+    desc: "Compare two models side-by-side across 7 insurance use cases. Inspect reasoning traces, token usage, and domain-specific scoring criteria aligned to EIOPA and Solvency II.",
     tags: [
       { label: "Data Extraction", cyan: false },
       { label: "Claim Assessment", cyan: false },

@@ -59,15 +59,8 @@ const USE_CASES: { id: InsuranceUseCaseId; icon: string; label: string; prompt: 
     goldKey: "SC-006",
   },
   {
-    id: "fraud-detection",
-    icon: "07",
-    label: "Fraud Detection",
-    prompt: "",
-    goldKey: "SC-007",
-  },
-  {
     id: "actuarial-reasoning",
-    icon: "08",
+    icon: "07",
     label: "Actuarial Reasoning",
     prompt: "",
     goldKey: "SC-008",
