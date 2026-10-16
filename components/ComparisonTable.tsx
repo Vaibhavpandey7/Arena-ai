@@ -143,8 +143,8 @@ function ComparisonTable({
         "gold_response",
         "model",
         "ok",
-        "gold_alignment_score",
-        "evidence_verified",
+        "reference_alignment_heuristic_score",
+        "evidence_citation_mention_heuristic",
         "latency_ms",
         "tokens_per_sec",
         "prompt_tokens",
@@ -237,7 +237,7 @@ function ComparisonTable({
         ...r,
         speedTokensPerSec: modelEvals.get(r.model)?.speed ?? 0,
         wordCount: modelEvals.get(r.model)?.words ?? 0,
-        goldEvaluation: modelEvals.get(r.model)?.goldEval ?? null,
+        referenceAlignmentHeuristic: modelEvals.get(r.model)?.goldEval ?? null,
       })),
       votedWinner,
     };
@@ -367,13 +367,13 @@ function ComparisonTable({
           {topAlignmentRow && activeRecord && (
             <div className="leader-card">
               <div className="leader-icon" style={{ background: "var(--cyan-dim)", color: "var(--cyan-light)", fontWeight: 800, fontSize: 11, letterSpacing: "0.05em" }}>
-                ACC
+                HEU
               </div>
               <div className="leader-meta">
-                <span className="leader-label">Top Alignment</span>
+                <span className="leader-label">Top heuristic alignment</span>
                 <span className="leader-value">{topAlignmentRow.model.split("/").pop()}</span>
                 <span className="leader-sub">
-                  {modelEvals.get(topAlignmentRow.model)?.goldEval?.score}% agreement with Gold Standard
+                  {modelEvals.get(topAlignmentRow.model)?.goldEval?.score}% heuristic reference alignment
                 </span>
               </div>
             </div>
@@ -601,7 +601,7 @@ function ComparisonTable({
                         Inference Failed
                       </span>
                     )}
-                    {isTopAlignment && <span className="arena-pill-badge alignment">Top Gold Alignment</span>}
+                    {isTopAlignment && <span className="arena-pill-badge alignment">Top heuristic alignment</span>}
                     {isTopSpeed && <span className="arena-pill-badge fastest">{ev?.speed} tok/s</span>}
                     {isFastest && !isTopSpeed && <span className="arena-pill-badge fastest">Lowest Latency</span>}
                     {isCheapest && (
@@ -647,7 +647,7 @@ function ComparisonTable({
                 {activeRecord && ev?.goldEval && (
                   <div className="arena-gold-eval-strip">
                     <div className="arena-gold-score">
-                      <span>Gold Alignment:</span>
+                      <span>Reference alignment (heuristic):</span>
                       <span style={{ fontWeight: 800, fontSize: 13 }}>{ev.goldEval.score}%</span>
                       <span style={{ fontSize: 11, opacity: 0.8 }}>({ev.goldEval.label})</span>
                     </div>
@@ -656,7 +656,7 @@ function ComparisonTable({
                       <div
                         className={`arena-evidence-status ${ev.goldEval.evidenceMatched ? "verified" : "missing"}`}
                       >
-                        {ev.goldEval.evidenceMatched ? "Evidence Cited" : "Evidence Not Cited"}
+                        {ev.goldEval.evidenceMatched ? "Citation mention detected (heuristic)" : "No citation mention detected"}
                       </div>
                     )}
                   </div>
@@ -929,7 +929,7 @@ function ComparisonTable({
               </div>
               {activeTabEval?.goldEval && (
                 <div className="metric-pill" style={{ borderColor: "var(--cyan-border)" }}>
-                  <span style={{ color: "var(--cyan-light)" }}>Gold Alignment:</span>
+                  <span style={{ color: "var(--cyan-light)" }}>Reference alignment (heuristic):</span>
                   <span className="metric-val" style={{ color: "var(--cyan-light)" }}>
                     {activeTabEval.goldEval.score}% ({activeTabEval.goldEval.label})
                   </span>
@@ -1006,7 +1006,7 @@ function ComparisonTable({
               <thead>
                 <tr>
                   <th style={{ minWidth: 200 }}>Model</th>
-                  {activeRecord && <th>Gold Alignment</th>}
+                  {activeRecord && <th>Reference alignment (heuristic)</th>}
                   <th>Latency</th>
                   <th>Throughput</th>
                   <th>Tokens (In / Out)</th>

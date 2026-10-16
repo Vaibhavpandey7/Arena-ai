@@ -7,13 +7,18 @@ import {
   CufePillarKey,
   ActBenchTaskKey,
 } from "@/lib/benchmark-datasets";
+import { getInsuranceBenchmarkForCufeCompetency } from "@/lib/insurance-benchmark-registry";
+import {
+  createHeadToHeadBenchmarkNavigation,
+  type AppNavigationOptions,
+} from "@/lib/benchmark-selection";
 
 const DATASET_TABS: BenchmarkDatasetId[] = ["INS-MMBench", "CUFE", "InsuranceQA", "INS-ActBench"];
 
 type Tab = "home" | "head-to-head" | "chat-arena" | "benchmark";
 
 interface Props {
-  onNavigate?: (tab: Tab, prompt?: string) => void;
+  onNavigate?: (tab: Tab, options?: AppNavigationOptions) => void;
 }
 
 export default function BenchmarkView({ onNavigate }: Props) {
@@ -80,7 +85,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
 
           <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.78rem", color: "var(--cyan)" }}>
             <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "var(--cyan)", boxShadow: "0 0 8px var(--cyan)" }} />
-            <span>Official Academic Benchmark Ground Truth & Syllabi</span>
+            <span>Published Academic Results · External Evaluations</span>
           </div>
         </div>
 
@@ -112,7 +117,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                     fontWeight: 700,
                   }}
                 >
-                  Verified Academic Benchmark
+                  Published Academic Benchmark
                 </span>
                 <span
                   style={{
@@ -189,6 +194,26 @@ export default function BenchmarkView({ onNavigate }: Props) {
             <span style={{ color: "rgba(203, 213, 225, 0.9)" }}><strong>Key Finding:</strong> {currentDataset.keyFinding}</span>
           </div>
         </div>
+
+        {activeDataset === "CUFE" && (
+          <div
+            style={{
+              padding: "12px 16px",
+              borderRadius: "8px",
+              background: "rgba(245, 158, 11, 0.07)",
+              border: "1px solid rgba(245, 158, 11, 0.24)",
+              color: "var(--text-dim)",
+              fontSize: "0.76rem",
+              lineHeight: 1.5,
+              marginBottom: "16px",
+            }}
+          >
+            <strong style={{ color: "var(--amber)" }}>Published results and local evaluation are separate.</strong>{" "}
+            The published scores shown below are external evaluation results and are unchanged. This project also provides five
+            <strong> CUFE-inspired benchmark groups</strong> from local CSVs; they are a project subset, not the full CUFEInse dataset.
+            Use a competency action below to open a live local Head-to-Head comparison.
+          </div>
+        )}
 
         {/* Score cards */}
         <div className="benchmark-score-cards">
@@ -1342,6 +1367,7 @@ export default function BenchmarkView({ onNavigate }: Props) {
                   : cufe.pillars.filter((p) => p.key === cufePillarFilter);
 
                 const activePillar = cufe.pillars.find((p) => p.key === selectedCufePillarKey) || cufe.pillars[0];
+                const localBenchmark = getInsuranceBenchmarkForCufeCompetency(activePillar.key);
 
                 // Column leaders for each pillar
                 const pillarLeaders: Record<CufePillarKey, { maxScore: number; model: string }> = {} as any;
@@ -1807,6 +1833,30 @@ export default function BenchmarkView({ onNavigate }: Props) {
                                 <span style={{ color: "var(--text-subtle)", marginRight: "4px" }}>Runner-Up:</span>
                                 <strong style={{ color: "var(--cyan)" }}>{activePillar.secondModel} ({activePillar.secondScore.toFixed(2)} pts)</strong>
                               </div>
+                              {onNavigate && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const navigation = createHeadToHeadBenchmarkNavigation(
+                                      localBenchmark.id
+                                    );
+                                    onNavigate(navigation.tab, navigation.options);
+                                  }}
+                                  style={{
+                                    padding: "5px 10px",
+                                    borderRadius: "6px",
+                                    background: "rgba(14, 165, 233, 0.14)",
+                                    border: "1px solid rgba(14, 165, 233, 0.38)",
+                                    color: "var(--cyan)",
+                                    cursor: "pointer",
+                                    fontSize: "0.7rem",
+                                    fontWeight: 700,
+                                  }}
+                                  title={`Open the local CUFE-inspired ${localBenchmark.name} samples`}
+                                >
+                                  Compare local {localBenchmark.name} samples
+                                </button>
+                              )}
                             </div>
                           </div>
 
@@ -1982,24 +2032,49 @@ export default function BenchmarkView({ onNavigate }: Props) {
                                   </div>
                                 </div>
 
-                                <button
-                                  onClick={() => {
-                                    setSelectedCufePillarKey(p.key);
-                                    setCufeViewMode("matrix");
-                                  }}
-                                  style={{
-                                    fontSize: "0.66rem",
-                                    padding: "2px 7px",
-                                    borderRadius: "4px",
-                                    background: "rgba(255, 255, 255, 0.05)",
-                                    border: "1px solid rgba(255, 255, 255, 0.1)",
-                                    color: "var(--cyan)",
-                                    cursor: "pointer",
-                                    whiteSpace: "nowrap",
-                                  }}
-                                >
-                                  View in Table ↗
-                                </button>
+                                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", justifyContent: "flex-end" }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedCufePillarKey(p.key);
+                                      setCufeViewMode("matrix");
+                                    }}
+                                    style={{
+                                      fontSize: "0.66rem",
+                                      padding: "2px 7px",
+                                      borderRadius: "4px",
+                                      background: "rgba(255, 255, 255, 0.05)",
+                                      border: "1px solid rgba(255, 255, 255, 0.1)",
+                                      color: "var(--cyan)",
+                                      cursor: "pointer",
+                                      whiteSpace: "nowrap",
+                                    }}
+                                  >
+                                    View in Table ↗
+                                  </button>
+                                  {onNavigate && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const benchmark = getInsuranceBenchmarkForCufeCompetency(p.key);
+                                        const navigation = createHeadToHeadBenchmarkNavigation(benchmark.id);
+                                        onNavigate(navigation.tab, navigation.options);
+                                      }}
+                                      style={{
+                                        fontSize: "0.66rem",
+                                        padding: "2px 7px",
+                                        borderRadius: "4px",
+                                        background: "rgba(14, 165, 233, 0.12)",
+                                        border: "1px solid rgba(14, 165, 233, 0.32)",
+                                        color: "var(--cyan)",
+                                        cursor: "pointer",
+                                        whiteSpace: "nowrap",
+                                      }}
+                                    >
+                                      Compare local CSV group
+                                    </button>
+                                  )}
+                                </div>
                               </div>
 
                               <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", lineHeight: 1.45 }}>
@@ -3322,4 +3397,3 @@ export default function BenchmarkView({ onNavigate }: Props) {
     </div>
   );
 }
-

@@ -562,3 +562,65 @@ The application is fully pre-configured for one-click deployment to Vercel.
    - Click **Connect** to link it to your project. Vercel automatically injects `KV_REST_API_URL` and `KV_REST_API_TOKEN`.
    - Redeploy (or trigger a new deploy) to activate KV persistence for runtime ingestion.
 
+## 17. CUFE-Inspired Text Benchmark Data
+
+The five text benchmark CSVs are stored unchanged in `data/h2h_benchmark_data/CuFE/`.
+`lib/insurance-benchmarks.ts` provides the stable benchmark registry, CSV loader,
+record types, validation diagnostics, preview helper, and model-input helper. CSV
+record row numbers include the header as row 1; deterministic IDs use the benchmark
+ID and that row number. The model-input helper returns only `fullQuestion`; the
+reference `correctAnswer` remains a separate field for evaluation.
+
+The loader uses `csv-parse` on the Node.js server. `next.config.mjs` includes the
+CSV files in API-route output tracing for Vercel deployments. Run
+`npm run test:benchmarks` to exercise parsing and validation behavior.
+
+Head-to-Head defaults to Benchmark Comparison and loads paginated sample previews
+from `/api/insurance-benchmarks`. Explicit sample inspection retrieves the
+reference answer; the batch inference-input POST returns only the selected full
+questions in a dedicated `records` field and returns references/options separately
+for browser-side scoring; only full questions are sent onward to `/api/chat`. The
+existing streaming runner executes the same selected sample set against each
+selected model. Manual Upload accepts ad hoc CSV evaluation cases and uses the same
+streaming model runner.
+
+Manual Upload accepts standard UTF-8 CSV files in the browser (maximum 5 MiB and
+500 rows). It requires `full question` and `correct answer`; `Question stem` and
+A–E options are optional. Unknown/alternative columns are rejected rather than
+guessed. Invalid rows remain visible until explicitly removed; an upload with
+unresolved invalid rows cannot run. Uploaded records are held in page memory only,
+never written to the data lake or a public directory. During inference only each
+row's full question is sent to the existing chat API; the correct answer stays in
+the browser for reference-aware scoring. These runs are labelled
+`Manual Upload` and are not part of the published benchmark registry or aggregates.
+
+Benchmark and Manual Upload comparisons use `lib/benchmark-eval.ts` for
+reference-aware per-sample scoring and per-model summaries. Task type is taken
+from a scoring policy when specified, otherwise inferred conservatively from
+options, recognized binary labels, or an unambiguous numeric reference. Numeric
+answers require compatible units; tolerance is explicit and defaults to zero.
+Free-form token precision/recall/F1 are lexical diagnostics only. Mixed tasks are
+reported in separate groups; skipped and failed samples are disclosed separately,
+and failed requests are excluded from metric denominators. The prior alignment
+heuristic remains optional and is labelled `Reference alignment (heuristic)`.
+Legacy use-case metrics are explicitly heuristic estimates, not benchmark accuracy.
+
+Head-to-Head results retain each run's source label (`Benchmark Comparison` or
+`Manual Upload`) and show per-model run counts, task metrics, response time, token
+usage, and estimated cost. Sample detail cards disclose full questions, references,
+responses, objective/lexical scoring, and request status; references are never part
+of inference prompts. Benchmark-group rows identify the selected sample set and
+show other groups as not evaluated for this run. Cross-model charts display only
+comparable accuracy metrics; no values are imputed for unavailable metrics and no
+cross-task overall rank is calculated. Assessment notes report task-specific
+leaders, latency/cost observations, failures, disagreements, and repeated exact
+incorrect-response patterns. Live Head-to-Head output is not a published
+leaderboard result.
+
+The client-safe `lib/insurance-benchmark-registry.ts` is the single source of
+truth for local benchmark IDs, display names, files, and CUFE competency mappings;
+the server CSV loader imports the same registry. CUFEInse published-score views
+remain sourced from `lib/benchmark-datasets.ts`; those external figures and the
+INS-MMBench, InsuranceQA, and INS-ActBench views are separate from local CSV
+evaluation. CUFE competency actions navigate through an explicit benchmark
+selection object (benchmark ID plus optional sample IDs), not a prompt string.

@@ -2,6 +2,10 @@
 import { useState, useCallback, Suspense } from "react";
 import dynamic from "next/dynamic";
 import HomeView from "@/components/HomeView";
+import type {
+  AppNavigationOptions,
+  BenchmarkNavigationSelection,
+} from "@/lib/benchmark-selection";
 
 // ── Lazy-load heavy views (code-split into separate JS chunks) ────────────────
 // HeadToHeadView ~39KB, BenchmarkView ~33KB, ChatArenaView ~24KB
@@ -65,19 +69,32 @@ export default function Page() {
   const [activeTab, setActiveTab] = useState<Tab>("home");
   const [arenaInitialPrompt, setArenaInitialPrompt] = useState<string | undefined>(undefined);
   const [h2hInitialPrompt, setH2hInitialPrompt] = useState<string | undefined>(undefined);
+  const [h2hInitialBenchmarkSelection, setH2hInitialBenchmarkSelection] =
+    useState<BenchmarkNavigationSelection | undefined>(undefined);
 
-  const navigateTo = useCallback((tab: Tab, prompt?: string) => {
+  const navigateTo = useCallback((tab: Tab, options?: AppNavigationOptions) => {
     setActiveTab(tab);
-    if (prompt) {
+    if (options?.prompt) {
       if (tab === "chat-arena") {
-        setArenaInitialPrompt(prompt);
+        setArenaInitialPrompt(options.prompt);
       } else if (tab === "head-to-head") {
-        setH2hInitialPrompt(prompt);
+        setH2hInitialPrompt(options.prompt);
       }
+    }
+    if (tab === "head-to-head" && options?.benchmarkSelection) {
+      setH2hInitialBenchmarkSelection(options.benchmarkSelection);
     }
   }, []);
 
   const clearH2hPrompt = useCallback(() => setH2hInitialPrompt(undefined), []);
+  const clearH2hBenchmarkSelection = useCallback(
+    () => setH2hInitialBenchmarkSelection(undefined),
+    []
+  );
+  const handleH2hReady = useCallback(() => {
+    clearH2hPrompt();
+    clearH2hBenchmarkSelection();
+  }, [clearH2hBenchmarkSelection, clearH2hPrompt]);
   const clearArenaPrompt = useCallback(() => setArenaInitialPrompt(undefined), []);
 
   return (
@@ -149,7 +166,8 @@ export default function Page() {
       {activeTab === "head-to-head" && (
         <HeadToHeadView
           initialPrompt={h2hInitialPrompt}
-          onReady={clearH2hPrompt}
+          initialBenchmarkSelection={h2hInitialBenchmarkSelection}
+          onReady={handleH2hReady}
         />
       )}
 

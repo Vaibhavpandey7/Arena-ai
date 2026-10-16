@@ -98,9 +98,9 @@ function DatasetBrowser({ onLoadRecord, modelAnswer, activeRecord: externalActiv
       "split",
       "difficulty",
       "dataset_curation_score",
-      "gold_alignment_score",
-      "gold_alignment_label",
-      "evidence_verified",
+      "reference_alignment_heuristic_score",
+      "reference_alignment_heuristic_label",
+      "evidence_citation_mention_heuristic",
       "question",
       "context",
       "model_answer",
@@ -134,7 +134,7 @@ function DatasetBrowser({ onLoadRecord, modelAnswer, activeRecord: externalActiv
       exportedAt: new Date().toISOString(),
       record: activeRecord,
       modelAnswer: modelAnswer || null,
-      alignmentEvaluation: goldAlignment ? {
+      referenceAlignmentHeuristic: goldAlignment ? {
         score: goldAlignment.score,
         label: goldAlignment.label,
         evidenceMatched: goldAlignment.evidenceMatched,
@@ -246,7 +246,7 @@ function DatasetBrowser({ onLoadRecord, modelAnswer, activeRecord: externalActiv
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "16px", color: "var(--text-main)" }}>
-                Ground Truth Evaluation Benchmark
+                Reference Alignment Diagnostic
               </div>
               <span className="brand-tag" style={{ background: "var(--accent-dim)", color: "var(--accent)", borderColor: "var(--accent-border)", fontWeight: 700 }}>
                 Active Record: {activeRecord.id}
@@ -267,7 +267,7 @@ function DatasetBrowser({ onLoadRecord, modelAnswer, activeRecord: externalActiv
                       : "divergent"
                   }`}
                 >
-                  {goldAlignment.score}% Model Alignment · {goldAlignment.label}
+                  {goldAlignment.score}% Reference alignment (heuristic) · {goldAlignment.label}
                 </span>
               )}
             </div>
@@ -328,19 +328,19 @@ function DatasetBrowser({ onLoadRecord, modelAnswer, activeRecord: externalActiv
                 <div className="gt-alignment-breakdown">
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11 }}>
                     <span style={{ color: "var(--text-subtle)", fontWeight: 600, textTransform: "uppercase" }}>
-                      Evidence Citation Check:
+                      Citation mention check (heuristic):
                     </span>
                     {goldAlignment.evidenceMatched ? (
-                      <span className="gt-evidence-verified">✓ Verified Citation</span>
+                      <span className="gt-evidence-verified">Citation mention detected</span>
                     ) : (
-                      <span className="gt-evidence-uncited">Uncited Evidence</span>
+                      <span className="gt-evidence-uncited">No citation mention detected</span>
                     )}
                   </div>
 
                   {goldAlignment.keyTermsMatched.length > 0 && (
                     <div>
                       <div style={{ fontSize: 11, color: "var(--text-subtle)", fontWeight: 600, textTransform: "uppercase", marginBottom: 4 }}>
-                        Matched Domain Keywords ({goldAlignment.keyTermsMatched.length}):
+                        Heuristically matched reference terms ({goldAlignment.keyTermsMatched.length}):
                       </div>
                       <div className="gt-kw-chips">
                         {goldAlignment.keyTermsMatched.map((term, i) => (
