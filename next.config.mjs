@@ -29,10 +29,12 @@ const nextConfig = {
   experimental: {
     optimizeCss: true,
     outputFileTracingIncludes: {
-      "/api/**/*": ["./regulatory_check/**/*"],
+      "/api/**/*": [
+        "./regulatory_check/**/*",
+        "./data/h2h_benchmark_data/CuFE/*.csv",
+      ],
     },
   },
 };
 
 export default nextConfig;
-

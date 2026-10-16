@@ -11,6 +11,482 @@ export interface GoldEvaluationResult {
   missingKeyTerms: string[];
 }
 
+export type ReferenceScoringType =
+  | "categorical"
+  | "multiple-choice"
+  | "numeric"
+  | "free-form";
+
+export interface ReferenceScoringPolicy {
+  type?: ReferenceScoringType | "auto";
+  absoluteTolerance?: number;
+  relativeTolerance?: number;
+}
+
+export interface ReferenceTaskResult {
+  taskType: ReferenceScoringType | "unavailable";
+  metricName: string;
+  available: boolean;
+  reason?: string;
+  correct?: boolean;
+  absoluteError?: number;
+  unit?: string;
+  absoluteTolerance?: number;
+  relativeTolerance?: number;
+  tokenPrecision?: number;
+  tokenRecall?: number;
+  tokenF1?: number;
+}
+
+export interface ReferenceRunSample {
+  sampleId: string;
+  reference?: string;
+  options?: Record<string, string>;
+  policy?: ReferenceScoringPolicy;
+  response?: string;
+  status: "success" | "failed" | "cancelled";
+}
+
+export interface ReferenceMetricGroup {
+  taskType: ReferenceScoringType;
+  unit?: string;
+  absoluteTolerance?: number;
+  relativeTolerance?: number;
+  sampleIds: string[];
+  evaluatedCount: number;
+  denominator: number;
+  correctCount?: number;
+  incorrectCount?: number;
+  accuracy?: number;
+  meanAbsoluteError?: number;
+  meanTokenPrecision?: number;
+  meanTokenRecall?: number;
+  meanTokenF1?: number;
+  metricName: string;
+}
+
+export interface ReferenceRunAggregate {
+  selectedCount: number;
+  completedCount: number;
+  evaluatedCount: number;
+  unscoredCount: number;
+  skippedCount: number;
+  failedCount: number;
+  pendingCount: number;
+  groups: ReferenceMetricGroup[];
+}
+
+interface ParsedNumber {
+  value: number;
+  unit: string;
+}
+
+const UNIT_CONVERSIONS: Record<string, { baseUnit: string; factor: number }> = {
+  kg: { baseUnit: "g", factor: 1_000 },
+  g: { baseUnit: "g", factor: 1 },
+  km: { baseUnit: "m", factor: 1_000 },
+  m: { baseUnit: "m", factor: 1 },
+  cm: { baseUnit: "m", factor: 0.01 },
+};
+
+const BINARY_LABELS = new Set([
+  "yes", "no", "true", "false", "pass", "fail", "approved", "rejected",
+  "eligible", "ineligible", "compliant", "noncompliant", "positive", "negative",
+]);
+
+const FREE_FORM_DIAGNOSTIC_NAME =
+  "Metric unavailable for semantic accuracy; token-level precision/recall/F1 (lexical diagnostic)";
+
+const NUMBER_SOURCE =
+  "[-+]?(?:\\d{1,3}(?:,\\d{3})+|\\d+)(?:\\.\\d+)?(?:[eE][-+]?\\d+)?";
+const NUMBER_PATTERN = new RegExp(NUMBER_SOURCE, "g");
+const NUMERIC_REFERENCE_PATTERN = new RegExp(
+  `^\\s*(?:(?:[$€£¥]|USD|EUR|GBP|CNY|RMB)\\s*)?${NUMBER_SOURCE}\\s*(?:(?:%|percent(?:age)?|USD|EUR|GBP|CNY|RMB|dollars?|euros?|yuan|rmb|cny|days?|years?|months?|kg|g|km|m|cm|k|thousand|million|billion|元)(?:\\s+(?:USD|EUR|GBP|CNY|RMB|dollars?|euros?|yuan))?)?\\s*[.!?]?\\s*$`,
+  "i"
+);
+
+const UNIT_ALIASES: Record<string, string> = {
+  "%": "percent",
+  percent: "percent",
+  percentage: "percent",
+  usd: "usd",
+  dollar: "usd",
+  dollars: "usd",
+  "$": "usd",
+  eur: "eur",
+  euro: "eur",
+  euros: "eur",
+  "€": "eur",
+  gbp: "gbp",
+  "£": "gbp",
+  yuan: "cny",
+  rmb: "cny",
+  cny: "cny",
+  "¥": "cny",
+  元: "cny",
+  day: "day",
+  days: "day",
+  year: "year",
+  years: "year",
+  month: "month",
+  months: "month",
+  kg: "kg",
+  g: "g",
+  km: "km",
+  m: "m",
+  cm: "cm",
+};
+
+function normalizeReferenceText(value: string): string {
+  return value
+    .normalize("NFKC")
+    .toLocaleLowerCase()
+    .trim()
+    .replace(/[“”‘’]/g, "'")
+    .replace(/[.!?;,]+$/g, "")
+    .replace(/\s+/g, " ");
+}
+
+function uniqueOptionMatch(
+  value: string,
+  options: Record<string, string>
+): string | undefined {
+  const normalized = normalizeReferenceText(value);
+  const matches = Object.entries(options).filter(
+    ([letter, option]) =>
+      normalizeReferenceText(letter) === normalized ||
+      normalizeReferenceText(option) === normalized
+  );
+  return matches.length === 1 ? matches[0][0].toUpperCase() : undefined;
+}
+
+function mapMultipleChoiceAnswer(
+  answer: string,
+  options: Record<string, string>
+): string | undefined {
+  const normalized = normalizeReferenceText(answer);
+  const direct = uniqueOptionMatch(normalized, options);
+  if (direct) return direct;
+
+  const letterPattern = /\b(?:answer|option|choice)\s*(?:is|:|=)?\s*\(?([a-e])\)?\b/gi;
+  const letters = Array.from(normalized.matchAll(letterPattern))
+    .map((match) => match[1].toUpperCase())
+    .filter((letter) => Object.prototype.hasOwnProperty.call(options, letter));
+  if (new Set(letters).size === 1) return letters[0];
+  if (new Set(letters).size > 1) return undefined;
+
+  const valueMatches = Object.entries(options)
+    .filter(([, option]) => {
+      const normalizedOption = normalizeReferenceText(option);
+      return normalizedOption.length > 0 &&
+        normalized.includes(normalizedOption);
+    })
+    .map(([letter]) => letter.toUpperCase());
+  return new Set(valueMatches).size === 1 ? valueMatches[0] : undefined;
+}
+
+function parseSingleNumber(value: string): ParsedNumber | undefined {
+  const matches = Array.from(value.matchAll(NUMBER_PATTERN));
+  if (matches.length !== 1) return undefined;
+  const match = matches[0];
+  const rawNumber = match[0].replace(/,/g, "");
+  const number = Number(rawNumber);
+  if (!Number.isFinite(number)) return undefined;
+
+  const start = match.index ?? 0;
+  const end = start + match[0].length;
+  const before = value.slice(Math.max(0, start - 16), start);
+  const after = value.slice(end, end + 24);
+  const prefix = before.match(/(?:[$€£¥]|USD|EUR|GBP|CNY|RMB)\s*$/i)?.[0] ?? "";
+  const suffixMatch = after.match(/^\s*(%|[A-Za-z]{1,12}|元)(?:\s+([A-Za-z]{1,12}|元))?/);
+  const firstSuffix = suffixMatch?.[1] ?? "";
+  const secondSuffix = suffixMatch?.[2] ?? "";
+  const prefixUnit = prefix.trim().toLocaleLowerCase();
+  const firstToken = firstSuffix.trim().toLocaleLowerCase();
+  const secondToken = secondSuffix.trim().toLocaleLowerCase();
+  const scaleToken = /^(k|thousand|million|billion)$/i.exec(firstToken)?.[1]?.toLowerCase();
+  const scale = scaleToken === "k" || scaleToken === "thousand"
+    ? 1_000
+    : scaleToken === "million"
+      ? 1_000_000
+      : scaleToken === "billion"
+        ? 1_000_000_000
+        : 1;
+  const unitToken = scaleToken
+    ? secondToken || prefixUnit
+    : firstToken || prefixUnit;
+  const normalizedUnit = UNIT_ALIASES[unitToken] ?? unitToken;
+  const conversion = UNIT_CONVERSIONS[normalizedUnit];
+  return {
+    value: number * scale * (conversion?.factor ?? 1),
+    unit: conversion?.baseUnit ?? normalizedUnit,
+  };
+}
+
+function getTaskType(
+  reference: string,
+  options: Record<string, string>,
+  policy?: ReferenceScoringPolicy
+): ReferenceScoringType {
+  if (policy?.type && policy.type !== "auto") return policy.type;
+  if (Object.keys(options).length > 0) return "multiple-choice";
+  const normalized = normalizeReferenceText(reference);
+  if (BINARY_LABELS.has(normalized)) return "categorical";
+  if (NUMERIC_REFERENCE_PATTERN.test(reference) && parseSingleNumber(reference)) {
+    return "numeric";
+  }
+  return "free-form";
+}
+
+function tokenCounts(value: string): Map<string, number> {
+  const tokens = value
+    .normalize("NFKC")
+    .toLocaleLowerCase()
+    .match(/[\p{L}\p{N}]+/gu) ?? [];
+  const counts = new Map<string, number>();
+  for (const token of tokens) counts.set(token, (counts.get(token) ?? 0) + 1);
+  return counts;
+}
+
+export function evaluateReferenceAnswer(
+  response: string,
+  reference: string | undefined,
+  options: Record<string, string> = {},
+  policy?: ReferenceScoringPolicy
+): ReferenceTaskResult {
+  if (!reference?.trim()) {
+    return {
+      taskType: "unavailable",
+      metricName: "Metric unavailable",
+      available: false,
+      reason: "The sample has no reference answer.",
+    };
+  }
+
+  const taskType = getTaskType(reference, options, policy);
+  if (taskType === "multiple-choice") {
+    const expected = uniqueOptionMatch(reference, options);
+    if (!expected) {
+      return {
+        taskType: "unavailable",
+        metricName: "Metric unavailable",
+        available: false,
+        reason: "The reference answer does not map unambiguously to one available option.",
+      };
+    }
+    const actual = mapMultipleChoiceAnswer(response, options);
+    if (!actual) {
+      return {
+        taskType,
+        metricName: "Multiple-choice accuracy",
+        available: false,
+        reason: "The response does not identify exactly one available option.",
+      };
+    }
+    return {
+      taskType,
+      metricName: "Multiple-choice accuracy",
+      available: true,
+      correct: actual === expected,
+    };
+  }
+
+  if (taskType === "categorical") {
+    const expected = normalizeReferenceText(reference);
+    const actual = normalizeReferenceText(response);
+    return {
+      taskType,
+      metricName: "Normalized exact-match accuracy",
+      available: Boolean(actual),
+      ...(actual ? { correct: actual === expected } : {
+        reason: "The response is empty.",
+      }),
+    };
+  }
+
+  if (taskType === "numeric") {
+    const expected = parseSingleNumber(reference);
+    const actual = parseSingleNumber(response);
+    if (!expected || !actual) {
+      return {
+        taskType,
+        metricName: "Numeric accuracy",
+        available: false,
+        reason: !actual
+          ? "The response must contain exactly one unambiguous numeric value."
+          : "The reference must contain exactly one unambiguous numeric value.",
+      };
+    }
+    if (expected.unit !== actual.unit) {
+      return {
+        taskType,
+        metricName: "Numeric accuracy",
+        available: false,
+        reason: `Incompatible or missing units (reference: "${expected.unit || "none"}"; response: "${actual.unit || "none"}").`,
+      };
+    }
+    const absoluteError = Math.abs(actual.value - expected.value);
+    const absoluteTolerance = policy?.absoluteTolerance ?? 0;
+    const relativeTolerance = policy?.relativeTolerance ?? 0;
+    const tolerance = Math.max(
+      absoluteTolerance,
+      Math.abs(expected.value) * relativeTolerance
+    );
+    return {
+      taskType,
+      metricName: "Numeric accuracy",
+      available: true,
+      correct: absoluteError <= tolerance,
+      absoluteError,
+      unit: expected.unit,
+      absoluteTolerance,
+      relativeTolerance,
+    };
+  }
+
+  const expectedCounts = tokenCounts(reference);
+  const actualCounts = tokenCounts(response);
+  const expectedTotal = Array.from(expectedCounts.values()).reduce((sum, count) => sum + count, 0);
+  const actualTotal = Array.from(actualCounts.values()).reduce((sum, count) => sum + count, 0);
+  if (expectedTotal === 0 || actualTotal === 0) {
+    return {
+      taskType,
+      metricName: FREE_FORM_DIAGNOSTIC_NAME,
+      available: false,
+      reason: "Both the reference and response need at least one lexical token.",
+    };
+  }
+  let overlap = 0;
+  for (const [token, count] of expectedCounts) {
+    overlap += Math.min(count, actualCounts.get(token) ?? 0);
+  }
+  const tokenPrecision = overlap / actualTotal;
+  const tokenRecall = overlap / expectedTotal;
+  const tokenF1 = tokenPrecision + tokenRecall === 0
+    ? 0
+    : 2 * tokenPrecision * tokenRecall / (tokenPrecision + tokenRecall);
+  return {
+    taskType,
+    metricName: FREE_FORM_DIAGNOSTIC_NAME,
+    available: true,
+    tokenPrecision,
+    tokenRecall,
+    tokenF1,
+  };
+}
+
+export function aggregateReferenceRun(
+  samples: ReferenceRunSample[],
+  selectedCount = samples.length,
+  pendingCount = 0
+): ReferenceRunAggregate {
+  const groups = new Map<string, {
+    taskType: ReferenceScoringType;
+    unit?: string;
+    absoluteTolerance?: number;
+    relativeTolerance?: number;
+    metricName: string;
+    sampleIds: string[];
+    correct: number[];
+    errors: number[];
+    precision: number[];
+    recall: number[];
+    f1: number[];
+  }>();
+  let evaluatedCount = 0;
+  let unscoredCount = 0;
+  let completedCount = 0;
+  let failedCount = 0;
+
+  for (const sample of samples) {
+    if (sample.status === "failed") {
+      failedCount++;
+      continue;
+    }
+    if (sample.status !== "success") continue;
+    completedCount++;
+    const result = evaluateReferenceAnswer(
+      sample.response ?? "",
+      sample.reference,
+      sample.options,
+      sample.policy
+    );
+    if (!result.available || result.taskType === "unavailable") {
+      unscoredCount++;
+      continue;
+    }
+    evaluatedCount++;
+    const groupKey = [
+      result.taskType,
+      result.unit ?? "",
+      result.absoluteTolerance ?? "",
+      result.relativeTolerance ?? "",
+    ].join(":");
+    const group = groups.get(groupKey) ?? {
+      taskType: result.taskType,
+      unit: result.unit,
+      absoluteTolerance: result.absoluteTolerance,
+      relativeTolerance: result.relativeTolerance,
+      metricName: result.metricName,
+      sampleIds: [],
+      correct: [],
+      errors: [],
+      precision: [],
+      recall: [],
+      f1: [],
+    };
+    if (result.correct !== undefined) group.correct.push(result.correct ? 1 : 0);
+    if (result.absoluteError !== undefined) group.errors.push(result.absoluteError);
+    if (result.tokenPrecision !== undefined) group.precision.push(result.tokenPrecision);
+    if (result.tokenRecall !== undefined) group.recall.push(result.tokenRecall);
+    if (result.tokenF1 !== undefined) group.f1.push(result.tokenF1);
+    group.sampleIds.push(sample.sampleId);
+    groups.set(groupKey, group);
+  }
+
+  const metricGroups = Array.from(groups.values()).map((group): ReferenceMetricGroup => {
+    const denominator = group.correct.length;
+    return {
+      taskType: group.taskType,
+      ...(group.unit ? { unit: group.unit } : {}),
+      ...(group.absoluteTolerance !== undefined
+        ? { absoluteTolerance: group.absoluteTolerance }
+        : {}),
+      ...(group.relativeTolerance !== undefined
+        ? { relativeTolerance: group.relativeTolerance }
+        : {}),
+      sampleIds: group.sampleIds,
+      evaluatedCount: group.correct.length || group.f1.length,
+      denominator,
+      ...(denominator > 0 ? {
+        correctCount: group.correct.filter(Boolean).length,
+        incorrectCount: denominator - group.correct.filter(Boolean).length,
+        accuracy: group.correct.filter(Boolean).length / denominator,
+      } : {}),
+      ...(group.errors.length > 0
+        ? { meanAbsoluteError: group.errors.reduce((sum, value) => sum + value, 0) / group.errors.length }
+        : {}),
+      ...(group.f1.length > 0 ? {
+        meanTokenPrecision: group.precision.reduce((sum, value) => sum + value, 0) / group.precision.length,
+        meanTokenRecall: group.recall.reduce((sum, value) => sum + value, 0) / group.recall.length,
+        meanTokenF1: group.f1.reduce((sum, value) => sum + value, 0) / group.f1.length,
+      } : {}),
+      metricName: group.metricName,
+    };
+  });
+
+  return {
+    selectedCount,
+    completedCount,
+    evaluatedCount,
+    unscoredCount,
+    skippedCount: Math.max(0, selectedCount - completedCount - failedCount - pendingCount),
+    failedCount,
+    pendingCount: Math.min(pendingCount, selectedCount),
+    groups: metricGroups,
+  };
+}
+
 export function calculateTokensPerSec(latencyMs: number, completionTokens: number): number {
   if (!latencyMs || latencyMs <= 0 || !completionTokens || completionTokens <= 0) return 0;
   return Math.round((completionTokens / (latencyMs / 1000)) * 10) / 10;
@@ -58,8 +534,8 @@ function stemWord(word: string): string {
 }
 
 /**
- * Computes objective alignment between model response and verified gold standard response.
- * Evaluates across key domain concepts, numeric precision, regulatory citations, and semantic coverage.
+ * Returns a heuristic reference-alignment diagnostic. Its lexical and citation
+ * signals are not verified semantic accuracy and are not used by task scoring.
  */
 export function evaluateGoldAlignment(
   modelAnswer?: string,

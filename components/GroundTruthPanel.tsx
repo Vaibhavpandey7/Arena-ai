@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from "react";
 import { evaluateUseCaseMetrics, InsuranceUseCaseId, UseCaseEvaluation } from "@/lib/use-case-metrics";
 import { evaluateGoldAlignment, GoldEvaluationResult } from "@/lib/benchmark-eval";
+import type { ReferenceTaskResult } from "@/lib/benchmark-eval";
 import { BENCHMARK_GOLD_REGISTRY } from "@/lib/benchmark-gold-data";
 
 interface Props {
@@ -12,6 +13,7 @@ interface Props {
   questionText?: string;
   modelName?: string;
   onUploadCustomGold?: (customGold: string, evidence?: string) => void;
+  referenceScoring?: ReferenceTaskResult;
 }
 
 export default function GroundTruthPanel({
@@ -22,9 +24,11 @@ export default function GroundTruthPanel({
   questionText,
   modelName = "Model Output",
   onUploadCustomGold,
+  referenceScoring,
 }: Props) {
   const [activeGold, setActiveGold] = useState<string>(goldResponse);
   const [activeEvidence, setActiveEvidence] = useState<string>(evidence || "");
+  const [showHeuristicAlignment, setShowHeuristicAlignment] = useState(false);
   const [isExpanded, setIsExpanded] = useState<boolean>(true);
   const [showGoldText, setShowGoldText] = useState<boolean>(false);
   const [showUploadModal, setShowUploadModal] = useState<boolean>(false);
@@ -39,9 +43,9 @@ export default function GroundTruthPanel({
   // Find matching gold item for curated keyTerms
   const matchedGoldItem = useMemo(() => {
     return Object.values(BENCHMARK_GOLD_REGISTRY).find(
-      (item) => item.goldResponse === activeGold || item.useCaseId === useCaseId
+      (item) => item.goldResponse === activeGold
     );
-  }, [activeGold, useCaseId]);
+  }, [activeGold]);
 
   // Compute standard alignment with domain key terms
   const goldEval: GoldEvaluationResult = useMemo(() => {
@@ -142,8 +146,8 @@ export default function GroundTruthPanel({
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <div>
             <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--text)", display: "flex", alignItems: "center", gap: "8px" }}>
-              Ground Truth Alignment
-              <span
+              {referenceScoring ? "Reference scoring" : "Reference alignment (heuristic)"}
+              {(!referenceScoring || showHeuristicAlignment) && <span
                 style={{
                   fontSize: "0.68rem",
                   padding: "2px 8px",
@@ -155,8 +159,44 @@ export default function GroundTruthPanel({
                 }}
               >
                 {goldEval.score}% · {goldEval.label}
-              </span>
-              {goldEval.evidenceMatched && (
+              </span>}
+              {referenceScoring && (
+                <span
+                  style={{
+                    fontSize: "0.68rem",
+                    padding: "2px 8px",
+                    borderRadius: "12px",
+                    background: "rgba(0, 212, 255, 0.08)",
+                    color: "var(--cyan)",
+                    border: "1px solid rgba(0, 212, 255, 0.25)",
+                    fontWeight: 600,
+                  }}
+                >
+                  {referenceScoring.available
+                    ? referenceScoring.correct === undefined
+                      ? "Lexical diagnostic"
+                      : referenceScoring.correct ? "Correct" : "Incorrect"
+                    : "Metric unavailable"}
+                </span>
+              )}
+              {referenceScoring && (
+                <button
+                    type="button"
+                    onClick={() => setShowHeuristicAlignment((visible) => !visible)}
+                    style={{
+                      fontSize: "0.66rem",
+                      padding: "2px 7px",
+                      borderRadius: "10px",
+                      background: "transparent",
+                      color: "var(--text-muted)",
+                      border: "1px solid var(--border)",
+                      cursor: "pointer",
+                    }}
+                >
+                    {showHeuristicAlignment ? "Hide" : "Show"} reference alignment (heuristic)
+                </button>
+              )}
+              {goldEval.evidenceMatched && (!referenceScoring || showHeuristicAlignment) && (
                 <span
                   style={{
                     fontSize: "0.68rem",
@@ -166,20 +206,22 @@ export default function GroundTruthPanel({
                     color: "var(--emerald)",
                     border: "1px solid rgba(16, 185, 129, 0.3)",
                   }}
-                  title="Official regulatory or evidentiary citation detected in response"
+                  title="Heuristic text check found a possible citation mention"
                 >
-                  ✓ Evidence Verified
+                  Citation mention (heuristic)
                 </span>
               )}
             </div>
             <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: "1px" }}>
-              Matched against {activeEvidence ? "certified regulatory benchmark" : "verified gold reference"}
+              {referenceScoring
+                ? "Reference scoring is separate from the optional alignment heuristic."
+                : `Heuristic text comparison against ${activeEvidence ? "evidence text" : "the reference answer"}`}
             </div>
           </div>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <button
+          {!referenceScoring && <button
             onClick={() => setShowUploadModal(true)}
             style={{
               fontSize: "0.72rem",
@@ -193,7 +235,7 @@ export default function GroundTruthPanel({
             }}
           >
             Upload Custom GT
-          </button>
+          </button>}
           <button
             onClick={() => setIsExpanded(!isExpanded)}
             style={{
@@ -213,7 +255,38 @@ export default function GroundTruthPanel({
 
       {isExpanded && (
         <div style={{ padding: "14px 16px" }}>
+          {referenceScoring && (
+            <div
+              style={{
+                padding: "10px 12px",
+                borderRadius: "8px",
+                background: "rgba(0, 212, 255, 0.04)",
+                border: "1px solid rgba(0, 212, 255, 0.15)",
+                marginBottom: "12px",
+                fontSize: "0.76rem",
+              }}
+            >
+              <strong>{referenceScoring.metricName}</strong>
+              <div style={{ color: "var(--text-dim)", marginTop: "4px" }}>
+                Task: {referenceScoring.taskType.replace("-", " ")}
+                {referenceScoring.correct !== undefined &&
+                  ` · ${referenceScoring.correct ? "Correct" : "Incorrect"}`}
+                {referenceScoring.absoluteError !== undefined &&
+                  ` · Absolute error ${referenceScoring.absoluteError}${referenceScoring.unit ? ` ${referenceScoring.unit}` : ""}`}
+                {referenceScoring.absoluteTolerance !== undefined &&
+                  ` · Absolute tolerance ${referenceScoring.absoluteTolerance}${referenceScoring.unit ? ` ${referenceScoring.unit}` : ""}`}
+                {referenceScoring.relativeTolerance !== undefined &&
+                  ` · Relative tolerance ${(referenceScoring.relativeTolerance * 100).toFixed(2)}%`}
+                {referenceScoring.tokenPrecision !== undefined &&
+                  ` · Precision ${(referenceScoring.tokenPrecision * 100).toFixed(1)}%, recall ${((referenceScoring.tokenRecall ?? 0) * 100).toFixed(1)}%, F1 ${((referenceScoring.tokenF1 ?? 0) * 100).toFixed(1)}% (lexical diagnostic, not semantic accuracy)`}
+                {!referenceScoring.available && referenceScoring.reason &&
+                  ` · ${referenceScoring.reason}`}
+              </div>
+            </div>
+          )}
           {/* Primary Use Case Metric Highlight */}
+          {!referenceScoring && (
+          <>
           <div
             style={{
               padding: "12px 14px",
@@ -265,7 +338,7 @@ export default function GroundTruthPanel({
                   {useCaseEval.primary.score}%
                 </span>
                 <div style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>
-                  {useCaseEval.primary.isEstimate ? "Heuristic Proxy" : "Ground Truth Aligned"}
+                  Heuristic proxy; not verified accuracy
                 </div>
               </div>
             </div>
@@ -287,7 +360,7 @@ export default function GroundTruthPanel({
           {/* Secondary Metrics Grid */}
           <div style={{ marginBottom: "14px" }}>
             <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", fontWeight: 600, marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-              Detailed Domain Metrics
+              Heuristic Domain Estimates
             </div>
             <div
               style={{
@@ -335,9 +408,16 @@ export default function GroundTruthPanel({
               ))}
             </div>
           </div>
+          </>
+          )}
 
-          {/* Key Term Chips */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "12px" }}>
+          {/* Optional heuristic comparison; never used as benchmark accuracy. */}
+          {referenceScoring && showHeuristicAlignment && (
+            <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", fontWeight: 700, marginBottom: "8px" }}>
+              Reference alignment (heuristic) — not benchmark accuracy
+            </div>
+          )}
+          {(!referenceScoring || showHeuristicAlignment) && <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "12px" }}>
             {goldEval.keyTermsMatched.length > 0 && (
               <div>
                 <span style={{ fontSize: "0.7rem", color: "var(--emerald)", fontWeight: 600, marginRight: "6px" }}>
@@ -360,7 +440,7 @@ export default function GroundTruthPanel({
                     </span>
                   ))}
                 </span>
-              </div>
+              </div>}
             )}
 
             {goldEval.missingKeyTerms.length > 0 && (

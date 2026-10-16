@@ -260,8 +260,8 @@ const STOP_WORDS = new Set([
 ]);
 
 /**
- * Evaluates a model's response against the use-case specific metrics.
- * Uses ground truth comparison when goldResponse is provided, or heuristic NLP structural analysis when not.
+ * Produces legacy, heuristic use-case indicators. These estimates are not
+ * verified accuracy metrics and must not be used as benchmark scores.
  */
 export function evaluateUseCaseMetrics(
   useCaseId: InsuranceUseCaseId,
@@ -308,7 +308,7 @@ export function evaluateUseCaseMetrics(
     let score = 75;
 
     if (hasGold) {
-      // Ground-truth aligned calculation with full-range dynamic fidelity
+      // Legacy proxy estimates based on lexical overlap and response structure.
       switch (m.id) {
         case "exact-match":
         case "case-exact-match": {
@@ -328,7 +328,7 @@ export function evaluateUseCaseMetrics(
         case "precision":
         case "f1":
         case "pr-auc": {
-          // Dynamic semantic accuracy calibrated to factual gold recall + evidence/legal rigor
+          // Legacy heuristic proxy; this is not validated semantic accuracy.
           const baseAcc = Math.round(goldRecall * 75 + 16);
           const evBonus = evidenceCitationMatched ? 6 : 0;
           const legalBonus = hasLegalTerms ? 4 : 0;
