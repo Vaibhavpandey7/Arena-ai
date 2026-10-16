@@ -55,9 +55,34 @@ export function DocumentIngestModal({ initialDocument, initialDocuments, isOpen,
   async function handleFileUpload(file: File) {
     setIsUploading(true);
     setError(null);
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    const isImage = file.type.startsWith("image/") || /\.(png|jpe?g|webp|bmp|tiff)$/i.test(file.name);
+
     try {
+      let clientExtractedText = "";
+      let clientDetectedType = isPdf ? "PDF" : isImage ? "OCR" : "text";
+
+      // 1. Digital PDF extraction across all pages
+      if (isPdf) {
+        try {
+          const { extractAllDigitalTextFromPdf } = await import("@/lib/client-pdf-renderer");
+          const digitalRes = await extractAllDigitalTextFromPdf(file);
+          if (digitalRes.hasDigitalText && digitalRes.text.length > 40) {
+            clientExtractedText = digitalRes.text;
+            clientDetectedType = "PDF";
+          }
+        } catch (digitalErr) {
+          console.warn("DocumentIngestModal digital extraction pre-check:", digitalErr);
+        }
+      }
+
       const formData = new FormData();
       formData.append("file", file);
+      if (clientExtractedText) {
+        formData.append("extractedText", clientExtractedText);
+        formData.append("detectedType", clientDetectedType);
+      }
+
       const res = await fetch("/api/documents/parse", {
         method: "POST",
         body: formData,
@@ -66,11 +91,70 @@ export function DocumentIngestModal({ initialDocument, initialDocuments, isOpen,
       if (!res.ok || !data.success) {
         throw new Error(data.error || "Failed to parse document");
       }
+
+      let doc = data.document;
+
+      // 2. Free OCR (Tesseract.js) for Scanned PDFs or Images
+      if (data.needsClientOcr) {
+        if (isPdf) {
+          try {
+            const { ocrPdfWithTesseract } = await import("@/lib/client-pdf-renderer");
+            const ocrRes = await ocrPdfWithTesseract(file, 0);
+            if (ocrRes.text && ocrRes.text.length > 10) {
+              const saveFormData = new FormData();
+              saveFormData.append("file", file);
+              saveFormData.append("extractedText", ocrRes.text);
+              saveFormData.append("detectedType", "OCR");
+              const saveRes = await fetch("/api/documents/parse", {
+                method: "POST",
+                body: saveFormData,
+              });
+              const saveData = await saveRes.json();
+              if (saveData.success && saveData.document) {
+                doc = saveData.document;
+              } else {
+                doc = {
+                  ...doc,
+                  text: ocrRes.text,
+                  wordCount: ocrRes.wordCount,
+                  charCount: ocrRes.charCount,
+                  type: "OCR",
+                  preview: ocrRes.text.slice(0, 350) + "…",
+                };
+              }
+            }
+          } catch (ocrErr) {
+            console.warn("DocumentIngestModal OCR failed:", ocrErr);
+          }
+        } else if (isImage) {
+          try {
+            const { ocrImageWithTesseract } = await import("@/lib/client-pdf-renderer");
+            const imageText = await ocrImageWithTesseract(file);
+            if (imageText && imageText.length > 5) {
+              const saveFormData = new FormData();
+              saveFormData.append("file", file);
+              saveFormData.append("extractedText", imageText);
+              saveFormData.append("detectedType", "OCR");
+              const saveRes = await fetch("/api/documents/parse", {
+                method: "POST",
+                body: saveFormData,
+              });
+              const saveData = await saveRes.json();
+              if (saveData.success && saveData.document) {
+                doc = saveData.document;
+              }
+            }
+          } catch (imageOcrErr) {
+            console.warn("DocumentIngestModal image OCR failed:", imageOcrErr);
+          }
+        }
+      }
+
       setDocuments((prev) => {
-        const next = [...prev, data.document];
+        const next = [...prev, doc];
         setSelectedDocIds((s) => {
           const updated = new Set(s);
-          updated.add(data.document.id);
+          updated.add(doc.id);
           return updated;
         });
         return next;

@@ -134,6 +134,7 @@ interface UploadingFile {
   name: string;
   size: number;
   status: "parsing" | "ocr" | "done" | "error";
+  statusText?: string;
   error?: string;
 }
 
@@ -567,9 +568,34 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
       fileList.map(async (file, idx) => {
         const qId = queueItems[idx].id;
         const localFileUrl = URL.createObjectURL(file);
+        const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+        const isImage = file.type.startsWith("image/") || /\.(png|jpe?g|webp|bmp|tiff)$/i.test(file.name);
+
         try {
+          let clientExtractedText = "";
+          let clientDetectedType = isPdf ? "PDF" : isImage ? "OCR" : "text";
+
+          // STEP 1: For PDFs, try fast client-side digital text extraction (all pages in milliseconds!)
+          if (isPdf) {
+            try {
+              const { extractAllDigitalTextFromPdf } = await import("@/lib/client-pdf-renderer");
+              const digitalRes = await extractAllDigitalTextFromPdf(file);
+              if (digitalRes.hasDigitalText && digitalRes.text.length > 40) {
+                clientExtractedText = digitalRes.text;
+                clientDetectedType = "PDF";
+              }
+            } catch (digitalErr) {
+              console.warn("Client digital text extraction pre-check:", digitalErr);
+            }
+          }
+
           const formData = new FormData();
           formData.append("file", file);
+          if (clientExtractedText) {
+            formData.append("extractedText", clientExtractedText);
+            formData.append("detectedType", clientDetectedType);
+          }
+
           const res = await fetch("/api/documents/parse", {
             method: "POST",
             body: formData,
@@ -583,44 +609,95 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
             ...data.document,
             id: data.document.id || `doc_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 6)}`,
             fileUrl: localFileUrl || data.document.fileUrl,
-            mimeType: file.type || "application/pdf",
+            mimeType: file.type || (isPdf ? "application/pdf" : "image/jpeg"),
             type: formatDocType(data.document.type),
           };
 
-          // Client-side OCR fallback for PDFs without server-side poppler
-          if (data.needsClientOcr && (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf"))) {
+          // STEP 2: Dedicated Free OCR (Tesseract.js) for true Scanned PDFs or Images
+          if (data.needsClientOcr) {
             setUploadingFiles((prev) =>
               prev.map((item) => (item.id === qId ? { ...item, status: "ocr" } : item))
             );
-            try {
-              const { renderPdfPagesToImages } = await import("@/lib/client-pdf-renderer");
-              const renderedPages = await renderPdfPagesToImages(file, 5);
-              if (renderedPages.length > 0) {
-                const ocrFormData = new FormData();
-                ocrFormData.append("file", file);
-                ocrFormData.append("pageImages", JSON.stringify(renderedPages));
-                const ocrRes = await fetch("/api/documents/parse", {
+
+            if (isPdf) {
+              const { ocrPdfWithTesseract } = await import("@/lib/client-pdf-renderer");
+              const ocrRes = await ocrPdfWithTesseract(file, 0, (info) => {
+                setUploadingFiles((prev) =>
+                  prev.map((item) =>
+                    item.id === qId
+                      ? { ...item, status: "ocr", statusText: info.status }
+                      : item
+                  )
+                );
+              });
+
+              if (ocrRes.text && ocrRes.text.length > 10) {
+                // Post OCR text to server so it is cached and saved
+                const saveFormData = new FormData();
+                saveFormData.append("file", file);
+                saveFormData.append("extractedText", ocrRes.text);
+                saveFormData.append("detectedType", "OCR");
+                const saveRes = await fetch("/api/documents/parse", {
                   method: "POST",
-                  body: ocrFormData,
+                  body: saveFormData,
                 });
-                const ocrData = await ocrRes.json();
-                if (ocrData.success && ocrData.document) {
+                const saveData = await saveRes.json();
+                if (saveData.success && saveData.document) {
                   doc = {
-                    ...ocrData.document,
+                    ...saveData.document,
                     id: doc.id,
-                    fileUrl: localFileUrl || ocrData.document.fileUrl,
-                    mimeType: file.type || "application/pdf",
-                    type: formatDocType(ocrData.document.type),
+                    fileUrl: localFileUrl || saveData.document.fileUrl,
+                    mimeType: "application/pdf",
+                    type: "OCR",
+                  };
+                } else {
+                  doc = {
+                    ...doc,
+                    text: ocrRes.text,
+                    wordCount: ocrRes.wordCount,
+                    charCount: ocrRes.charCount,
+                    type: "OCR",
+                    preview: ocrRes.text.slice(0, 350) + "…",
                   };
                 }
               }
-            } catch (clientOcrErr) {
-              console.warn("Client-side PDF rendering fallback failed:", clientOcrErr);
+            } else if (isImage) {
+              const { ocrImageWithTesseract } = await import("@/lib/client-pdf-renderer");
+              const imageText = await ocrImageWithTesseract(file, (percent, status) => {
+                setUploadingFiles((prev) =>
+                  prev.map((item) =>
+                    item.id === qId
+                      ? { ...item, status: "ocr", statusText: status }
+                      : item
+                  )
+                );
+              });
+
+              if (imageText && imageText.length > 5) {
+                const saveFormData = new FormData();
+                saveFormData.append("file", file);
+                saveFormData.append("extractedText", imageText);
+                saveFormData.append("detectedType", "OCR");
+                const saveRes = await fetch("/api/documents/parse", {
+                  method: "POST",
+                  body: saveFormData,
+                });
+                const saveData = await saveRes.json();
+                if (saveData.success && saveData.document) {
+                  doc = {
+                    ...saveData.document,
+                    id: doc.id,
+                    fileUrl: localFileUrl || saveData.document.fileUrl,
+                    mimeType: file.type || "image/png",
+                    type: "OCR",
+                  };
+                }
+              }
             }
           }
 
           setUploadingFiles((prev) =>
-            prev.map((item) => (item.id === qId ? { ...item, status: "done" } : item))
+            prev.map((item) => (item.id === qId ? { ...item, status: "done", statusText: "Done" } : item))
           );
           parsedResults.push(doc);
         } catch (err: unknown) {
@@ -1294,9 +1371,14 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
                 </div>
                 <div className="arena-multi-upload-items">
                   {uploadingFiles.map((item) => (
-                    <span key={item.id} className={`arena-multi-upload-item ${item.status}`}>
+                    <span key={item.id} className={`arena-multi-upload-item ${item.status}`} title={item.statusText || item.name}>
                       {item.status === "parsing" || item.status === "ocr" ? "⏳" : item.status === "done" ? "✓" : "✕"}
                       {" "}{item.name}
+                      {item.statusText && item.status !== "done" && (
+                        <span style={{ opacity: 0.85, fontSize: "11px", marginLeft: "4px", color: "var(--accent)" }}>
+                          ({item.statusText})
+                        </span>
+                      )}
                     </span>
                   ))}
                 </div>

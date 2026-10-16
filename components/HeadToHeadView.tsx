@@ -989,9 +989,34 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
     setIsUploadingDoc(true);
     setUploadError(null);
     const localFileUrl = URL.createObjectURL(file);
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    const isImage = file.type.startsWith("image/") || /\.(png|jpe?g|webp|bmp|tiff)$/i.test(file.name);
+
     try {
+      let clientExtractedText = "";
+      let clientDetectedType = isPdf ? "PDF" : isImage ? "OCR" : "text";
+
+      // 1. Instant client digital text extraction across all pages
+      if (isPdf) {
+        try {
+          const { extractAllDigitalTextFromPdf } = await import("@/lib/client-pdf-renderer");
+          const digitalRes = await extractAllDigitalTextFromPdf(file);
+          if (digitalRes.hasDigitalText && digitalRes.text.length > 40) {
+            clientExtractedText = digitalRes.text;
+            clientDetectedType = "PDF";
+          }
+        } catch (digitalErr) {
+          console.warn("HeadToHead client digital extraction pre-check:", digitalErr);
+        }
+      }
+
       const formData = new FormData();
       formData.append("file", file);
+      if (clientExtractedText) {
+        formData.append("extractedText", clientExtractedText);
+        formData.append("detectedType", clientDetectedType);
+      }
+
       const res = await fetch("/api/documents/parse", {
         method: "POST",
         body: formData,
@@ -1001,39 +1026,79 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
         throw new Error(data.error || "Failed to parse document");
       }
 
-      // If server signals that it needs client-side page rendering (e.g. deployed on Vercel without poppler)
-      if (data.needsClientOcr && (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf"))) {
-        try {
-          const { renderPdfPagesToImages } = await import("@/lib/client-pdf-renderer");
-          const renderedPages = await renderPdfPagesToImages(file, 5);
-          if (renderedPages.length > 0) {
-            const ocrFormData = new FormData();
-            ocrFormData.append("file", file);
-            ocrFormData.append("pageImages", JSON.stringify(renderedPages));
-            const ocrRes = await fetch("/api/documents/parse", {
-              method: "POST",
-              body: ocrFormData,
-            });
-            const ocrData = await ocrRes.json();
-            if (ocrData.success && ocrData.document) {
-              setAttachedDoc({
-                ...ocrData.document,
-                fileUrl: localFileUrl || ocrData.document.fileUrl,
-                mimeType: file.type || "application/pdf",
+      let doc = {
+        ...data.document,
+        fileUrl: localFileUrl || data.document.fileUrl,
+        mimeType: file.type || (isPdf ? "application/pdf" : "image/jpeg"),
+      };
+
+      // 2. Free OCR (Tesseract.js) for Scanned PDFs or Images
+      if (data.needsClientOcr) {
+        if (isPdf) {
+          try {
+            const { ocrPdfWithTesseract } = await import("@/lib/client-pdf-renderer");
+            const ocrRes = await ocrPdfWithTesseract(file, 0);
+            if (ocrRes.text && ocrRes.text.length > 10) {
+              const saveFormData = new FormData();
+              saveFormData.append("file", file);
+              saveFormData.append("extractedText", ocrRes.text);
+              saveFormData.append("detectedType", "OCR");
+              const saveRes = await fetch("/api/documents/parse", {
+                method: "POST",
+                body: saveFormData,
               });
-              return;
+              const saveData = await saveRes.json();
+              if (saveData.success && saveData.document) {
+                doc = {
+                  ...saveData.document,
+                  fileUrl: localFileUrl || saveData.document.fileUrl,
+                  mimeType: "application/pdf",
+                  type: "OCR",
+                };
+              } else {
+                doc = {
+                  ...doc,
+                  text: ocrRes.text,
+                  wordCount: ocrRes.wordCount,
+                  charCount: ocrRes.charCount,
+                  type: "OCR",
+                  preview: ocrRes.text.slice(0, 350) + "…",
+                };
+              }
             }
+          } catch (ocrErr) {
+            console.warn("HeadToHead Tesseract OCR failed:", ocrErr);
           }
-        } catch (clientOcrErr) {
-          console.warn("Client-side PDF rendering fallback failed:", clientOcrErr);
+        } else if (isImage) {
+          try {
+            const { ocrImageWithTesseract } = await import("@/lib/client-pdf-renderer");
+            const imageText = await ocrImageWithTesseract(file);
+            if (imageText && imageText.length > 5) {
+              const saveFormData = new FormData();
+              saveFormData.append("file", file);
+              saveFormData.append("extractedText", imageText);
+              saveFormData.append("detectedType", "OCR");
+              const saveRes = await fetch("/api/documents/parse", {
+                method: "POST",
+                body: saveFormData,
+              });
+              const saveData = await saveRes.json();
+              if (saveData.success && saveData.document) {
+                doc = {
+                  ...saveData.document,
+                  fileUrl: localFileUrl || saveData.document.fileUrl,
+                  mimeType: file.type || "image/png",
+                  type: "OCR",
+                };
+              }
+            }
+          } catch (imageOcrErr) {
+            console.warn("HeadToHead image OCR failed:", imageOcrErr);
+          }
         }
       }
 
-      setAttachedDoc({
-        ...data.document,
-        fileUrl: localFileUrl || data.document.fileUrl,
-        mimeType: file.type || "application/pdf",
-      });
+      setAttachedDoc(doc);
     } catch (err: any) {
       setUploadError(err.message || "Failed to upload document");
     } finally {
