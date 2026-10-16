@@ -6,6 +6,7 @@ import StructuredMarkdown from "../StructuredMarkdown";
 import GroundTruthPanel from "../GroundTruthPanel";
 import { DocumentPreviewModal, ParsedDocument } from "../DocumentPreviewModal";
 import { DocumentIngestModal } from "../DocumentIngestModal";
+import ModelMaximizeModal from "./ModelMaximizeModal";
 import { INSTITUTIONAL_INSURANCE_SYSTEM_PROMPT } from "@/lib/prompts";
 import {
   evaluateReferenceAnswer,
@@ -127,6 +128,32 @@ export default function SingleSampleEvaluation({
     emptyModelState(),
     emptyModelState(),
   ]);
+
+  // Layout Modes & Compact UI State
+  const [layoutMode, setLayoutMode] = useState<"columns" | "stacked" | "tabbed">("columns");
+  const [isConfigCollapsed, setIsConfigCollapsed] = useState(false);
+  const [activeTabModelIndex, setActiveTabModelIndex] = useState(0);
+  const [syncScroll, setSyncScroll] = useState(true);
+  const [maximizedModelIndex, setMaximizedModelIndex] = useState<number | null>(null);
+  const [collapsedCards, setCollapsedCards] = useState<Record<number, boolean>>({});
+
+  const scrollContainerRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const isSyncingScroll = useRef(false);
+
+  const handleBodyScroll = (idx: number, e: React.UIEvent<HTMLDivElement>) => {
+    if (!syncScroll || isSyncingScroll.current || layoutMode !== "columns") return;
+    isSyncingScroll.current = true;
+    const target = e.currentTarget;
+    const scrollTop = target.scrollTop;
+    scrollContainerRefs.current.forEach((el, i) => {
+      if (i !== idx && el) {
+        el.scrollTop = scrollTop;
+      }
+    });
+    requestAnimationFrame(() => {
+      isSyncingScroll.current = false;
+    });
+  };
 
   // Benchmark Dataset Selection
   const [benchmarkId, setBenchmarkId] = useState<InsuranceBenchmarkId>(initialBenchmarkId);
@@ -517,6 +544,7 @@ export default function SingleSampleEvaluation({
     if (!promptText.trim() || isAnyRunning) return;
 
     setShowGroundTruth(false);
+    setIsConfigCollapsed(true);
     models.forEach((modelId, idx) => {
       void streamSingleModel(idx, modelId, promptText);
     });
@@ -531,6 +559,7 @@ export default function SingleSampleEvaluation({
     handleStopAll();
     setStates(models.map(() => emptyModelState()));
     setShowGroundTruth(false);
+    setIsConfigCollapsed(false);
   };
 
   // Sample Navigation
@@ -569,61 +598,444 @@ export default function SingleSampleEvaluation({
       : true
   );
 
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-      {/* ── STAGE 1: CONFIGURE ──────────────────────────────────────────────── */}
-      <section
-        aria-label="Stage 1: Configure Evaluation"
-        style={{
-          background: "var(--bg-surface)",
-          border: "1px solid var(--border-default)",
-          borderRadius: "var(--radius-lg)",
-          padding: "18px 20px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "16px",
-        }}
+  // Calculate Executive Verdict
+  const answeredModels = models
+    .map((mId, idx) => ({ idx, modelId: mId, state: states[idx] }))
+    .filter((m) => !!m.state.answer);
+
+  const hasVerdict = answeredModels.length >= 2;
+
+  let speedVerdict: string | null = null;
+  let accuracyVerdict: string | null = null;
+  let tokenVerdict: string | null = null;
+
+  if (hasVerdict) {
+    // Latency comparison
+    const sortedByLatency = [...answeredModels]
+      .filter((m) => m.state.latencyMs > 0)
+      .sort((a, b) => a.state.latencyMs - b.state.latencyMs);
+
+    if (sortedByLatency.length >= 2) {
+      const fastest = sortedByLatency[0];
+      const second = sortedByLatency[1];
+      const ratio = second.state.latencyMs / Math.max(fastest.state.latencyMs, 1);
+      if (ratio >= 1.2) {
+        speedVerdict = `Model ${String.fromCharCode(65 + fastest.idx)} (${fastest.modelId.split("/").pop()}) is ${ratio.toFixed(1)}x faster (${(fastest.state.latencyMs / 1000).toFixed(1)}s vs ${(second.state.latencyMs / 1000).toFixed(1)}s)`;
+      } else {
+        speedVerdict = `Comparable speeds (~${(fastest.state.latencyMs / 1000).toFixed(1)}s)`;
+      }
+    }
+
+    // Accuracy comparison against reference if available
+    if (goldAnswer) {
+      const evalScores = answeredModels.map((m) => ({
+        ...m,
+        evalRes: evaluateReferenceAnswer(m.state.answer, goldAnswer, currentOptions, scoringPolicy),
+      }));
+      const corrects = evalScores.filter((e) => e.evalRes.correct === true);
+      const incorrects = evalScores.filter((e) => e.evalRes.correct === false);
+      if (corrects.length > 0 && incorrects.length > 0) {
+        accuracyVerdict = `${corrects.map((c) => `Model ${String.fromCharCode(65 + c.idx)}`).join(", ")} matched reference; ${incorrects.map((i) => `Model ${String.fromCharCode(65 + i.idx)}`).join(", ")} diverged`;
+      } else if (corrects.length === answeredModels.length) {
+        accuracyVerdict = `All models matched reference answer`;
+      } else if (incorrects.length === answeredModels.length) {
+        accuracyVerdict = `All models diverged from reference`;
+      }
+    }
+
+    // Token comparison
+    const sortedTokens = [...answeredModels].sort((a, b) => b.state.completionTokens - a.state.completionTokens);
+    if (sortedTokens.length >= 2) {
+      const mostVerbose = sortedTokens[0];
+      const mostConcise = sortedTokens[sortedTokens.length - 1];
+      tokenVerdict = `Model ${String.fromCharCode(65 + mostVerbose.idx)}: ${mostVerbose.state.completionTokens} tokens vs Model ${String.fromCharCode(65 + mostConcise.idx)}: ${mostConcise.state.completionTokens} tokens`;
+    }
+  }
+
+  const renderModelCard = (modelId: string, idx: number, isStacked = false) => {
+    const state = states[idx] || emptyModelState();
+    const evalResult: ReferenceTaskResult | null =
+      state.answer && goldAnswer
+        ? evaluateReferenceAnswer(state.answer, goldAnswer, currentOptions, scoringPolicy)
+        : null;
+
+    const isCorrect = evalResult?.correct === true;
+    const isIncorrect = evalResult?.correct === false;
+    const tps = calculateTokensPerSec(state.latencyMs, state.completionTokens);
+    const isCollapsed = isStacked && !!collapsedCards[idx];
+
+    return (
+      <div
+        key={modelId + idx}
+        className={isStacked ? "h2h-stacked-card" : undefined}
+        style={
+          isStacked
+            ? undefined
+            : {
+                background: "var(--bg-surface)",
+                border: "1px solid var(--border-default)",
+                borderRadius: "var(--radius-lg)",
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden",
+                minWidth: layoutMode === "columns" && models.length > 2 ? "380px" : undefined,
+              }
+        }
       >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px" }}>
+        {/* Card Header */}
+        <div
+          style={{
+            padding: "12px 16px",
+            borderBottom: isCollapsed ? "none" : "1px solid var(--border-default)",
+            background: "var(--bg-surface-elevated)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <span
                 style={{
                   fontSize: "11px",
                   fontWeight: 700,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.08em",
-                  color: "var(--accent)",
-                  background: "var(--accent-dim)",
-                  padding: "2px 8px",
+                  padding: "1px 6px",
                   borderRadius: "var(--radius-sm)",
+                  background: "var(--accent-dim)",
+                  color: "var(--accent)",
                   border: "1px solid var(--accent-border)",
                 }}
               >
-                Stage 1
+                Model {String.fromCharCode(65 + idx)}
               </span>
-              <h2 style={{ margin: 0, fontSize: "15px", fontWeight: 700, color: "var(--text-main)" }}>
-                Configure Single-Sample Evaluation
-              </h2>
+              <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-main)" }}>
+                {modelId.split("/").pop()}
+              </span>
             </div>
-            <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--text-subtle)" }}>
-              Select evaluation source, domain category, and target models to inspect head-to-head.
-            </p>
+            <div
+              style={{
+                fontSize: "11px",
+                color: "var(--text-subtle)",
+                marginTop: "3px",
+                fontFamily: "var(--font-mono)",
+              }}
+            >
+              {state.isRunning ? (
+                <span style={{ color: "var(--accent)" }}>
+                  Running… {(state.elapsed / 1000).toFixed(1)}s
+                </span>
+              ) : state.latencyMs > 0 ? (
+                `${(state.latencyMs / 1000).toFixed(2)}s · ${state.completionTokens} tokens · ${tps} t/s`
+              ) : (
+                "Ready to compare"
+              )}
+            </div>
           </div>
 
-          {/* Source Toggle */}
-          <div
-            style={{
-              display: "flex",
-              background: "var(--bg-surface-elevated)",
-              borderRadius: "var(--radius-sm)",
-              padding: "2px",
-              border: "1px solid var(--border-default)",
-            }}
-          >
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            {/* Objective status badge */}
+            {evalResult && (
+              <span
+                style={{
+                  padding: "3px 9px",
+                  borderRadius: "12px",
+                  fontSize: "11px",
+                  fontWeight: 700,
+                  background: isCorrect
+                    ? "rgba(52, 168, 83, 0.15)"
+                    : isIncorrect
+                    ? "rgba(217, 101, 112, 0.15)"
+                    : "rgba(255, 255, 255, 0.08)",
+                  color: isCorrect
+                    ? "var(--emerald)"
+                    : isIncorrect
+                    ? "var(--rose)"
+                    : "var(--text-muted)",
+                  border: `1px solid ${
+                    isCorrect
+                      ? "rgba(52, 168, 83, 0.4)"
+                      : isIncorrect
+                      ? "rgba(217, 101, 112, 0.4)"
+                      : "var(--border-subtle)"
+                  }`,
+                }}
+              >
+                {isCorrect ? "Correct" : isIncorrect ? "Incorrect" : evalResult.metricName}
+              </span>
+            )}
+
+            {/* Maximize Zen Reader Button */}
+            {state.answer && (
+              <button
+                type="button"
+                onClick={() => setMaximizedModelIndex(idx)}
+                className="arena-header-btn"
+                title="Open in distraction-free reader"
+                style={{ padding: "3px 8px", fontSize: "11px" }}
+              >
+                ⤢ Maximize
+              </button>
+            )}
+
+            {/* Stacked Accordion Collapse/Expand Button */}
+            {isStacked && (
+              <button
+                type="button"
+                onClick={() =>
+                  setCollapsedCards((prev) => ({
+                    ...prev,
+                    [idx]: !prev[idx],
+                  }))
+                }
+                className="arena-header-btn"
+                style={{ padding: "3px 8px", fontSize: "11px" }}
+                title={isCollapsed ? "Expand card" : "Collapse card"}
+              >
+                {isCollapsed ? "▼ Expand" : "▲ Collapse"}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Card Body (only rendered if not collapsed) */}
+        {!isCollapsed && (
+          <>
+            {/* Reasoning trace toggle if present */}
+            {state.reasoning && (
+              <div
+                style={{
+                  borderBottom: "1px solid var(--border-subtle)",
+                  background: "var(--bg-canvas-subtle)",
+                  padding: "6px 14px",
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExpandedReasoning((prev) => ({
+                      ...prev,
+                      [idx]: !prev[idx],
+                    }))
+                  }
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: "var(--text-subtle)",
+                    fontSize: "11px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    padding: 0,
+                  }}
+                >
+                  <span>{expandedReasoning[idx] ? "▼" : "▶"}</span>
+                  <span>Thinking Trace ({state.reasoning.length} chars)</span>
+                </button>
+
+                {expandedReasoning[idx] && (
+                  <div
+                    style={{
+                      marginTop: "6px",
+                      maxHeight: "180px",
+                      overflowY: "auto",
+                      fontSize: "11.5px",
+                      fontFamily: "var(--font-mono)",
+                      color: "var(--text-muted)",
+                      lineHeight: 1.5,
+                      whiteSpace: "pre-wrap",
+                    }}
+                  >
+                    {state.reasoning}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Response Body */}
+            <div
+              ref={(el) => {
+                scrollContainerRefs.current[idx] = el;
+              }}
+              onScroll={(e) => handleBodyScroll(idx, e)}
+              style={{
+                padding: "16px",
+                flex: 1,
+                minHeight: isStacked ? "200px" : "260px",
+                maxHeight: isStacked ? "600px" : "500px",
+                overflowY: "auto",
+                fontSize: "13px",
+                lineHeight: 1.6,
+                color: "var(--text-main)",
+              }}
+            >
+              {state.isRunning && !state.answer ? (
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--text-subtle)" }}>
+                  <span className="live-dot" />
+                  Generating response…
+                </div>
+              ) : state.runStatus === "failed" ? (
+                <div style={{ color: "var(--rose)", fontStyle: "italic" }}>
+                  {state.answer || "Model failed to produce a valid response."}
+                </div>
+              ) : state.answer ? (
+                <StructuredMarkdown content={state.answer} />
+              ) : (
+                <div style={{ color: "var(--text-subtle)", fontStyle: "italic", textAlign: "center", marginTop: "80px" }}>
+                  Model response will appear here after clicking <strong>Run Comparison</strong>.
+                </div>
+              )}
+            </div>
+
+            {/* Performance & Operational Metrics Footer */}
+            {state.answer && (
+              <div
+                style={{
+                  padding: "10px 14px",
+                  borderTop: "1px solid var(--border-default)",
+                  background: "var(--bg-canvas)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  fontSize: "11px",
+                  color: "var(--text-subtle)",
+                  fontFamily: "var(--font-mono)",
+                }}
+              >
+                <div>
+                  Tokens: {state.completionTokens} out / {state.promptTokens} in
+                </div>
+                <div>
+                  {state.estCostUsd > 0
+                    ? `Cost: $${state.estCostUsd.toFixed(5)}`
+                    : "Cost: $0.00 (Free tier)"}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+      {/* ── STAGE 1: CONFIGURE ──────────────────────────────────────────────── */}
+      {isConfigCollapsed ? (
+        <div className="h2h-config-summary-bar">
+          <div className="h2h-summary-chips">
+            <span className="h2h-chip category">
+              📂 {source === "benchmark" ? (INSURANCE_BENCHMARKS.find((b) => b.id === benchmarkId)?.name || benchmarkId) : (USE_CASES_LIST.find((u) => u.id === activeUseCase)?.label || activeUseCase)}
+            </span>
+            <span className="h2h-chip sample">
+              📑 {source === "benchmark" ? (currentBenchmarkRecord?.id || `Sample #${selectedSampleIndex + 1}`) : "Manual Prompt"}
+            </span>
+            <span className="h2h-chip models">
+              🤖 {models.map((m, i) => `Model ${String.fromCharCode(65 + i)}: ${m.split("/").pop()}`).join(" vs ")}
+            </span>
+            {attachedDoc && (
+              <span className="h2h-chip doc">
+                📄 {attachedDoc.name}
+              </span>
+            )}
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <button
               type="button"
-              onClick={() => {
+              onClick={() => setIsConfigCollapsed(false)}
+              className="arena-header-btn"
+              style={{ background: "var(--accent-dim)", color: "var(--accent)", border: "1px solid var(--accent-border)" }}
+            >
+              ✎ Edit Configuration
+            </button>
+            {isAnyRunning ? (
+              <button
+                type="button"
+                onClick={handleStopAll}
+                className="arena-header-btn"
+                style={{ color: "var(--rose)", borderColor: "var(--rose)" }}
+              >
+                ⏹ Stop
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleRunComparison}
+                disabled={!getEffectivePrompt().trim()}
+                className="arena-header-btn"
+                style={{ background: "var(--accent)", color: "var(--text-inverted)" }}
+              >
+                ▶ Re-Run
+              </button>
+            )}
+          </div>
+        </div>
+      ) : (
+        <>
+          <section
+          aria-label="Stage 1: Configure Evaluation"
+          style={{
+            background: "var(--bg-surface)",
+            border: "1px solid var(--border-default)",
+            borderRadius: "var(--radius-lg)",
+            padding: "18px 20px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "16px",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px" }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    color: "var(--accent)",
+                    background: "var(--accent-dim)",
+                    padding: "2px 8px",
+                    borderRadius: "var(--radius-sm)",
+                    border: "1px solid var(--accent-border)",
+                  }}
+                >
+                  Stage 1
+                </span>
+                <h2 style={{ margin: 0, fontSize: "15px", fontWeight: 700, color: "var(--text-main)" }}>
+                  Configure Single-Sample Evaluation
+                </h2>
+              </div>
+              <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--text-subtle)" }}>
+                Select evaluation source, domain category, and target models to inspect head-to-head.
+              </p>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <button
+                type="button"
+                onClick={() => setIsConfigCollapsed(true)}
+                className="arena-header-btn"
+                title="Collapse configuration panel to save space"
+                style={{ fontSize: "11px", padding: "4px 8px" }}
+              >
+                ▲ Collapse Config
+              </button>
+
+              {/* Source Toggle */}
+              <div
+                style={{
+                  display: "flex",
+                  background: "var(--bg-surface-elevated)",
+                  borderRadius: "var(--radius-sm)",
+                  padding: "2px",
+                  border: "1px solid var(--border-default)",
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
                 if (!isAnyRunning) {
                   setSource("benchmark");
                   handleReset();
@@ -669,6 +1081,7 @@ export default function SingleSampleEvaluation({
             </button>
           </div>
         </div>
+      </div>
 
         {/* Source-specific config */}
         {source === "benchmark" ? (
@@ -1120,6 +1533,8 @@ export default function SingleSampleEvaluation({
           )}
         </div>
       </section>
+      </>
+      )}
 
       {/* ── STAGE 3: INSPECT ────────────────────────────────────────────────── */}
       <section
@@ -1130,6 +1545,40 @@ export default function SingleSampleEvaluation({
           gap: "16px",
         }}
       >
+        {/* Executive Verdict Banner */}
+        {hasVerdict && (
+          <div className="h2h-verdict-strip">
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+              <span
+                style={{
+                  fontSize: "11px",
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                  color: "var(--accent)",
+                }}
+              >
+                Executive Comparison Verdict:
+              </span>
+              {speedVerdict && (
+                <span className="h2h-verdict-badge speed-win">
+                  ⚡ {speedVerdict}
+                </span>
+              )}
+              {accuracyVerdict && (
+                <span className="h2h-verdict-badge accuracy-win">
+                  🎯 {accuracyVerdict}
+                </span>
+              )}
+              {tokenVerdict && (
+                <span className="h2h-verdict-badge tie">
+                  📊 {tokenVerdict}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <span
@@ -1152,258 +1601,157 @@ export default function SingleSampleEvaluation({
             </h2>
           </div>
 
-          {source === "benchmark" && (
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <span style={{ fontSize: "11px", color: "var(--text-subtle)" }}>
-                Sample Navigation:
-              </span>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+            {/* 3-Way Layout Switcher */}
+            <div className="h2h-segmented-control" role="group" aria-label="Layout mode">
               <button
                 type="button"
-                onClick={handlePrevSample}
-                disabled={isAnyRunning || selectedSampleIndex <= 0}
-                className="arena-header-btn"
-                title="Go to previous benchmark sample"
+                className={`h2h-segmented-btn ${layoutMode === "columns" ? "active" : ""}`}
+                onClick={() => setLayoutMode("columns")}
+                title="Side-by-side columns with horizontal scroll rail"
               >
-                ← Prev Sample
+                ⫴ Columns
               </button>
               <button
                 type="button"
-                onClick={handleNextSample}
-                disabled={isAnyRunning || selectedSampleIndex >= samples.length - 1}
-                className="arena-header-btn"
-                title="Go to next benchmark sample"
+                className={`h2h-segmented-btn ${layoutMode === "stacked" ? "active" : ""}`}
+                onClick={() => setLayoutMode("stacked")}
+                title="Full-width stacked rows with collapsible cards"
               >
-                Next Sample →
+                ☰ Stacked
+              </button>
+              <button
+                type="button"
+                className={`h2h-segmented-btn ${layoutMode === "tabbed" ? "active" : ""}`}
+                onClick={() => setLayoutMode("tabbed")}
+                title="Single-model focus reader with tabs"
+              >
+                ⧉ Tabbed Focus
               </button>
             </div>
-          )}
+
+            {/* Auxiliary controls */}
+            {layoutMode === "columns" && (
+              <button
+                type="button"
+                onClick={() => setSyncScroll(!syncScroll)}
+                className="arena-header-btn"
+                style={{ fontSize: "11px", padding: "4px 8px" }}
+                title="Synchronize vertical scrolling across columns"
+              >
+                {syncScroll ? "🔗 Sync Scroll: ON" : "⛓ Sync Scroll: OFF"}
+              </button>
+            )}
+
+            {layoutMode === "stacked" && (
+              <button
+                type="button"
+                onClick={() => {
+                  const allCollapsed =
+                    models.length > 0 &&
+                    models.every((_, i) => !!collapsedCards[i]);
+                  if (allCollapsed) {
+                    setCollapsedCards({});
+                  } else {
+                    const all: Record<number, boolean> = {};
+                    models.forEach((_, i) => (all[i] = true));
+                    setCollapsedCards(all);
+                  }
+                }}
+                className="arena-header-btn"
+                style={{ fontSize: "11px", padding: "4px 8px" }}
+              >
+                {models.length > 0 && models.every((_, i) => !!collapsedCards[i])
+                  ? "Expand All"
+                  : "Collapse All"}
+              </button>
+            )}
+
+            {source === "benchmark" && (
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <button
+                  type="button"
+                  onClick={handlePrevSample}
+                  disabled={isAnyRunning || selectedSampleIndex <= 0}
+                  className="arena-header-btn"
+                  title="Go to previous benchmark sample"
+                >
+                  ← Prev
+                </button>
+                <button
+                  type="button"
+                  onClick={handleNextSample}
+                  disabled={isAnyRunning || selectedSampleIndex >= samples.length - 1}
+                  className="arena-header-btn"
+                  title="Go to next benchmark sample"
+                >
+                  Next →
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Side-by-Side Model Columns */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: `repeat(${models.length}, 1fr)`,
-            gap: "16px",
-          }}
-        >
-          {models.map((modelId, idx) => {
-            const state = states[idx];
-            const evalResult: ReferenceTaskResult | null =
-              state.answer && goldAnswer
-                ? evaluateReferenceAnswer(state.answer, goldAnswer, currentOptions, scoringPolicy)
-                : null;
+        {/* Dynamic Model Output View */}
+        {layoutMode === "columns" && (
+          <div
+            className="h2h-columns-rail"
+            style={{
+              gridTemplateColumns: `repeat(${models.length}, minmax(${models.length > 2 ? "380px" : "1fr"}, 1fr))`,
+            }}
+          >
+            {models.map((modelId, idx) => renderModelCard(modelId, idx, false))}
+          </div>
+        )}
 
-            const isCorrect = evalResult?.correct === true;
-            const isIncorrect = evalResult?.correct === false;
-            const tps = calculateTokensPerSec(state.latencyMs, state.completionTokens);
+        {layoutMode === "stacked" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            {models.map((modelId, idx) => renderModelCard(modelId, idx, true))}
+          </div>
+        )}
 
-            return (
-              <div
-                key={modelId + idx}
-                style={{
-                  background: "var(--bg-surface)",
-                  border: "1px solid var(--border-default)",
-                  borderRadius: "var(--radius-lg)",
-                  display: "flex",
-                  flexDirection: "column",
-                  overflow: "hidden",
-                }}
-              >
-                {/* Column Header */}
-                <div
-                  style={{
-                    padding: "12px 16px",
-                    borderBottom: "1px solid var(--border-default)",
-                    background: "var(--bg-surface-elevated)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                  }}
-                >
-                  <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <span
-                        style={{
-                          fontSize: "11px",
-                          fontWeight: 700,
-                          padding: "1px 6px",
-                          borderRadius: "var(--radius-sm)",
-                          background: "var(--accent-dim)",
-                          color: "var(--accent)",
-                          border: "1px solid var(--accent-border)",
-                        }}
-                      >
-                        Model {String.fromCharCode(65 + idx)}
-                      </span>
-                      <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-main)" }}>
-                        {modelId.split("/").pop()}
-                      </span>
-                    </div>
-                    <div
-                      style={{
-                        fontSize: "11px",
-                        color: "var(--text-subtle)",
-                        marginTop: "3px",
-                        fontFamily: "var(--font-mono)",
-                      }}
-                    >
-                      {state.isRunning ? (
-                        <span style={{ color: "var(--accent)" }}>
-                          Running… {(state.elapsed / 1000).toFixed(1)}s
-                        </span>
-                      ) : state.latencyMs > 0 ? (
-                        `${(state.latencyMs / 1000).toFixed(2)}s · ${state.completionTokens} tokens · ${tps} t/s`
-                      ) : (
-                        "Ready to compare"
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Objective status badge */}
-                  {evalResult && (
+        {layoutMode === "tabbed" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+            <div className="h2h-tab-bar" role="tablist">
+              {models.map((mId, idx) => {
+                const state = states[idx] || emptyModelState();
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTabModelIndex === idx}
+                    className={`h2h-model-tab ${activeTabModelIndex === idx ? "active" : ""}`}
+                    onClick={() => setActiveTabModelIndex(idx)}
+                  >
                     <span
                       style={{
-                        padding: "3px 9px",
-                        borderRadius: "12px",
-                        fontSize: "11px",
+                        fontSize: "10.5px",
                         fontWeight: 700,
-                        background: isCorrect
-                          ? "rgba(52, 168, 83, 0.15)"
-                          : isIncorrect
-                          ? "rgba(217, 101, 112, 0.15)"
-                          : "rgba(255, 255, 255, 0.08)",
-                        color: isCorrect
-                          ? "var(--emerald)"
-                          : isIncorrect
-                          ? "var(--rose)"
-                          : "var(--text-muted)",
-                        border: `1px solid ${
-                          isCorrect
-                            ? "rgba(52, 168, 83, 0.4)"
-                            : isIncorrect
-                            ? "rgba(217, 101, 112, 0.4)"
-                            : "var(--border-subtle)"
-                        }`,
+                        padding: "1px 6px",
+                        borderRadius: "var(--radius-sm)",
+                        background: "var(--accent-dim)",
+                        color: "var(--accent)",
                       }}
                     >
-                      {isCorrect ? "Correct" : isIncorrect ? "Incorrect" : evalResult.metricName}
+                      Model {String.fromCharCode(65 + idx)}
                     </span>
-                  )}
-                </div>
-
-                {/* Reasoning trace toggle if present */}
-                {state.reasoning && (
-                  <div
-                    style={{
-                      borderBottom: "1px solid var(--border-subtle)",
-                      background: "var(--bg-canvas-subtle)",
-                      padding: "6px 14px",
-                    }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExpandedReasoning((prev) => ({
-                          ...prev,
-                          [idx]: !prev[idx],
-                        }))
-                      }
-                      style={{
-                        background: "transparent",
-                        border: "none",
-                        color: "var(--text-subtle)",
-                        fontSize: "11px",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        padding: 0,
-                      }}
-                    >
-                      <span>{expandedReasoning[idx] ? "▼" : "▶"}</span>
-                      <span>Thinking Trace ({state.reasoning.length} chars)</span>
-                    </button>
-
-                    {expandedReasoning[idx] && (
-                      <div
-                        style={{
-                          marginTop: "6px",
-                          maxHeight: "180px",
-                          overflowY: "auto",
-                          fontSize: "11.5px",
-                          fontFamily: "var(--font-mono)",
-                          color: "var(--text-muted)",
-                          lineHeight: 1.5,
-                          whiteSpace: "pre-wrap",
-                        }}
-                      >
-                        {state.reasoning}
-                      </div>
+                    <span>{mId.split("/").pop()}</span>
+                    {state.isRunning && <span className="live-dot" />}
+                    {state.answer && !state.isRunning && (
+                      <span style={{ fontSize: "11px", color: "var(--text-subtle)", fontFamily: "var(--font-mono)" }}>
+                        ({(state.latencyMs / 1000).toFixed(1)}s)
+                      </span>
                     )}
-                  </div>
-                )}
+                  </button>
+                );
+              })}
+            </div>
 
-                {/* Response Body */}
-                <div
-                  style={{
-                    padding: "16px",
-                    flex: 1,
-                    minHeight: "260px",
-                    maxHeight: "500px",
-                    overflowY: "auto",
-                    fontSize: "13px",
-                    lineHeight: 1.6,
-                    color: "var(--text-main)",
-                  }}
-                >
-                  {state.isRunning && !state.answer ? (
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--text-subtle)" }}>
-                      <span className="live-dot" />
-                      Generating response…
-                    </div>
-                  ) : state.runStatus === "failed" ? (
-                    <div style={{ color: "var(--rose)", fontStyle: "italic" }}>
-                      {state.answer || "Model failed to produce a valid response."}
-                    </div>
-                  ) : state.answer ? (
-                    <StructuredMarkdown content={state.answer} />
-                  ) : (
-                    <div style={{ color: "var(--text-subtle)", fontStyle: "italic", textAlign: "center", marginTop: "80px" }}>
-                      Model response will appear here after clicking <strong>Run Comparison</strong>.
-                    </div>
-                  )}
-                </div>
-
-                {/* Performance & Operational Metrics Footer */}
-                {state.answer && (
-                  <div
-                    style={{
-                      padding: "10px 14px",
-                      borderTop: "1px solid var(--border-default)",
-                      background: "var(--bg-canvas)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      fontSize: "11px",
-                      color: "var(--text-subtle)",
-                      fontFamily: "var(--font-mono)",
-                    }}
-                  >
-                    <div>
-                      Tokens: {state.completionTokens} out / {state.promptTokens} in
-                    </div>
-                    <div>
-                      {state.estCostUsd > 0
-                        ? `Cost: $${state.estCostUsd.toFixed(5)}`
-                        : "Cost: $0.00 (Free tier)"}
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+            {/* Single active model card at 100% full width */}
+            {renderModelCard(models[activeTabModelIndex] || models[0], activeTabModelIndex, false)}
+          </div>
+        )}
 
         {/* Post-Inference Ground Truth Reference Panel */}
         {hasCompletedInference && goldAnswer && (
@@ -1539,6 +1887,21 @@ export default function SingleSampleEvaluation({
           isOpen={showDocPreview}
           onClose={() => setShowDocPreview(false)}
           document={attachedDoc}
+        />
+      )}
+
+      {/* Maximize Zen Reader Modal */}
+      {maximizedModelIndex !== null && (
+        <ModelMaximizeModal
+          modelId={models[maximizedModelIndex]}
+          modelLetter={String.fromCharCode(65 + maximizedModelIndex)}
+          answer={states[maximizedModelIndex]?.answer || ""}
+          reasoning={states[maximizedModelIndex]?.reasoning}
+          promptTokens={states[maximizedModelIndex]?.promptTokens || 0}
+          completionTokens={states[maximizedModelIndex]?.completionTokens || 0}
+          latencyMs={states[maximizedModelIndex]?.latencyMs || 0}
+          estCostUsd={states[maximizedModelIndex]?.estCostUsd || 0}
+          onClose={() => setMaximizedModelIndex(null)}
         />
       )}
     </div>
