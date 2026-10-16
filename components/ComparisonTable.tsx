@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
+import StructuredMarkdown from "./StructuredMarkdown";
 import { DILRecord } from "./DatasetBrowser";
 import {
   calculateTokensPerSec,
@@ -696,7 +697,7 @@ function ComparisonTable({
                   )}
 
                   {!row.loading && row.ok && row.answer && row.answer.trim() && (
-                    <ReactMarkdown>{row.answer}</ReactMarkdown>
+                    <StructuredMarkdown content={row.answer} />
                   )}
 
                   {!row.loading && row.ok && (!row.answer || !row.answer.trim()) && (
@@ -972,7 +973,7 @@ function ComparisonTable({
             )}
 
             {!activeTabRow.loading && activeTabRow.ok && activeTabRow.answer && activeTabRow.answer.trim() && (
-              <ReactMarkdown>{activeTabRow.answer}</ReactMarkdown>
+              <StructuredMarkdown content={activeTabRow.answer} />
             )}
 
             {!activeTabRow.loading && activeTabRow.ok && (!activeTabRow.answer || !activeTabRow.answer.trim()) && (
@@ -1174,9 +1175,9 @@ function ComparisonTable({
                 </div>
               )}
 
-              <ReactMarkdown>
-                {results.find((r) => r.model === modalModel)?.answer ?? ""}
-              </ReactMarkdown>
+              <StructuredMarkdown
+                content={results.find((r) => r.model === modalModel)?.answer ?? ""}
+              />
             </div>
           </div>
         </div>

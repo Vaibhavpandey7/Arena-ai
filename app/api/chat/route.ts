@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { chatCompletionStream, ChatMessage, ToolChoice } from "@/lib/openrouter";
 import { TOOL_SCHEMAS, getFilteredToolSchemas, ToolSchema, runTool } from "@/lib/tools";
+import { enhanceSystemPrompt, sanitizeStreamChunk } from "@/lib/prompts";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -86,9 +87,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const fallbackSystemPrompt =
-    "Assign role to the model as an insurance expert and perform tasks as per insurance market. Provide accurate, professional, and evidence-grounded insurance analysis.";
-  let resolvedSystemPrompt = systemPrompt || fallbackSystemPrompt;
+  let resolvedSystemPrompt = enhanceSystemPrompt(systemPrompt);
 
   // Regulatory RAG Grounding Context Injection
   const isRegulatoryCheckActive =
@@ -352,10 +351,13 @@ function parseOpenRouterError(status: number, errText: string, modelName: string
                 send({ type: "reasoning", delta: delta.reasoning });
               }
 
-              // Content delta
+              // Content delta (sanitized for zero-emoji enforcement)
               if (delta.content) {
-                assistantContent += delta.content;
-                send({ type: "content", delta: delta.content });
+                const cleanDelta = sanitizeStreamChunk(delta.content as string);
+                if (cleanDelta) {
+                  assistantContent += cleanDelta;
+                  send({ type: "content", delta: cleanDelta });
+                }
               }
 
               // Tool call deltas (accumulate by index)

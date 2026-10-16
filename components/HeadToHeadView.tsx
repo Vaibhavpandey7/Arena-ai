@@ -1,6 +1,8 @@
 "use client";
 import { useState, useRef, useCallback, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
+import StructuredMarkdown from "./StructuredMarkdown";
+import { INSTITUTIONAL_INSURANCE_SYSTEM_PROMPT } from "@/lib/prompts";
 import ModelSelectWidget from "./ModelSelectWidget";
 import GroundTruthPanel from "./GroundTruthPanel";
 import { MODEL_REGISTRY, getModel } from "@/lib/model-registry";
@@ -447,8 +449,8 @@ function ModelColumn({
             {/* Response Content */}
             <div style={{ flex: 1, fontSize: "13.5px", lineHeight: 1.65, color: "var(--text-main)" }}>
               {state.answer ? (
-                <div className="prose prose-invert max-w-none arena-msg-bubble" style={{ background: "transparent", padding: 0, border: "none", maxWidth: "100%" }}>
-                  <ReactMarkdown>{state.answer}</ReactMarkdown>
+                <div className="prose prose-invert max-w-none arena-msg-bubble arena-answer-canvas" style={{ background: "transparent", padding: 0, border: "none", maxWidth: "100%" }}>
+                  <StructuredMarkdown content={state.answer} />
                 </div>
               ) : state.isRunning ? (
                 <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--accent)", fontSize: "13px" }}>
@@ -852,6 +854,7 @@ export default function HeadToHeadView({ initialPrompt, onReady }: HeadToHeadPro
           body: JSON.stringify({
             model: modelId,
             prompt: promptText,
+            systemPrompt: INSTITUTIONAL_INSURANCE_SYSTEM_PROMPT,
             useTools: false,
           }),
           signal: abortRefs.current[index]?.signal,

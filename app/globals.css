@@ -8314,5 +8314,229 @@ body {
   pointer-events: auto;
 }
 
+/* ==========================================================================
+   INSTITUTIONAL STRUCTURED MARKDOWN & EXECUTIVE TABLES
+   ========================================================================== */
+
+.structured-markdown-root {
+  font-size: 14px;
+  line-height: 1.7;
+  color: #e2e8f0;
+  width: 100%;
+}
+
+.structured-markdown-root p {
+  margin-bottom: 0.9em;
+}
+
+.structured-markdown-root p:last-child {
+  margin-bottom: 0;
+}
+
+/* Section Headings */
+.institutional-h1 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #f8fafc;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.institutional-h2 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #f1f5f9;
+  margin-top: 1.35rem;
+  margin-bottom: 0.65rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.institutional-h2 .h-indicator {
+  display: inline-block;
+  width: 4px;
+  height: 16px;
+  background: linear-gradient(180deg, #38bdf8 0%, #3b82f6 100%);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.institutional-h1 .h-indicator {
+  display: inline-block;
+  width: 4px;
+  height: 18px;
+  background: linear-gradient(180deg, #60a5fa 0%, #a855f7 100%);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.institutional-h3 {
+  font-size: 0.95rem;
+  font-weight: 650;
+  color: #94a3b8;
+  margin-top: 1.1rem;
+  margin-bottom: 0.45rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 12px;
+}
+
+.institutional-h4 {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #94a3b8;
+  margin-top: 0.8rem;
+  margin-bottom: 0.35rem;
+}
+
+/* Executive Tables */
+.markdown-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  margin: 1.15rem 0;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(15, 23, 42, 0.45);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.institutional-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.institutional-table thead tr {
+  background: rgba(30, 41, 59, 0.75);
+}
+
+.institutional-table th {
+  padding: 10px 14px;
+  font-weight: 600;
+  color: #f1f5f9;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  white-space: nowrap;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+
+.institutional-table tbody tr {
+  transition: background 0.15s ease;
+}
+
+.institutional-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.institutional-table td {
+  padding: 9px 14px;
+  color: #cbd5e1;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.institutional-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table-bold {
+  color: #ffffff;
+  font-weight: 650;
+}
+
+.table-code {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  padding: 1px 5px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #38bdf8;
+}
+
+.table-em {
+  color: #94a3b8;
+  font-style: italic;
+}
+
+/* Callouts / Blockquotes */
+.institutional-callout {
+  margin: 1rem 0;
+  padding: 10px 16px;
+  background: rgba(56, 189, 248, 0.05);
+  border-left: 3px solid #0284c7;
+  border-radius: 0 6px 6px 0;
+  color: #cbd5e1;
+  font-size: 13.5px;
+}
+
+.institutional-callout p {
+  margin: 0;
+}
+
+/* Lists */
+.institutional-list {
+  padding-left: 1.25rem;
+  margin: 0.75rem 0;
+  list-style-type: disc;
+}
+
+.institutional-ol {
+  padding-left: 1.35rem;
+  margin: 0.75rem 0;
+}
+
+.institutional-li {
+  margin-bottom: 0.35rem;
+  padding-left: 4px;
+  color: #e2e8f0;
+}
+
+.institutional-li strong {
+  color: #f8fafc;
+  font-weight: 600;
+}
+
+/* Code */
+.institutional-inline-code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #38bdf8;
+}
+
+.institutional-pre {
+  margin: 1rem 0;
+  padding: 14px 18px;
+  background: #090d16;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 8px;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #cbd5e1;
+}
+
+.institutional-pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
 
 

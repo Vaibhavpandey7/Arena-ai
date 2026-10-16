@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { chatCompletion, listModels, ChatMessage, ToolCall, ToolChoice } from "@/lib/openrouter";
 import { TOOL_SCHEMAS, getFilteredToolSchemas, runTool } from "@/lib/tools";
+import { enhanceSystemPrompt, sanitizeResponseText } from "@/lib/prompts";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -71,9 +72,10 @@ async function runOneModel(
     }
   }
 
+  const resolvedSystemPrompt = enhanceSystemPrompt(systemPrompt);
   const effectiveSystemPrompt = forcedToolName
-    ? `${systemPrompt ? systemPrompt + "\n\n" : ""}CRITICAL INSTRUCTION: You MUST invoke the '${forcedToolName}' tool to compute, evaluate, or retrieve the necessary data to answer the user prompt.`
-    : systemPrompt;
+    ? `${resolvedSystemPrompt}\n\nCRITICAL INSTRUCTION: You MUST invoke the '${forcedToolName}' tool to compute, evaluate, or retrieve the necessary data to answer the user prompt.`
+    : resolvedSystemPrompt;
 
   let promptTokens = 0;
   let completionTokens = 0;
@@ -161,7 +163,7 @@ async function runOneModel(
     return {
       model: modelId,
       ok: true,
-      answer,
+      answer: sanitizeResponseText(answer),
       latencyMs,
       promptTokens,
       completionTokens,

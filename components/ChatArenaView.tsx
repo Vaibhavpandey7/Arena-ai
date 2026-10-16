@@ -1,6 +1,8 @@
 "use client";
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
+import StructuredMarkdown from "./StructuredMarkdown";
+import { INSTITUTIONAL_INSURANCE_SYSTEM_PROMPT } from "@/lib/prompts";
 import ModelSelectWidget from "./ModelSelectWidget";
 import { DocumentPreviewModal, ParsedDocument } from "./DocumentPreviewModal";
 import { DocumentIngestModal } from "./DocumentIngestModal";
@@ -89,12 +91,7 @@ const PLUGINS: PluginDef[] = [
   },
 ];
 
-const CHAT_ARENA_SYSTEM_PROMPT =
-  "Assign role to the model as an insurance expert and perform tasks as per insurance market. " +
-  "You are a senior insurance AI specialist with deep expertise in underwriting, claims adjudication, " +
-  "actuarial principles, policy extraction, and regulatory compliance (including Solvency II and EIOPA). " +
-  "Analyze queries and documents according to standard insurance market practices, providing accurate, " +
-  "evidence-grounded, and professional answers.";
+const CHAT_ARENA_SYSTEM_PROMPT = INSTITUTIONAL_INSURANCE_SYSTEM_PROMPT;
 
 /* ── Types ─────────────────────────────────────────────────────────────────── */
 interface ToolEvent {
@@ -343,7 +340,7 @@ const GeminiMessageRow = React.memo(function GeminiMessageRow({
             </div>
           ) : (
             <div className="gemini-markdown-container">
-              <ReactMarkdown>{msg.content}</ReactMarkdown>
+              <StructuredMarkdown content={msg.content} />
             </div>
           )}
 
