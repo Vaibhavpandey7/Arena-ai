@@ -284,7 +284,24 @@ export async function ocrPdfWithTesseract(
         viewport,
       }).promise;
 
-      // Run Tesseract OCR on page canvas
+      // Scan pre-processing: contrast stretching & binarization to clean up murky scan artifacts
+      try {
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const d = imgData.data;
+        for (let p = 0; p < d.length; p += 4) {
+          const gray = 0.299 * d[p] + 0.587 * d[p + 1] + 0.114 * d[p + 2];
+          // Push grayish background scan noise to pure white (255), sharpen dark text to black (0)
+          const val = gray > 185 ? 255 : (gray < 75 ? 0 : (gray - 75) * 2.3);
+          d[p] = val;
+          d[p + 1] = val;
+          d[p + 2] = val;
+        }
+        ctx.putImageData(imgData, 0, 0);
+      } catch {
+        // Fallback to raw canvas if context security restricts getImageData
+      }
+
+      // Run Tesseract OCR on preprocessed page canvas
       const { data } = await worker.recognize(canvas);
       const cleanText = data.text?.trim() || "";
 
