@@ -57,7 +57,7 @@ export default function HomeView({ onNavigate }: Props) {
   return (
     <div className="studio-content" style={{ overflowY: "auto" }}>
       <div className="home-view">
-        {/* Dual Brand Logos */}
+        {/* Brand Logos */}
         <div className="hero-logos-wrapper">
           <div className="hero-logo-card dil-card" title="DIL Knowledge Engine">
             <img src="/dil-logo.png" alt="DIL Logo" className="hero-logo-img" />
@@ -66,10 +66,14 @@ export default function HomeView({ onNavigate }: Props) {
           <div className="hero-logo-card globe-card" title="Insurance AI Arena">
             <img src="/arena-globe-logo.png" alt="Insurance AI Arena Globe" className="hero-logo-img" />
           </div>
+          <div className="hero-logo-divider">×</div>
+          <div className="hero-logo-card bit-card" title="Birla Institute of Technology (BIT Mesra)">
+            <img src="/bit-logo.png" alt="BIT Logo" className="hero-logo-img" />
+          </div>
         </div>
 
         {/* Eyebrow */}
-        <p className="home-eyebrow">Adrosonic · Digital Innovation Lab</p>
+        <p className="home-eyebrow">Adrosonic · Digital Innovation Lab · BIT Mesra</p>
 
         {/* Hero headline */}
         <h1 className="home-hero-title">

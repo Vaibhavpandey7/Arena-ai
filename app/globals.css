@@ -264,6 +264,17 @@ body {
   transition: transform var(--transition-fast);
 }
 
+.brand-logo-bit {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: contain;
+  margin-left: 0;
+  box-shadow: 0 0 10px rgba(215, 49, 53, 0.35);
+  border: 1px solid rgba(215, 49, 53, 0.45);
+  transition: transform var(--transition-fast);
+}
+
 .brand-section:hover .brand-logo-dil,
 .studio-brand:hover .brand-logo-dil {
   transform: scale(1.08) rotate(-4deg);
@@ -272,6 +283,11 @@ body {
 .brand-section:hover .brand-logo-globe,
 .studio-brand:hover .brand-logo-globe {
   transform: scale(1.08) rotate(4deg);
+}
+
+.brand-section:hover .brand-logo-bit,
+.studio-brand:hover .brand-logo-bit {
+  transform: scale(1.08) rotate(-3deg);
 }
 
 .hero-logos-wrapper {
@@ -312,6 +328,11 @@ body {
 .hero-logo-card.globe-card {
   border-color: rgba(245, 158, 11, 0.35);
   box-shadow: 0 0 24px rgba(245, 158, 11, 0.18);
+}
+
+.hero-logo-card.bit-card {
+  border-color: rgba(215, 49, 53, 0.35);
+  box-shadow: 0 0 24px rgba(215, 49, 53, 0.18);
 }
 
 .hero-logo-card:hover {

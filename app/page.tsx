@@ -102,6 +102,11 @@ export default function Page() {
               alt="Insurance AI Arena Globe"
               className="brand-logo-globe"
             />
+            <img
+              src="/bit-logo.png"
+              alt="Birla Institute of Technology Logo"
+              className="brand-logo-bit"
+            />
           </div>
           <span className="studio-brand-name">
             Digital <span>Insurance</span> Intelligence Studio
