@@ -8538,5 +8538,29 @@ body {
   padding: 0;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   HEAD-TO-HEAD ENTERPRISE REDESIGN RESPONSIVE & FOCUS STYLES
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 960px) {
+  .h2h-view-root main {
+    padding: 16px 14px 36px !important;
+  }
+  .h2h-view-root header {
+    padding: 12px 14px !important;
+  }
+}
 
+@media (max-width: 768px) {
+  .h2h-view-root section div[style*="gridTemplateColumns"] {
+    grid-template-columns: 1fr !important;
+  }
+}
 
+/* Accessible visible focus states */
+.h2h-view-root button:focus-visible,
+.h2h-view-root select:focus-visible,
+.h2h-view-root input:focus-visible,
+.h2h-view-root textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}

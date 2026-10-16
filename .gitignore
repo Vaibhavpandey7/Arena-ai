@@ -38,4 +38,5 @@ next-env.d.ts
 # AI Arena — runtime data lake (gitignored; seed data in data/seed/ is committed)
 /data/lake/
 .venv/
+/data/h2h_benchmark_data/CuFE_backup_chinese/
 

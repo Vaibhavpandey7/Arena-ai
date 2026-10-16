@@ -41,6 +41,7 @@ const { BENCHMARK_DATASETS } = require("../lib/benchmark-datasets.ts");
 const {
   cancelManualInsuranceCsvUpload,
   decodeManualInsuranceCsv,
+  inspectManualCsv,
   ManualInsuranceCsvError,
   MAX_MANUAL_CSV_BYTES,
   MAX_MANUAL_CSV_ROWS,
@@ -49,6 +50,7 @@ const {
 } = require("../lib/manual-insurance-csv.ts");
 const {
   aggregateReferenceRun,
+  calculateHierarchicalBatchScore,
   evaluateReferenceAnswer,
 } = require("../lib/benchmark-eval.ts");
 
@@ -592,3 +594,88 @@ test("cancelling an upload clears staged rows, and valid rows cannot be removed 
   assert.equal(removeInvalidManualCsvCase(report.cases, validRow.id), report.cases);
   assert.deepEqual(cancelManualInsuranceCsvUpload(), []);
 });
+
+test("supports custom column mapping for non-standard CSV headers", () => {
+  const customCsv = "inquiry,target_val,brief,opt_1,opt_2\nWhat is the deductible?,500 USD,deductible query,250,500\n";
+  const report = parseManualInsuranceCsv(
+    "custom-headers.csv",
+    customCsv,
+    {
+      questionColumn: "inquiry",
+      answerColumn: "target_val",
+      stemColumn: "brief",
+      optionColumns: { A: "opt_1", B: "opt_2" },
+    }
+  );
+
+  assert.equal(report.rowCount, 1);
+  assert.equal(report.validCount, 1);
+  assert.equal(report.cases[0].fullQuestion, "What is the deductible?");
+  assert.equal(report.cases[0].correctAnswer, "500 USD");
+  assert.equal(report.cases[0].questionStem, "deductible query");
+  assert.deepEqual(report.cases[0].options, { A: "250", B: "500" });
+
+  assert.throws(
+    () =>
+      parseManualInsuranceCsv("missing-mapped.csv", customCsv, {
+        questionColumn: "nonexistent",
+        answerColumn: "target_val",
+      }),
+    /mapped question column "nonexistent" was not found in CSV headers/
+  );
+});
+
+test("inspectManualCsv detects non-standard headers and provides sample rows", () => {
+  const customCsv = "prompt,expected_output,note\nQ1,A1,note1\nQ2,A2,note2\n";
+  const inspection = inspectManualCsv("test-inspect.csv", customCsv);
+
+  assert.equal(inspection.hasStandardHeaders, false);
+  assert.deepEqual(inspection.headers, ["prompt", "expected_output", "note"]);
+  assert.equal(inspection.totalRows, 2);
+  assert.equal(inspection.sampleRows.length, 2);
+  assert.deepEqual(inspection.sampleRows[0], ["Q1", "A1", "note1"]);
+});
+
+test("calculateHierarchicalBatchScore applies equal category weighting across active categories", () => {
+  const categories = [
+    {
+      categoryId: "cat-large",
+      categoryName: "Large Dataset (500 items)",
+      evaluatedCount: 500,
+      correctCount: 300,
+      accuracy: 0.60,
+      unscoredCount: 0,
+      failedCount: 0,
+    },
+    {
+      categoryId: "cat-small",
+      categoryName: "Small Rigor Dataset (50 items)",
+      evaluatedCount: 50,
+      correctCount: 45,
+      accuracy: 0.90,
+      unscoredCount: 0,
+      failedCount: 0,
+    },
+  ];
+
+  const result = calculateHierarchicalBatchScore(categories);
+
+  // Equal-weighted average of 60% and 90% is 75%, NOT pooled (345/550 = 62.7%)
+  assert.equal(result.overallScore, 75);
+  assert.equal(result.weightingPolicy, "equal-category-mean");
+  assert.equal(result.activeCategoryCount, 2);
+  assert.equal(result.totalEvaluated, 550);
+  assert.equal(result.totalCorrect, 345);
+  assert.match(result.formulaExplanation, /50\.0% weight per category/);
+
+  // Single category test
+  const singleResult = calculateHierarchicalBatchScore([categories[1]]);
+  assert.equal(singleResult.overallScore, 90);
+  assert.equal(singleResult.weightingPolicy, "single-category-direct");
+
+  // Empty category test
+  const emptyResult = calculateHierarchicalBatchScore([]);
+  assert.equal(emptyResult.overallScore, null);
+  assert.equal(emptyResult.activeCategoryCount, 0);
+});
+

@@ -55,7 +55,7 @@
             B: High-risk customers being more inclined to use policy loans to obtain funds
             C: Low-risk customers avoiding the use of policy loans
             D: Policy loan interest rates being too low, attracting too many customers
-            Choose the single correct answer from A, B, C, D.",保单贷款的逆选择风险主要源于：,保险公司选择高风险客户贷款,高风险客户更倾向于利用保单贷款获取资金,Low-risk clients should avoid using policy loans.,保单贷款利率过低吸引过多客户,,B
+            Choose the single correct answer from A, B, C, D.",The adverse selection risk of policy loans mainly stems from:,Insurance company chooses to provide loans to high-risk customers,High-risk customers are more inclined to use policy loans to obtain funds,Low-risk clients should avoid using policy loans.,"Policy loan interest rates are too low, attracting too many customers",,B
 "The following are multiple-choice questions about insurance products. Please give the correct answer directly.
             Topic: In health insurance, for the exemption of liability for ""congenital diseases"", the usual way to deal with it is:
             Options:
@@ -119,7 +119,7 @@
             B: Disputes when the loss amount is close to the deductible
             C: Whether the deductible includes tax
             D: Frequency of deductible adjustments
-            Choose the single correct answer from A, B, C, D.",绝对免赔额在车险理赔中的争议主要源于？,免赔额计算方式,损失金额接近免赔额时的纠纷,免赔额是否含税,免赔额调整频率,,B
+            Choose the single correct answer from A, B, C, D.",What are the main sources of controversy regarding absolute deductibles in auto insurance claims?,Deductible calculation method,Disputes when the loss amount is close to the deductible,Does the deductible include tax?,Deductible adjustment frequency,,B
 "The following are multiple-choice questions about insurance products. Please give the correct answer directly.
             Question: There is a relative deductible of RMB 10,000 in home property insurance. Will the insurance company pay for a loss of RMB 8,000?
             Options:
@@ -240,14 +240,14 @@ B.Agent
 C. Direct selling
 D.Retail
 Your output can only be one of the four letters A, B, C, or D",The activity of selling products or services directly to end consumers for personal and non-commercial use falls under. (),wholesale,acting,direct selling,retail,,C
-"你是一名专业的保险从业人员，你可以从选项中选出给定的保险从业资格考试问题中选出最恰当的回答
-保险从业资格考试问题是：保险合同的主体包括（）
-以下哪个选项可以是该问题最恰当的回答？
-A.保险合同的保险人和被保险人
-B.保险合同的保险人和投保人
-C.保险合同的被保险人和受益人
-D.保险合同的当事人和关系人
-你的输出只能是A、B、C、D四个字母中的一个",保险合同的主体包括（）,保险合同的保险人和被保险人,保险合同的保险人和投保人,保险合同的被保险人和受益人,保险合同的当事人和关系人,,D
+"You are a professional insurance practitioner. You can select the most appropriate answer to the given insurance qualification examination question from the options.
+The insurance qualification examination question is: The subjects of an insurance contract include ()
+Which of the following options can be the most appropriate answer to this question?
+A. Insurer and insured of the insurance contract
+B. Insurer and applicant of the insurance contract
+C. Insured and beneficiary of the insurance contract
+D. Parties and related parties of the insurance contract
+Your output can only be one of the four letters A, B, C, D",The parties to an insurance contract include (),The insurer and the insured of the insurance contract,The insurer and the policyholder of the insurance contract,The insured and the beneficiary of the insurance contract,The parties and related persons of the insurance contract,,D
 "You are a professional insurance practitioner and you can choose the most appropriate response from the options given to the Insurance Practitioner Qualification Exam question.
 The questions on the insurance qualification examination are: According to the ""Ethical Guidelines for Insurance Agency Practitioners"" issued by the China Insurance Regulatory Commission, the seven ethical principles in the main part of the professional ethics of insurance agency practitioners in China include () and so on.
 Which of the following options would be the most appropriate answer to this question?
@@ -287,7 +287,7 @@ A. Third party claims
 B. Direct liability claim
 C. Transposition liability claim
 D.Indirect claims
-Your output can only be one of the four letters A, B, C, or D",The insured makes a claim as a third party and then claims the shortfall from the insurer. The method of claim is (),Third party claims,"<think>The user is asking about 'Direct Liability Claim'. I need to check if this term is defined or explained in the policy, or if there are any specific sections that address direct liability claims. The provided text does not contain any information related to 'Direct Liability Claim' or its process. Therefore, I cannot provide a specific answer based on the given terms.</think><answer>拒赔</answer>",Transposition liability claims,indirect claims,,C
+Your output can only be one of the four letters A, B, C, or D",The insured makes a claim as a third party and then claims the shortfall from the insurer. The method of claim is (),Third party claims,76,Transposition liability claims,indirect claims,,C
 "You are a professional insurance practitioner and you can choose the most appropriate response from the options given to the Insurance Practitioner Qualification Exam question.
 The question on the Insurance Qualification Examination is: As an important form of insurance intermediary, insurance agents are a bridge between insurance parties and an indispensable part of the insurance market. The role of insurance agents is ()
 Which of the following options would be the most appropriate answer to this question?
@@ -344,14 +344,14 @@ B.12 o'clock
 C.24 hours
 D. Zero hour
 Your output can only be one of the four letters A, B, C, or D",Insurance liability starts from 0:00 on the insurance start date as stipulated in the insurance policy to the expiration date ( ).,8 o'clock,12 o'clock,24 hours,Zero hour,,C
-"你是一名专业的保险从业人员，你可以从选项中选出给定的保险从业资格考试问题中选出最恰当的回答
-保险从业资格考试问题是：王某投保人身意外伤害保险一份，保险金额为50万，保险期限为2001年1月1日至2002年1月1日，且合同规定的责任期限为180天，王某于2001年3月1日遭受意外伤害事故，于2001年6月1日治疗结束，并被鉴定为中度伤残，伤残程度为45%，则被保险人对此事故的理赔意见是（）。
-以下哪个选项可以是该问题最恰当的回答？
-A.承担保险责任，给付保险金22
-B.承担保险责任，给付保险金27
-C.承担保险责任，给付保险金50万
-D.不承担保险责任，因责任期限未届满
-你的输出只能是A、B、C、D四个字母中的一个",王某投保人身意外伤害保险一份，保险金额为50万，保险期限为2001年1月1日至2002年1月1日，且合同规定的责任期限为180天，王某于2001年3月1日遭受意外伤害事故，于2001年6月1日治疗结束，并被鉴定为中度伤残，伤残程度为45%，则被保险人对此事故的理赔意见是（）。,承担保险责任，给付保险金22,承担保险责任，给付保险金27,承担保险责任，给付保险金50万,"No insurance liability, as the liability period has not yet commenced.",,A
+"You are a professional insurance practitioner. You can select the most appropriate answer to the given insurance qualification examination question from the options.
+The insurance qualification examination question is: Wang Mou took out a personal accident insurance policy with a sum insured of 500,000, an insurance period from January 1, 2001, to January 1, 2002, and a liability period specified in the contract of 180 days. Wang Mou suffered an accidental injury accident on March 1, 2001, completed treatment on June 1, 2001, and was identified as moderately disabled with a disability degree of 45%. What is the insured's claim opinion on this accident ().
+Which of the following options can be the most appropriate answer to this question?
+A. Assume insurance liability, pay insurance benefit 22
+B. Assume insurance liability, pay insurance benefit 27
+C. Assume insurance liability, pay insurance benefit 500,000
+D. Do not assume insurance liability because the liability period has not expired
+Your output can only be one of the four letters A, B, C, D","Wang purchased a personal accident insurance policy with an insured amount of 500,000. The insurance period is from January 1, 2001, to January 1, 2002, and the liability period stipulated in the contract is 180 days. Wang suffered an accidental injury on March 1, 2001, finished treatment on June 1, 2001, and was assessed as having a moderate disability with a disability degree of 45%. What is the insured's opinion on the claim for this accident? ( )",Assume insurance liability and pay insurance benefits of 22,Assume insurance liability and pay insurance benefits of 27,"Assume insurance liability and pay insurance benefits of 500,000","No insurance liability, as the liability period has not yet commenced.",,A
 "You are a professional insurance practitioner and you can choose the most appropriate response from the options given to the Insurance Practitioner Qualification Exam question.
 The question on the Insurance Qualification Examination is: When an insured of a term life insurance policy receives life insurance benefits, the insurer discovers that his insurance age is lower than his actual age. According to the relevant provisions of China’s Insurance Law, the correct way for the insurer to deal with this is ().
 Which of the following options would be the most appropriate answer to this question?
@@ -501,9 +501,9 @@ Your output can only be one of the four letters A, B, C, or D","After the insura
 "You are an expert in insurance principles and systems, and you can judge whether a given content is right or wrong.
             The content is: The insured Wang only purchased accident insurance. Wang was hit by a truck while riding his bicycle, causing disability and hospitalization. During the treatment, Wang died of acute myocardial infarction. The proximate cause of his death was a car accident. Therefore, the insurance company should compensate.
             Your output can only be ""right"" or ""wrong"".","The insured, Wang, only had accident insurance. Wang was hit by a truck while riding his bicycle, causing disability and hospitalization. During the treatment, Wang died of acute myocardial infarction. The proximate cause of his death was a car accident. Therefore, the insurance company should compensate.",right,wrong,,,,wrong
-"你是一名保险原理与制度领域的专家，你可以判断给定的内容是对还是错。
-            内容是：在保险实务中，投保人不比保险人享有更多的信息，更加不了解保险标的风险的大小。
-            你是输出只能是""对""或者""错""。",在保险实务中，投保人不比保险人享有更多的信息，更加不了解保险标的风险的大小。,right,wrong,,,,wrong
+"You are an expert in the field of insurance principles and systems, and you can determine whether the given statement is true or false.
+            The statement is: In insurance practice, the policyholder does not have more information than the insurer, nor are they less aware of the size of the risk associated with the insured object.
+            Your output can only be ""True"" or ""False"".","In insurance practice, the policyholder does not possess more information than the insurer and is less knowledgeable about the magnitude of the risk of the insured subject matter.",right,wrong,,,,wrong
 "You are an expert in insurance principles and systems, and you can judge whether a given content is right or wrong.
             The content is: The price of life insurance products is mainly calculated by a comprehensive calculation of three factors, namely the predetermined incidence rate, the predetermined surcharge rate and the predetermined interest rate.
             Your output can only be ""right"" or ""wrong"".","The price of life insurance products is mainly calculated by a comprehensive calculation of three factors, namely the scheduled incidence rate, the scheduled surcharge rate and the scheduled interest rate.",right,wrong,,,,right
@@ -516,9 +516,9 @@ Your output can only be one of the four letters A, B, C, or D","After the insura
 "You are an expert in insurance principles and systems, and you can judge whether a given content is right or wrong.
             The content is: The replacement value clause allows the insured to obtain compensation higher than the actual value at the time of the accident, but it is still subject to the limit of the insurance amount.
             Your output can only be ""right"" or ""wrong"".","The replacement value clause allows the insured to obtain compensation that is higher than the actual value at the time of the accident, but is still subject to the insurance amount limit.",,,,,,right
-"你是一名保险原理与制度领域的专家，你可以判断给定的内容是对还是错。
-            内容是：再保险合同的签订不影响原保险人对被保险人的赔付责任。
-            你是输出只能是""对""或者""错""。",再保险合同的签订不影响原保险人对被保险人的赔付责任。,,,,,,right
+"You are an expert in the field of insurance principles and systems, and you can determine whether the given statement is true or false.
+            The statement is: The conclusion of a reinsurance contract does not affect the primary insurer's liability for compensation to the insured.
+            Your output can only be ""True"" or ""False"".",The signing of a reinsurance contract does not affect the original insurer's liability for payment to the insured.,,,,,,right
 "You are an expert in insurance principles and systems, and you can judge whether a given content is right or wrong.
             The content is: The social security function of insurance is completely borne by the government finance. ()
             Your output can only be ""right"" or ""wrong"".",The social security function of insurance is entirely borne by government finances. (),,,,,,wrong
@@ -907,7 +907,7 @@ Choose the only correct answer from ABCD.",The doctrine adopted in the definitio
             B: Deceiving customers
             C: Not restraining words and actions
             D: Being solely profit-driven
-            Choose the single correct answer from A, B, C, D.",高素质的新保险从业人具有的特质是（）。,很好的自我管理和自律能力,deceive customers,Don’t limit your words and deeds,mercenary,,A
+            Choose the single correct answer from A, B, C, D.",What are the characteristics of high-quality new insurance practitioners? (),Excellent self-management and self-discipline skills.,deceive customers,Don’t limit your words and deeds,mercenary,,A
 "The following are multiple-choice questions about the insurance market and operations. Please give the correct answer directly.
             Topic: The most easily overlooked risk in customer expansion is ().
             Options:
@@ -947,7 +947,7 @@ Choose the only correct answer from ABCD.",The doctrine adopted in the definitio
             B: A counter-guarantee agreement needs to be signed and the guarantee amount is ≤ 60% of the value of the collateral
             C: Any guarantee is prohibited
             D: Guarantee amount ≤ 80% of the value of the collateral
-            Choose the only correct answer from ABCD.",What are the restrictions on insurance companies providing guarantees to their overseas branches?,Free to provide guarantees,A counter-guarantee agreement needs to be signed and the guarantee amount is ≤ 60% of the value of the collateral,Any guarantee is prohibited,担保额≤抵押物价值的80%,,B
+            Choose the only correct answer from ABCD.",What are the restrictions on insurance companies providing guarantees to their overseas branches?,Free to provide guarantees,A counter-guarantee agreement needs to be signed and the guarantee amount is ≤ 60% of the value of the collateral,Any guarantee is prohibited,nan,,B
 "The following are multiple-choice questions about the insurance market and operations. Please give the correct answer directly.
             Question: Regarding ""controlling risks"", which of the following statements is correct?
             Options:
@@ -995,7 +995,7 @@ Choose the only correct answer from ABCD.",The doctrine adopted in the definitio
             B: Doubts about the completeness of previous identity information
             C: Customer refusing to provide beneficial owner information
             D: Premium amount exceeding the industry average
-            Choose the single correct answer from A, B, C, D.",保险公司对高风险客户重新识别身份的情形不包括？,Abnormal transaction frequency,先前身份资料完整性存疑,客户拒绝提供受益所有人信息,保费金额超过行业均值,,D
+            Choose the single correct answer from A, B, C, D.",Which of the following is not a situation where an insurance company re-identifies a high-risk customer?,Abnormal transaction frequency,Integrity of previous identity information is in doubt,Customer refused to provide beneficial owner information,Premium amount exceeds the industry average,,D
 "The following are multiple-choice questions about the insurance market and operations. Please give the correct answer directly.
             Question: Which factor is not a condition for transforming a potential market into a real market?
             Options:
@@ -1051,7 +1051,7 @@ Choose the only correct answer from ABCD.",The doctrine adopted in the definitio
             B: Abolish individual pension products
             C: Exclusively serves high-income groups
             D: Vigorously develop commercial annuity insurance
-            Choose the single correct answer from A, B, C, D.",第三支柱养老保险的发展重点是？,限制产品多样性,取消个人养老金产品,Exclusively serves high-income groups,大力发展商业保险年金,,D
+            Choose the single correct answer from A, B, C, D.",What are the development priorities for Pillar 3 pension insurance?,Restrict Product Diversity,Cancel personal pension products,Exclusively serves high-income groups,Vigorously develop commercial insurance annuities,,D
 "The following are multiple-choice questions about the insurance market and operations. Please give the correct answer directly.
             Topic: What factors affect insurance market demand?
             Options:
@@ -1091,7 +1091,7 @@ Choose the only correct answer from ABCD.",The doctrine adopted in the definitio
             B: Increase customer base
             C: Ensure operational compliance and risk prevention
             D: Increase market share
-            Choose the single correct answer from A, B, C, D.",保险公司内部控制的核心目标是？,压低赔付,增加客户,保障经营合规与风险防控,提高市场份额,,C
+            Choose the single correct answer from A, B, C, D.",What is the core objective of an insurance company's internal control?,Depressing claims,Add Customers,Ensuring operational compliance and risk prevention and control,Increase market share,,C
 "The following are multiple-choice questions about the insurance market and operations. Please give the correct answer directly.
             Topic: Under IFRS 17, what are the core principles for revenue recognition from insurance contracts?
             Options:
@@ -1168,7 +1168,7 @@ right,"Critical illness insurance is an insurance that pays a fixed amount. When
             B: Terminates the contract and refunds the premium
             C: Does not terminate the contract and does not pay out
             D: Does not terminate the contract and reduces the payout
-            Choose the single correct answer from A, B, C, D.",投保人故意制造保险事故，保险人（）,解除合同，不退还保费,解除合同，退还保费,"Contract not terminated, no payout.","Contract not terminated, reduced payout.",,A
+            Choose the single correct answer from A, B, C, D.","If the policyholder intentionally causes an insurance accident, the insurer ( )",Terminate the contract without premium refund,Terminate the contract with premium refund,"Contract not terminated, no payout.","Contract not terminated, reduced payout.",,A
 "The following are multiple-choice questions about insurance law. Please give the correct answer directly.
             Topic: After the insurance contract is reinstated, its validity ()
             Options:
@@ -1232,7 +1232,7 @@ right,"Critical illness insurance is an insurance that pays a fixed amount. When
             B: When the insurer issues the policy
             C: When the insurer agrees to underwrite
             D: When the policy is delivered to the policyholder
-            Choose the single correct answer from A, B, C, D.",保险合同成立的时间是（）,投保人缴纳保费时,保险人签发保单时,保险人同意承保时,保险单送达投保人时,,C
+            Choose the single correct answer from A, B, C, D.",The time when an insurance contract is formed is (),When the policyholder pays the insurance premium,When the insurer issues the policy,When the insurer agrees to underwrite,When the insurance policy is delivered to the policyholder,,C
 "The following is a multiple-choice question about insurance law. Please provide the correct answer option directly.
             Question: In personal insurance, the payment of the first premium usually ()
             Options:
@@ -1240,7 +1240,7 @@ right,"Critical illness insurance is an insurance that pays a fixed amount. When
             B: Does not affect the contract's effectiveness
             C: Can be waived by the insurer
             D: Is unrelated to the contract's validity
-            Choose the single correct answer from A, B, C, D.",在人身保险中，首期保费的支付通常（）,It is a prerequisite for the contract to take effect.,Does not affect the effectiveness of the contract,可由保险人豁免,Irrelevant to contract validity.,,A
+            Choose the single correct answer from A, B, C, D.","In life insurance, the payment of the first premium is usually ()",It is a prerequisite for the contract to take effect.,Does not affect the effectiveness of the contract,Can be waived by the insurer,Irrelevant to contract validity.,,A
 "The following are multiple-choice questions about insurance law. Please give the correct answer directly.
             Topic: In a property insurance contract, which of the following statements about the insured is incorrect ()
             Options:
@@ -1300,7 +1300,7 @@ Choose the only correct answer from A, B, or C.","In a full insurance contract, 
             B: Additional clause
             C: Insurer's interpretation
             D: Insured's interpretation
-            Choose the single correct answer from A, B, C, D.",当保险合同的附加条款与基本条款冲突时，应以（）为准,基本条款,附加条款,保险人解释,被保险人解释,,B
+            Choose the single correct answer from A, B, C, D.","When the additional clauses of an insurance contract conflict with the basic clauses, which one shall prevail?",Basic Terms,Supplementary Clauses,Insurer's explanation,Explanation of the insured,,B
 "The following are multiple-choice questions about insurance law. Please give the correct answer directly.
             Topic: In an insurance contract, when different clauses conflict, the usual order of priority is ()
             Options:
@@ -1316,7 +1316,7 @@ Choose the only correct answer from A, B, or C.","In a full insurance contract, 
             B: 30 days
             C: 60 days
             D: 90 days
-            Choose the single correct answer from A, B, C, D.",暂保单的有效期通常为（）,15 days,30 days,60 days,90 days,,B
+            Choose the single correct answer from A, B, C, D.",The validity period of a cover note is usually (),15 days,30 days,60 days,90 days,,B
 "The following are multiple-choice questions about insurance law. Please give the correct answer directly.
 Question: The ""Defined Terms"" in an insurance contract are used for ( )
 Options:
@@ -1477,7 +1477,7 @@ Calculate the expected value of the random variable representing the loss presen
             C: 100
             D: 500
             E: 300
-            Choose the single correct answer from ABCDE.","科学家正在为某疾病寻找疫苗。已知： \begin{itemize} \item 年龄为 \(x\) 的100,000 名个体暴露于该疾病； \item 未来的寿命相互独立，但如果疫苗可用，则会在第一年末对所有个体接种； \item 疫苗可用的概率为0.2； \item 在第一年中，每个体的死亡率 \(\qx{x} = 0.02\)； \item 在第二年中，如果已接种疫苗，则死亡率 \(\qx{x+1} = 0.01\)；否则 \(\qx{x+1} = 0.02\)。 \end{itemize} 计算第2年末幸存者人数的标准差。",200,400,100,500,300,D
+            Choose the single correct answer from ABCDE.","Scientists are searching for a vaccine for a certain disease. Given: \begin{itemize} \item 100,000 individuals aged \(x\) are exposed to the disease; \item Future lifetimes are independent, but if a vaccine becomes available, it will be administered to all individuals at the end of the first year; \item The probability that the vaccine becomes available is 0.2; \item During the first year, the mortality rate for each individual is \(\qx{x} = 0.02\); \item During the second year, if the vaccine has been administered, the mortality rate is \(\qx{x+1} = 0.01\); otherwise, \(\qx{x+1} = 0.02\). \end{itemize} Calculate the standard deviation of the number of survivors at the end of the second year.",200,400,100,500,300,D
 "The following is a multiple-choice question about actuarial insurance. Please give the correct answer directly.
             Question: For a special fully discrete 10-pay, 10-year deferred, lifetime annuity that starts paying out at the age of 55 - 1{,}000 is paid out every year. If you die within the first 10 years, the premiums paid will be refunded without interest. Known: \begin{enumerate}[label=(\roman*)] \item The annual net premium is the level premium; \item The mortality rate follows the standard ultimate life table; \item The annual interest rate \(i=0.05\); \item \(\IA_{\term{55}{10}}=0.14743\). \end{enumerate} Calculate the net premium policy value at the end of year 9 \(\actsymb[9]{V}{}\).
             Options:
@@ -1596,7 +1596,7 @@ Choose the only correct answer from ABCDE.",Known: The observations for 185 smal
             C: 170
             D: 180
             E: 190
-            Choose the single correct answer from ABCDE.",已知针对 \((90)\) 岁被保险人的一份特殊完全离散终身寿险，具有以下条款： \begin{enumerate}[label=(\roman*)] \item 第一年的保费为 0； \item 续期保费记为 \(P\)； \item 死亡率遵循标准终极生命表； \item 年利率 \(i = 0.05\)； \item 保费按等价原则确定。 \end{enumerate} 计算续期保费 \(P\)。,150,160,170,180,190,D
+            Choose the single correct answer from ABCDE.","For a special fully discrete whole life insurance policy for an insured aged (90), the following terms apply: \begin{enumerate}[label=(\roman*)] \item The first-year premium is 0; \item Renewal premiums are denoted as \(P\); \item Mortality follows the standard ultimate life table; \item Annual interest rate \(i = 0.05\); \item Premiums are determined based on the equivalence principle. \end{enumerate} Calculate the renewal premium \(P\).",150,160,170,180,190,D
 "The following is a multiple-choice question on actuarial science. Please provide the correct answer option directly.
             Question: Given: \begin{enumerate}[label=(\roman*)] \item \(\Ax{x} = 0.30\); \item \(\Ax{x+n}=0.40\); \item \(\Ax{\pureendowxn}=0.35\); \item Annual interest rate \(i=0.05\). \end{enumerate} Calculate the present value factor for an \(n\)-year continuous annuity \(\ax{x:\angl{n}}\).
             Options:
@@ -1605,7 +1605,7 @@ Choose the only correct answer from ABCDE.",Known: The observations for 185 smal
             C: 9.8
             D: 10.0
             E: 10.3
-            Choose the single correct answer from ABCDE.",已知： \begin{enumerate}[label=(\roman*)] \item \(\Ax{x} = 0.30\)； \item \(\Ax{x+n}=0.40\)； \item \(\Ax{\pureendowxn}=0.35\)； \item 年利率 \(i=0.05\)。 \end{enumerate} 计算 \(n\) 年期连续年金现值因子 \(\ax{x:\angl{n}}\)。,9.3,9.6,9.8,10.0,10.3,B
+            Choose the single correct answer from ABCDE.",Given: \begin{enumerate}[label=(\roman*)] \item \(\Ax{x} = 0.30\); \item \(\Ax{x+n}=0.40\); \item \(\Ax{\pureendowxn}=0.35\); \item Annual interest rate \(i=0.05\). \end{enumerate} Calculate the present value factor of an n-year continuous annuity \(\ax{x:\angl{n}}\).,9.3,9.6,9.8,10.0,10.3,B
 "The following is a multiple-choice question about actuarial science. Please provide the correct answer option directly.
             Question: A fully discrete whole life insurance policy with a face amount of 200,000 is issued to a 45-year-old person. Given:
             (i) Mortality follows the standard ultimate life table;
@@ -1618,7 +1618,7 @@ Choose the only correct answer from ABCDE.",Known: The observations for 185 smal
             C: \(35,440\)
             D: \(40,440\)
             E: \(45,440\)
-            Choose the single correct answer from A, B, C, D, E.","对45岁的人承保面额为200{,}000的全额离散式终身寿险，已知： \begin{enumerate}[label=(\roman*)] \item 死亡率遵循标准终极寿表； \item 年利率 \(i=0.05\)； \item 年度保费按偿付公平原则确定。 \end{enumerate} 记 \(L_0\) 为发行时的损失现值随机变量，计算其标准差 \(\mathrm{SD}(L_0)\)。","\(25{,}440\)","\(30{,}440\)","\(35{,}440\)","\(40{,}440\)","\(45{,}440\)",A
+            Choose the single correct answer from A, B, C, D, E.","For a 45-year-old, a fully discrete whole life insurance policy with a face amount of 200,000 is issued. Given: \begin{enumerate}[label=(\roman*)] \item Mortality follows the standard ultimate life table; \item Annual interest rate \(i=0.05\); \item Annual premiums are determined based on the principle of equivalence. \end{enumerate} Let \(L_0\) be the present value of loss random variable at the time of issuance, calculate its standard deviation \(\mathrm{SD}(L_0)\).","\(25{,}440\)","\(30{,}440\)","\(35{,}440\)","\(40{,}440\)","\(45{,}440\)",A
 "The following is a multiple-choice question about actuarial insurance. Please give the correct answer directly.
             Question: It is known that a 20-year deferred annuity based on the age of \((40)\) - 30,000 yuan is paid at the beginning of the year, with the following terms: \begin{enumerate}[label=(\roman*)] \item If the insured dies during the deferred period, a single pure premium (without interest) will be refunded at the end of the year; \item The mortality rate follows the standard ultimate life table; \item Annual interest rate \(i = 0.05\). \end{enumerate} Calculate the single pure premium for this annuity.
             Options:
@@ -1771,7 +1771,7 @@ Choose the only correct answer from ABCDE.",You are asked to consider whether th
             B: Preparing financial statements
             C: Accounting and control
             D: Tax declaration
-            Choose the single correct answer from ABCD.","As an economic management activity, the basic function of accounting is ( ).",记录交易,编制报表,核算控制,纳税申报,,C
+            Choose the single correct answer from ABCD.","As an economic management activity, the basic function of accounting is ( ).",Record transaction,Preparation of financial statements,Accounting control,Tax filing,,C
 "The following are multiple-choice questions about insurance finance and investment. Please give the correct answer directly.
             Question: Regarding owner's equity, which of the following statements is incorrect ().
             Options:
@@ -1803,7 +1803,7 @@ Choose the only correct answer from ABCDE.",You are asked to consider whether th
             B: Tax implications
             C: Characteristics of liabilities supported by assets
             D: Accounting system
-            Choose the single correct answer from ABCD.",影响资产配置决策最主要的因素是什么？,监管规定,税收影响,资产所支持的负债特征,Accounting system,,C
+            Choose the single correct answer from ABCD.",What is the most significant factor influencing asset allocation decisions?,Regulatory requirements,Tax implications,Characteristics of liabilities supported by assets,Accounting system,,C
 "The following are multiple-choice questions about insurance finance and investment. Please give the correct answer directly.
             Topic: Shareholders can directly intervene in the work of managers, and the most important external restraint mechanism is ().
             Options:
@@ -1883,7 +1883,7 @@ Choose the only correct answer from ABCDE.",You are asked to consider whether th
             B: Actual capital assessment standards
             C: Capital classification
             D: Dynamic solvency testing
-            Please note that there is more than one correct option. Do not select only one. The final result should only output the options, without additional information, separated by English commas.",偿二代的第一支柱（定量资本要求）主要包括哪些内容？,第一支柱量化资本要求,实际资本评估标准,资本分级,动态偿付能力测试,,"A,B,C,D"
+            Please note that there is more than one correct option. Do not select only one. The final result should only output the options, without additional information, separated by English commas.",What are the main components of the first pillar (quantitative capital requirements) of C-ROSS?,Pillar 1 quantitative capital requirements,Actual capital assessment standards,Capital tiering,Dynamic Solvency Test,,"A,B,C,D"
 "The following are multiple-choice questions about insurance finance and investment. Please give the correct answer directly.
             Topic: What are the basic concepts of the RBC system?
             Options:
@@ -1916,7 +1916,7 @@ Choose the only correct answer from ABCDE.",You are asked to consider whether th
             B: Development and promotion of new products
             C: Purchase of raw materials
             D: Expansion of production scale
-            Please note that there is more than one correct option. Do not select only one. The final result should only output the options, without additional information, separated by English commas.",长期筹资所筹集的资金主要投资于（ ）。,Renovation and upgrading of enterprise equipment,新产品的开发与推广,原材料的购进,生产规模的扩大,,"A,B,D"
+            Please note that there is more than one correct option. Do not select only one. The final result should only output the options, without additional information, separated by English commas.",Funds raised through long-term financing are mainly invested in ( ).,Renovation and upgrading of enterprise equipment,Development and promotion of new products,Purchase of raw materials,Expansion of production scale,,"A,B,D"
 "B, C, D",What does owner's equity include?,share capital,capital reserve,Surplus reserve,undistributed profit,,"A,B,C,D"
 "The following are multiple-choice questions about insurance finance and investment. Please give the correct answer directly.
             Question: What are the advantages of embedded value compared with traditional valuation methods?
@@ -1938,9 +1938,9 @@ Choose the only correct answer from ABCDE.",You are asked to consider whether th
 "You are an expert in the field of social insurance and policy insurance and you can judge whether a given content is right or wrong.
             The content is: Supplementary medical insurance can protect individual out-of-pocket expenses within the payment scope of the basic medical insurance social pooling fund.
             Your output can only be ""right"" or ""wrong"".",Supplementary medical insurance can cover individual out-of-pocket expenses within the scope of the basic medical insurance social pooling fund.,right,wrong,,,,right
-"你是一名社会保险与政策保险领域的专家，你可以判断给定的内容是对还是错。
-            内容是：基本医疗保险与补充医疗保险都具有分摊风险、保障员工身体健康的功能。
-            你是输出只能是""对""或者""错""。",基本医疗保险与补充医疗保险都具有分摊风险、保障员工身体健康的功能。,right,wrong,,,,right
+"You are an expert in social insurance and policy insurance. You can judge whether the given content is correct or incorrect.
+The content is: Both basic medical insurance and supplementary medical insurance have the functions of sharing risks and ensuring the physical health of employees.
+Your output can only be ""Correct"" or ""Incorrect"".",Both basic medical insurance and supplementary medical insurance have the functions of sharing risks and safeguarding the physical health of employees.,right,wrong,,,,right
 "The following are multiple-choice questions about social insurance and policy insurance. Please give the correct answer directly.
 Topic: In recent years, with the increase in work intensity and occupational stress, ""sudden death from overwork"" incidents have occurred frequently among workers due to long-term and high-intensity work, which has triggered extensive social discussions on the adaptability of work-related injury identification standards. In judicial practice, there is considerable controversy over whether such death events that usually occur at work or at a time and place closely related to work, but do not necessarily meet the immediacy characteristics of traditional ""accidental injuries"", can be recognized as work-related injuries. When the court hears such cases, its judgment standards and value orientation directly affect the protection of workers' rights and interests and the boundaries of corporate responsibility. Focusing on the understanding and application of core elements such as ""working hours and job positions"" in the ""Regulations on Work-related Injury Insurance"", the current judicial practice trend regarding ""sudden death from overwork"" in the identification of work-related injuries is highlighted as ( )
 Options:
@@ -2007,7 +2007,7 @@ The hallmark of the maturity of modern social security systems is (D: Institutio
             B: Wage loss due to cessation of work for childbirth
             C: Child education expense subsidy
             D: Family housing subsidy
-            Choose the single correct answer from ABCD.",生育社会保险的主要补偿内容是（）,生育期间的医疗费用报销,因生育中止劳动导致的工资损失,子女教育费用补贴,家庭住房补贴,,B
+            Choose the single correct answer from ABCD.",The main compensation content of maternity social insurance is ( ),Reimbursement of medical expenses during maternity,Wage loss due to suspension of work caused by childbirth,Child education expense subsidy,Family housing subsidy,,B
 "The following are multiple-choice questions about social insurance and policy insurance. Please give the correct answer directly.
             Topic: The payment base for occupational injury protection in new business formats is ( )
             Options:
@@ -2135,4 +2135,4 @@ The hallmark of the maturity of modern social security systems is (D: Institutio
             B: Legally participate in basic old-age insurance and fulfill payment obligations
             C: Possess corresponding economic capacity to bear the costs
             D: A collective bargaining mechanism has been established
-            Please note that there is more than one correct option. Do not select only one. The final result should only output the options, without additional information, separated by English commas.",我国政府发布的《企业年金办法》规定，建立企业年金的条件有（）。,Any enterprise can establish one,依法参加基本养老保险，并履行缴费义务,具有相应的经济负担能力,已建立集体协商机制,,"B,C,D"
+            Please note that there is more than one correct option. Do not select only one. The final result should only output the options, without additional information, separated by English commas.",The 'Measures for Enterprise Annuity' issued by our government stipulates that the conditions for establishing an enterprise annuity are ().,Any enterprise can establish one,Participate in basic pension insurance according to law and fulfill the obligation of paying premiums,Possessing the corresponding financial affordability,Collective bargaining mechanism has been established,,"B,C,D"

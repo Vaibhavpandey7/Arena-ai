@@ -5,6 +5,7 @@ import {
   INSURANCE_BENCHMARKS,
   type InsuranceBenchmarkDefinition,
   type InsuranceBenchmarkId,
+  type InsuranceBenchmarkRecord,
 } from "./insurance-benchmark-registry";
 import type { ReferenceScoringPolicy } from "./benchmark-eval";
 
@@ -12,17 +13,8 @@ export {
   INSURANCE_BENCHMARKS,
   type InsuranceBenchmarkDefinition,
   type InsuranceBenchmarkId,
+  type InsuranceBenchmarkRecord,
 } from "./insurance-benchmark-registry";
-
-export interface InsuranceBenchmarkRecord {
-  id: string;
-  benchmarkId: InsuranceBenchmarkId;
-  sourceRowNumber: number;
-  fullQuestion: string;
-  questionStem?: string;
-  options: Record<string, string>;
-  correctAnswer: string;
-}
 
 const REQUIRED_COLUMNS = ["full question", "correct answer"] as const;
 const OPTION_COLUMNS = ["A", "B", "C", "D", "E"] as const;

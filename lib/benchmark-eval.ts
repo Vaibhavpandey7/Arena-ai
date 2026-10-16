@@ -662,3 +662,88 @@ export function evaluateGoldAlignment(
     missingKeyTerms: missingTerms.slice(0, 8),
   };
 }
+
+export interface CategoryEvaluationSummary {
+  categoryId: string;
+  categoryName: string;
+  evaluatedCount: number;
+  correctCount: number;
+  accuracy: number | null; // null if evaluatedCount === 0
+  unscoredCount: number;
+  failedCount: number;
+}
+
+export interface HierarchicalBatchScoreResult {
+  overallScore: number | null; // percentage 0-100, or null if no valid scored categories
+  categoryScores: CategoryEvaluationSummary[];
+  activeCategoryCount: number;
+  totalEvaluated: number;
+  totalCorrect: number;
+  totalFailed: number;
+  totalUnscored: number;
+  weightingPolicy: "equal-category-mean" | "single-category-direct";
+  formulaExplanation: string;
+}
+
+/**
+ * Calculates batch score using a documented hierarchical equal-weighted category policy.
+ * Prevents a large dataset category from dominating smaller high-rigor categories.
+ */
+export function calculateHierarchicalBatchScore(
+  categories: CategoryEvaluationSummary[]
+): HierarchicalBatchScoreResult {
+  const activeCategories = categories.filter(
+    (c) => c.evaluatedCount > 0 && c.accuracy !== null
+  );
+
+  const totalEvaluated = categories.reduce((sum, c) => sum + c.evaluatedCount, 0);
+  const totalCorrect = categories.reduce((sum, c) => sum + c.correctCount, 0);
+  const totalFailed = categories.reduce((sum, c) => sum + c.failedCount, 0);
+  const totalUnscored = categories.reduce((sum, c) => sum + c.unscoredCount, 0);
+
+  if (activeCategories.length === 0) {
+    return {
+      overallScore: null,
+      categoryScores: categories,
+      activeCategoryCount: 0,
+      totalEvaluated,
+      totalCorrect,
+      totalFailed,
+      totalUnscored,
+      weightingPolicy: "equal-category-mean",
+      formulaExplanation: "No scored responses available to compute aggregate accuracy.",
+    };
+  }
+
+  if (activeCategories.length === 1) {
+    const single = activeCategories[0];
+    const acc = single.accuracy ?? 0;
+    return {
+      overallScore: Math.round(acc * 1000) / 10,
+      categoryScores: categories,
+      activeCategoryCount: 1,
+      totalEvaluated,
+      totalCorrect,
+      totalFailed,
+      totalUnscored,
+      weightingPolicy: "single-category-direct",
+      formulaExplanation: `Direct accuracy on ${single.categoryName}: ${single.correctCount}/${single.evaluatedCount} (${(acc * 100).toFixed(1)}%).`,
+    };
+  }
+
+  // Equal-weighted category mean across all active categories
+  const sumAcc = activeCategories.reduce((sum, c) => sum + (c.accuracy ?? 0), 0);
+  const meanAcc = sumAcc / activeCategories.length;
+
+  return {
+    overallScore: Math.round(meanAcc * 1000) / 10,
+    categoryScores: categories,
+    activeCategoryCount: activeCategories.length,
+    totalEvaluated,
+    totalCorrect,
+    totalFailed,
+    totalUnscored,
+    weightingPolicy: "equal-category-mean",
+    formulaExplanation: `Equal-weighted mean of ${activeCategories.length} active categories (${(100 / activeCategories.length).toFixed(1)}% weight per category). Sample count imbalances across categories do not skew the aggregate score.`,
+  };
+}

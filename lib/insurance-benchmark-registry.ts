@@ -14,6 +14,16 @@ export type CufeCompetencyKey =
   | "agent"
   | "rigor";
 
+export interface InsuranceBenchmarkRecord {
+  id: string;
+  benchmarkId: InsuranceBenchmarkId;
+  sourceRowNumber: number;
+  fullQuestion: string;
+  questionStem?: string;
+  options: Record<string, string>;
+  correctAnswer: string;
+}
+
 export interface InsuranceBenchmarkDefinition {
   id: InsuranceBenchmarkId;
   name: string;
