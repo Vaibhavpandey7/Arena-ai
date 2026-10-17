@@ -201,6 +201,15 @@ function parseOpenRouterError(status: number, errText: string, modelName: string
     };
   }
 
+  if (code === 504 || /gateway timeout|timed out|timeout/i.test(baseMessage)) {
+    return {
+      message: `Upstream Gateway Timeout (504): The server hosting "${modelName}" took too long to respond due to high peak load. Try selecting another model or retrying shortly.`,
+      isRateLimit: false,
+      provider,
+      raw,
+    };
+  }
+
   if (baseMessage.includes("Provider returned error") || isRateLimit) {
     if (raw && /rate[- ]limited|rate[- ]limit/i.test(raw)) {
       return {
@@ -289,9 +298,12 @@ function parseOpenRouterError(status: number, errText: string, modelName: string
               activeModel !== "openrouter/free" &&
               (parsedErr.isRateLimit ||
                 orResponse.status === 429 ||
+                orResponse.status === 502 ||
                 orResponse.status === 503 ||
+                orResponse.status === 504 ||
                 isUnavailableFree ||
-                errText.includes("Provider returned error"));
+                errText.includes("Provider returned error") ||
+                /timeout|timed out/i.test(errText));
 
             if (canFallback) {
               console.warn(`[chat-route] Model ${activeModel} unavailable or rate-limited upstream. Seamlessly routing via fallback router.`);
