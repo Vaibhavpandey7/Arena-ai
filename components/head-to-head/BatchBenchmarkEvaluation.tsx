@@ -91,6 +91,8 @@ export default function BatchBenchmarkEvaluation() {
   const [csvInspection, setCsvInspection] = useState<RawCsvInspection | null>(null);
   const [showMappingModal, setShowMappingModal] = useState(false);
   const [csvError, setCsvError] = useState<string | null>(null);
+  const [isDraggingCsv, setIsDraggingCsv] = useState(false);
+  const csvFileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Advanced Run Settings (collapsible)
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
@@ -215,6 +217,29 @@ export default function BatchBenchmarkEvaluation() {
     } catch (err: unknown) {
       setCsvError((err as Error)?.message || "Failed to apply column mapping");
     }
+  };
+
+  // Manual CSV Drag & Drop handlers
+  const handleCsvDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingCsv(false);
+    if (isRunning) return;
+    const file = e.dataTransfer.files?.[0];
+    if (file && (file.name.endsWith(".csv") || file.type === "text/csv")) {
+      await handleCsvFileSelected(file);
+    } else if (file) {
+      setCsvError("Please upload a valid CSV file (.csv)");
+    }
+  };
+
+  const handleCsvDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (!isRunning) setIsDraggingCsv(true);
+  };
+
+  const handleCsvDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingCsv(false);
   };
 
   // Planned sample count calculation
@@ -786,9 +811,26 @@ export default function BatchBenchmarkEvaluation() {
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px" }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: "15px", fontWeight: 700, color: "var(--text-main)" }}>
-              Batch Benchmark Evaluation Configuration
-            </h2>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <span
+                style={{
+                  fontSize: "11px",
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                  color: "var(--accent)",
+                  background: "var(--accent-dim)",
+                  padding: "2px 8px",
+                  borderRadius: "var(--radius-sm)",
+                  border: "1px solid var(--accent-border)",
+                }}
+              >
+                Batch Evaluation
+              </span>
+              <h2 style={{ margin: 0, fontSize: "15px", fontWeight: 700, color: "var(--text-main)" }}>
+                Configure Batch Benchmark Evaluation
+              </h2>
+            </div>
             <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--text-subtle)" }}>
               Evaluate selected models across standard insurance benchmark datasets or user-uploaded test CSVs.
             </p>
@@ -852,452 +894,663 @@ export default function BatchBenchmarkEvaluation() {
                 <span>🧪 Demo Mode</span>
               </button>
             </div>
-
-            {/* Dataset Source Toggle */}
-            <div
-              style={{
-                display: "flex",
-                background: "var(--bg-surface-elevated)",
-                borderRadius: "var(--radius-sm)",
-                padding: "2px",
-                border: "1px solid var(--border-default)",
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => {
-                  if (!isRunning) setSourceType("benchmark");
-                }}
-                disabled={isRunning}
-                style={{
-                  padding: "6px 14px",
-                  borderRadius: "4px",
-                  background: sourceType === "benchmark" ? "var(--accent)" : "transparent",
-                  color: sourceType === "benchmark" ? "var(--text-inverted)" : "var(--text-muted)",
-                  fontWeight: 600,
-                  fontSize: "12px",
-                  border: "none",
-                  cursor: isRunning ? "not-allowed" : "pointer",
-                }}
-              >
-                Built-in Benchmark
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!isRunning) setSourceType("manual-csv");
-                }}
-                disabled={isRunning}
-                style={{
-                  padding: "6px 14px",
-                  borderRadius: "4px",
-                  background: sourceType === "manual-csv" ? "var(--accent)" : "transparent",
-                  color: sourceType === "manual-csv" ? "var(--text-inverted)" : "var(--text-muted)",
-                  fontWeight: 600,
-                  fontSize: "12px",
-                  border: "none",
-                  cursor: isRunning ? "not-allowed" : "pointer",
-                }}
-              >
-                Manual CSV Upload
-              </button>
-            </div>
           </div>
         </div>
 
-        {/* Insurance Plugin Selector & Sample Limit Controls */}
-        {sourceType === "benchmark" ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <InsurancePluginSelector
-              activePluginId={activePluginId}
-              onSelectPlugin={(plugin) => {
-                setActivePluginId(plugin.id);
-                setBenchmarkId(plugin.datasetIds[0]);
-              }}
-              activeDatasetId={benchmarkId}
-              onSelectDataset={(dsId) => setBenchmarkId(dsId)}
-            />
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "14px",
-                padding: "14px 16px",
-                background: "var(--bg-surface-elevated)",
-                border: "1px solid var(--border-default)",
-                borderRadius: "var(--radius-md)",
-              }}
-            >
-              <div>
-                <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "var(--text-subtle)", marginBottom: "6px" }}>
-                  Question Sample Limit
-                </label>
-                <select
-                  value={sampleLimitOption}
-                  disabled={isRunning}
-                  onChange={(e) => setSampleLimitOption(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "8px 10px",
-                    borderRadius: "var(--radius-sm)",
-                    background: "var(--bg-surface)",
-                    border: "1px solid var(--border-default)",
-                    color: "var(--text-main)",
-                    fontSize: "13px",
-                    fontWeight: 600,
-                  }}
-                >
-                  <option value="5">First 5 Questions (Quick Test)</option>
-                  <option value="10">First 10 Questions</option>
-                  <option value="20">First 20 Questions</option>
-                  <option value="50">First 50 Questions</option>
-                  <option value="complete">
-                    Complete Dataset ({totalCategoryCount || availableSamples.length} questions)
-                  </option>
-                </select>
-                <div style={{ fontSize: "11px", color: "var(--text-subtle)", marginTop: "4px" }}>
-                  Active category: <strong>{totalCategoryCount} total questions</strong> available in benchmark
-                </div>
-              </div>
-
-              <div>
-                <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "var(--text-subtle)", marginBottom: "6px" }}>
-                  Target Evaluation Metrics ({activePlugin.metrics.length})
-                </label>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                  {activePlugin.metrics.map((m) => (
-                    <span
-                      key={m.name}
-                      style={{
-                        fontSize: "11px",
-                        padding: "4px 8px",
-                        borderRadius: "var(--radius-sm)",
-                        background: "rgba(59, 130, 246, 0.08)",
-                        border: "1px solid rgba(59, 130, 246, 0.2)",
-                        color: "var(--accent)",
-                        fontWeight: 500,
-                      }}
-                      title={m.description}
-                    >
-                      {m.name}
-                    </span>
-                  ))}
-                </div>
-                <div style={{ fontSize: "10px", color: "var(--text-subtle)", marginTop: "4px" }}>
-                  Evaluated on 0–100 scale by LLM Judge
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-              <label
-                style={{
-                  padding: "8px 16px",
-                  borderRadius: "var(--radius-sm)",
-                  background: "var(--bg-surface-elevated)",
-                  border: "1px solid var(--border-default)",
-                  color: "var(--text-main)",
-                  fontSize: "12px",
-                  fontWeight: 600,
-                  cursor: isRunning ? "not-allowed" : "pointer",
-                }}
-              >
-                📁 Choose Insurance CSV File
-                <input
-                  type="file"
-                  accept=".csv,text/csv"
-                  disabled={isRunning}
-                  style={{ display: "none" }}
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) void handleCsvFileSelected(f);
-                    e.currentTarget.value = "";
-                  }}
-                />
-              </label>
-
-              {csvFile && (
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <span style={{ fontSize: "12px", color: "var(--text-main)", fontWeight: 600 }}>
-                    {csvFile.name} ({(csvFile.size / 1024).toFixed(1)} KB)
-                  </span>
-                  <span
-                    style={{
-                      fontSize: "11px",
-                      padding: "2px 8px",
-                      borderRadius: "var(--radius-sm)",
-                      background: "rgba(52, 168, 83, 0.12)",
-                      color: "var(--emerald)",
-                      border: "1px solid rgba(52, 168, 83, 0.3)",
-                    }}
-                  >
-                    {csvCases.length} parsed records
-                  </span>
+        {/* ── 2-COLUMN SIDE PANEL LAYOUT ───────────────────────────────────────── */}
+        <div className="h2h-stage1-layout" style={{ marginTop: "8px" }}>
+          {/* LEFT SIDE PANEL (~330px): Models first, then Use Cases */}
+          <aside style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            {/* Card 1: Evaluation Models Selection */}
+            <div className="h2h-sidepanel-card">
+              <div className="h2h-sidepanel-header">
+                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <span>🤖</span>
+                  <span>Models ({models.length} of 4)</span>
+                </span>
+                {models.length < 4 && !isRunning && (
                   <button
                     type="button"
-                    onClick={() => setShowMappingModal(true)}
-                    className="arena-header-btn"
+                    onClick={handleAddModel}
+                    className="h2h-add-model-btn"
+                    style={{ fontSize: "10.5px", padding: "2px 8px" }}
                   >
-                    Edit Column Mapping
+                    + Add Model
                   </button>
+                )}
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {models.map((mId, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      background: "var(--bg-surface-elevated)",
+                      borderRadius: "var(--radius-sm)",
+                      border: "1px solid var(--border-subtle)",
+                      padding: "8px 10px",
+                    }}
+                  >
+                    <ModelSelectWidget
+                      label={`Model ${String.fromCharCode(65 + idx)}`}
+                      value={mId}
+                      disabled={isRunning}
+                      onChange={(newId) => handleModelChange(idx, newId)}
+                      onRemove={models.length > 2 && !isRunning ? () => handleRemoveModel(idx) : undefined}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Card 2: Insurance Use Cases (Plugins) */}
+            <div className="h2h-sidepanel-card">
+              <div className="h2h-sidepanel-header">
+                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <span>🧩</span>
+                  <span>Use Cases</span>
+                </span>
+                <span
+                  style={{
+                    fontSize: "10.5px",
+                    fontWeight: 700,
+                    padding: "1px 7px",
+                    borderRadius: "10px",
+                    background: "rgba(66, 133, 244, 0.12)",
+                    color: "var(--accent)",
+                    border: "1px solid rgba(66, 133, 244, 0.25)",
+                  }}
+                >
+                  {INSURANCE_PLUGINS.length} Available
+                </span>
+              </div>
+
+              <InsurancePluginSelector
+                compact={true}
+                hideDetails={true}
+                hideHeader={true}
+                activePluginId={activePluginId}
+                onSelectPlugin={(plugin) => {
+                  setActivePluginId(plugin.id);
+                  setBenchmarkId(plugin.datasetIds[0]);
+                }}
+                activeDatasetId={benchmarkId}
+                onSelectDataset={(dsId) => setBenchmarkId(dsId)}
+              />
+            </div>
+          </aside>
+
+          {/* RIGHT MAIN PANEL (flex: 1) */}
+          <main style={{ display: "flex", flexDirection: "column", gap: "16px", minWidth: 0 }}>
+            {/* Source Switcher Header */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: "10px",
+                padding: "10px 14px",
+                background: "var(--bg-surface-elevated)",
+                borderRadius: "var(--radius-md)",
+                border: "1px solid var(--border-subtle)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <span
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.06em",
+                    color: "var(--text-subtle)",
+                  }}
+                >
+                  Evaluation Source:
+                </span>
+                <div
+                  style={{
+                    display: "flex",
+                    background: "var(--bg-canvas)",
+                    borderRadius: "var(--radius-sm)",
+                    padding: "2px",
+                    border: "1px solid var(--border-default)",
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!isRunning) setSourceType("benchmark");
+                    }}
+                    disabled={isRunning}
+                    style={{
+                      padding: "6px 14px",
+                      borderRadius: "4px",
+                      background: sourceType === "benchmark" ? "var(--accent)" : "transparent",
+                      color: sourceType === "benchmark" ? "var(--text-inverted)" : "var(--text-muted)",
+                      fontWeight: 600,
+                      fontSize: "12px",
+                      border: "none",
+                      cursor: isRunning ? "not-allowed" : "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      transition: "all var(--transition-fast)",
+                    }}
+                  >
+                    <span>📊</span> Built-in Benchmark
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!isRunning) setSourceType("manual-csv");
+                    }}
+                    disabled={isRunning}
+                    style={{
+                      padding: "6px 14px",
+                      borderRadius: "4px",
+                      background: sourceType === "manual-csv" ? "var(--accent)" : "transparent",
+                      color: sourceType === "manual-csv" ? "var(--text-inverted)" : "var(--text-muted)",
+                      fontWeight: 600,
+                      fontSize: "12px",
+                      border: "none",
+                      cursor: isRunning ? "not-allowed" : "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      transition: "all var(--transition-fast)",
+                    }}
+                  >
+                    <span>📁</span> Manual CSV Upload
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span
+                  style={{
+                    fontSize: "11px",
+                    padding: "3px 10px",
+                    borderRadius: "12px",
+                    background: "rgba(66, 133, 244, 0.1)",
+                    color: "var(--accent)",
+                    border: "1px solid rgba(66, 133, 244, 0.25)",
+                    fontWeight: 600,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "5px",
+                  }}
+                >
+                  <span>{activePlugin.icon}</span>
+                  <span>{activePlugin.name}</span>
+                </span>
+              </div>
+            </div>
+
+            {/* Mode Content: Built-in Benchmark */}
+            {sourceType === "benchmark" ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {/* Dataset Tabs if plugin has multiple datasets */}
+                {activePlugin.datasetIds.length > 1 && (
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      flexWrap: "wrap",
+                      padding: "8px 12px",
+                      background: "var(--bg-surface-elevated)",
+                      borderRadius: "var(--radius-sm)",
+                      border: "1px solid var(--border-subtle)",
+                    }}
+                  >
+                    <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-subtle)", textTransform: "uppercase" }}>
+                      Sub-Datasets:
+                    </span>
+                    <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                      {activePlugin.datasetIds.map((dsId) => (
+                        <button
+                          key={dsId}
+                          type="button"
+                          disabled={isRunning}
+                          onClick={() => setBenchmarkId(dsId)}
+                          style={{
+                            padding: "4px 10px",
+                            borderRadius: "var(--radius-sm)",
+                            background: benchmarkId === dsId ? "var(--accent)" : "transparent",
+                            color: benchmarkId === dsId ? "var(--text-inverted)" : "var(--text-muted)",
+                            border: benchmarkId === dsId ? "1px solid var(--accent-border)" : "1px solid var(--border-default)",
+                            fontSize: "11.5px",
+                            fontWeight: 600,
+                            cursor: isRunning ? "not-allowed" : "pointer",
+                            transition: "all var(--transition-fast)",
+                          }}
+                        >
+                          📊 {dsId}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Question Sample Limit Card */}
+                <div
+                  style={{
+                    padding: "14px 16px",
+                    background: "var(--bg-surface-elevated)",
+                    border: "1px solid var(--border-default)",
+                    borderRadius: "var(--radius-md)",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "8px",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "6px" }}>
+                    <label style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-subtle)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                      Question Sample Limit
+                    </label>
+                    <span style={{ fontSize: "11px", color: "var(--text-subtle)" }}>
+                      Active category: <strong>{totalCategoryCount} total questions</strong> available in benchmark
+                    </span>
+                  </div>
+
+                  <select
+                    value={sampleLimitOption}
+                    disabled={isRunning}
+                    onChange={(e) => setSampleLimitOption(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "8px 10px",
+                      borderRadius: "var(--radius-sm)",
+                      background: "var(--bg-surface)",
+                      border: "1px solid var(--border-default)",
+                      color: "var(--text-main)",
+                      fontSize: "13px",
+                      fontWeight: 600,
+                    }}
+                  >
+                    <option value="5">First 5 Questions (Quick Test)</option>
+                    <option value="10">First 10 Questions</option>
+                    <option value="20">First 20 Questions</option>
+                    <option value="50">First 50 Questions</option>
+                    <option value="complete">
+                      Complete Dataset ({totalCategoryCount || availableSamples.length} questions)
+                    </option>
+                  </select>
+
+                  <div style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "2px" }}>
+                    {activePlugin.sub}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* Mode Content: Manual CSV Upload */
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {/* Drag & Drop Dropzone */}
+                <div
+                  onDragOver={handleCsvDragOver}
+                  onDragLeave={handleCsvDragLeave}
+                  onDrop={handleCsvDrop}
+                  onClick={() => !isRunning && csvFileInputRef.current?.click()}
+                  style={{
+                    border: isDraggingCsv ? "2px dashed var(--accent)" : "1.5px dashed var(--border-default)",
+                    borderRadius: "var(--radius-md)",
+                    background: isDraggingCsv ? "rgba(66, 133, 244, 0.08)" : "var(--bg-canvas)",
+                    padding: "20px 24px",
+                    textAlign: "center",
+                    cursor: isRunning ? "not-allowed" : "pointer",
+                    transition: "all var(--transition-fast)",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  <input
+                    ref={csvFileInputRef}
+                    type="file"
+                    accept=".csv,text/csv"
+                    disabled={isRunning}
+                    style={{ display: "none" }}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) void handleCsvFileSelected(f);
+                      e.currentTarget.value = "";
+                    }}
+                  />
+                  <div style={{ fontSize: "28px" }}>📥</div>
+                  <div style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--text-main)" }}>
+                    Drop insurance test CSV here, or click to browse
+                  </div>
+                  <div style={{ fontSize: "11px", color: "var(--text-subtle)" }}>
+                    Supports custom insurance evaluation CSVs with auto-detection of question, context, and reference answer columns
+                  </div>
+                </div>
+
+                {/* Uploaded CSV Details & Sample Limits */}
+                {csvFile && (
+                  <div
+                    style={{
+                      padding: "12px 16px",
+                      borderRadius: "var(--radius-md)",
+                      background: "var(--bg-surface-elevated)",
+                      border: "1px solid var(--border-default)",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "10px",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--text-main)" }}>
+                          📄 {csvFile.name} ({(csvFile.size / 1024).toFixed(1)} KB)
+                        </span>
+                        <span
+                          style={{
+                            fontSize: "11px",
+                            padding: "2px 8px",
+                            borderRadius: "var(--radius-sm)",
+                            background: "rgba(52, 168, 83, 0.12)",
+                            color: "var(--emerald)",
+                            border: "1px solid rgba(52, 168, 83, 0.3)",
+                            fontWeight: 600,
+                          }}
+                        >
+                          {csvCases.length} parsed records
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setShowMappingModal(true)}
+                        className="arena-header-btn"
+                        style={{ fontSize: "11.5px", padding: "4px 10px" }}
+                      >
+                        Edit Column Mapping
+                      </button>
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "var(--text-subtle)", marginBottom: "4px" }}>
+                        CSV Record Sample Limit
+                      </label>
+                      <select
+                        value={sampleLimitOption}
+                        disabled={isRunning}
+                        onChange={(e) => setSampleLimitOption(e.target.value)}
+                        style={{
+                          width: "100%",
+                          padding: "6px 10px",
+                          borderRadius: "var(--radius-sm)",
+                          background: "var(--bg-surface)",
+                          border: "1px solid var(--border-default)",
+                          color: "var(--text-main)",
+                          fontSize: "12px",
+                          fontWeight: 600,
+                        }}
+                      >
+                        <option value="5">First 5 Records</option>
+                        <option value="10">First 10 Records</option>
+                        <option value="20">First 20 Records</option>
+                        <option value="50">First 50 Records</option>
+                        <option value="complete">Complete CSV ({csvCases.length} records)</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                {csvError && (
+                  <div style={{ padding: "8px 12px", borderRadius: "var(--radius-sm)", background: "rgba(217, 101, 112, 0.12)", border: "1px solid var(--rose)", color: "var(--rose)", fontSize: "12px" }}>
+                    {csvError}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Target Evaluation Metrics Card (Scored 0–100) */}
+            <div
+              style={{
+                background: "var(--bg-surface-elevated)",
+                border: "1px solid var(--border-subtle)",
+                borderRadius: "var(--radius-md)",
+                padding: "10px 14px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "6px" }}>
+                <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                  ⚖️ LLM Judge Target Metrics (Scored 0–100):
+                </span>
+                <span style={{ fontSize: "11px", color: "var(--text-subtle)" }}>
+                  Active Use Case: <strong>{activePlugin.name}</strong>
+                </span>
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                {activePlugin.metrics.map((metric, mIdx) => (
+                  <div
+                    key={metric.id || mIdx}
+                    title={metric.description}
+                    style={{
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      padding: "3px 9px",
+                      borderRadius: "var(--radius-sm)",
+                      background: "rgba(16, 185, 129, 0.08)",
+                      border: "1px solid rgba(16, 185, 129, 0.25)",
+                      color: "var(--emerald)",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "5px",
+                    }}
+                  >
+                    <span style={{ fontSize: "9px", opacity: 0.8 }}>M{mIdx + 1}</span>
+                    <span>{metric.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Collapsible Advanced Settings */}
+            <div style={{ borderTop: "1px solid var(--border-subtle)", paddingTop: "10px" }}>
+              <button
+                type="button"
+                onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "var(--text-muted)",
+                  fontSize: "12px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: 0,
+                }}
+              >
+                <span>{showAdvancedSettings ? "▼" : "▶"}</span>
+                <span style={{ fontWeight: 600 }}>Advanced Concurrency & Rate Limit Settings</span>
+              </button>
+
+              {showAdvancedSettings && (
+                <div
+                  style={{
+                    marginTop: "10px",
+                    padding: "12px 16px",
+                    borderRadius: "var(--radius-sm)",
+                    background: "var(--bg-surface-elevated)",
+                    border: "1px solid var(--border-subtle)",
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "14px",
+                  }}
+                >
+                  <div>
+                    <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "var(--text-subtle)", marginBottom: "4px" }}>
+                      Model Dispatch Stagger Delay (ms)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="2000"
+                      step="50"
+                      value={requestDelayMs}
+                      disabled={isRunning}
+                      onChange={(e) => setRequestDelayMs(Number(e.target.value))}
+                      style={{
+                        width: "100%",
+                        padding: "6px 10px",
+                        borderRadius: "var(--radius-sm)",
+                        background: "var(--bg-surface)",
+                        border: "1px solid var(--border-default)",
+                        color: "var(--text-main)",
+                        fontSize: "12px",
+                      }}
+                    />
+                    <div style={{ fontSize: "10.5px", color: "var(--text-subtle)", marginTop: "2px" }}>
+                      Protects against OpenRouter 429 Too Many Requests.
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "var(--text-subtle)", marginBottom: "4px" }}>
+                      Parallel Question Concurrency
+                    </label>
+                    <select
+                      value={concurrency}
+                      disabled={isRunning}
+                      onChange={(e) => setConcurrency(Number(e.target.value))}
+                      style={{
+                        width: "100%",
+                        padding: "6px 10px",
+                        borderRadius: "var(--radius-sm)",
+                        background: "var(--bg-surface)",
+                        border: "1px solid var(--border-default)",
+                        color: "var(--text-main)",
+                        fontSize: "12px",
+                      }}
+                    >
+                      <option value={1}>1 (Strict Sequential — Lowest Risk)</option>
+                      <option value={2}>2 (Bounded Concurrency — Recommended)</option>
+                    </select>
+                    <div style={{ fontSize: "10.5px", color: "var(--text-subtle)", marginTop: "2px" }}>
+                      Maintains non-blocking UI and ensures responses are recorded reliably.
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
 
-            {csvError && (
-              <div style={{ padding: "8px 12px", borderRadius: "var(--radius-sm)", background: "rgba(217, 101, 112, 0.12)", border: "1px solid var(--rose)", color: "var(--rose)", fontSize: "12px" }}>
-                {csvError}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Model Selection */}
-        <div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
-            <label style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-subtle)" }}>
-              Models in Batch Evaluation ({models.length} of 4)
-            </label>
-            {models.length < 4 && !isRunning && (
-              <button
-                type="button"
-                onClick={handleAddModel}
-                className="h2h-add-model-btn"
-              >
-                + Add Model
-              </button>
-            )}
-          </div>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: `repeat(${models.length}, 1fr)`,
-              gap: "12px",
-            }}
-          >
-            {models.map((mId, idx) => (
-              <div
-                key={idx}
-                style={{
-                  background: "var(--bg-surface-elevated)",
-                  borderRadius: "var(--radius-sm)",
-                  border: "1px solid var(--border-subtle)",
-                  padding: "8px 10px",
-                }}
-              >
-                <ModelSelectWidget
-                  label={`Model ${String.fromCharCode(65 + idx)}`}
-                  value={mId}
-                  disabled={isRunning}
-                  onChange={(newId) => handleModelChange(idx, newId)}
-                  onRemove={models.length > 2 && !isRunning ? () => handleRemoveModel(idx) : undefined}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Collapsible Advanced Settings */}
-        <div style={{ borderTop: "1px solid var(--border-subtle)", paddingTop: "10px" }}>
-          <button
-            type="button"
-            onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
-            style={{
-              background: "transparent",
-              border: "none",
-              color: "var(--text-muted)",
-              fontSize: "12px",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              padding: 0,
-            }}
-          >
-            <span>{showAdvancedSettings ? "▼" : "▶"}</span>
-            <span style={{ fontWeight: 600 }}>Advanced Concurrency & Rate Limit Settings</span>
-          </button>
-
-          {showAdvancedSettings && (
+            {/* Planned Run Summary & Launch Action Bar */}
             <div
               style={{
-                marginTop: "10px",
+                marginTop: "4px",
                 padding: "12px 16px",
-                borderRadius: "var(--radius-sm)",
+                borderRadius: "var(--radius-md)",
                 background: "var(--bg-surface-elevated)",
-                border: "1px solid var(--border-subtle)",
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "14px",
+                border: "1px solid var(--border-default)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: "12px",
               }}
             >
               <div>
-                <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "var(--text-subtle)", marginBottom: "4px" }}>
-                  Model Dispatch Stagger Delay (ms)
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="2000"
-                  step="50"
-                  value={requestDelayMs}
-                  disabled={isRunning}
-                  onChange={(e) => setRequestDelayMs(Number(e.target.value))}
-                  style={{
-                    width: "100%",
-                    padding: "6px 10px",
-                    borderRadius: "var(--radius-sm)",
-                    background: "var(--bg-surface)",
-                    border: "1px solid var(--border-default)",
-                    color: "var(--text-main)",
-                    fontSize: "12px",
-                  }}
-                />
-                <div style={{ fontSize: "10.5px", color: "var(--text-subtle)", marginTop: "2px" }}>
-                  Protects against OpenRouter 429 Too Many Requests.
+                <div style={{ fontSize: "12.5px", fontWeight: 700, color: "var(--text-main)" }}>
+                  Planned Run Scope: {plannedSampleCount} questions × {models.length} models ={" "}
+                  <span style={{ color: "var(--accent)" }}>{plannedSampleCount * models.length} total inferences</span>
+                </div>
+                <div style={{ fontSize: "11px", color: "var(--text-subtle)", marginTop: "2px" }}>
+                  Target: {sourceType === "benchmark" ? benchmarkId : csvFile?.name || "Manual CSV"} · Concurrency: {concurrency} · Reference answers hidden from model prompts.
                 </div>
               </div>
 
-              <div>
-                <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "var(--text-subtle)", marginBottom: "4px" }}>
-                  Parallel Question Concurrency
-                </label>
-                <select
-                  value={concurrency}
-                  disabled={isRunning}
-                  onChange={(e) => setConcurrency(Number(e.target.value))}
+              <div style={{ display: "flex", gap: "10px" }}>
+                {isRunning ? (
+                  <button
+                    type="button"
+                    onClick={handleCancelBatch}
+                    style={{
+                      padding: "8px 18px",
+                      borderRadius: "var(--radius-sm)",
+                      background: "rgba(217, 101, 112, 0.15)",
+                      border: "1px solid var(--rose)",
+                      color: "var(--rose)",
+                      fontWeight: 700,
+                      fontSize: "13px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    ⏹ Cancel Batch
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleRunBatch()}
+                    disabled={plannedSampleCount === 0 || isRunning}
+                    style={{
+                      padding: "8px 24px",
+                      borderRadius: "var(--radius-sm)",
+                      background: plannedSampleCount > 0
+                        ? isSimulationMode ? "var(--emerald)" : "var(--accent)"
+                        : "var(--bg-surface)",
+                      border: "1px solid var(--accent-border)",
+                      color: plannedSampleCount > 0 ? "#ffffff" : "var(--text-subtle)",
+                      fontWeight: 700,
+                      fontSize: "13px",
+                      cursor: plannedSampleCount > 0 ? "pointer" : "not-allowed",
+                      boxShadow: "0 2px 8px rgba(66, 133, 244, 0.25)",
+                    }}
+                  >
+                    {isSimulationMode ? "🧪 Run Demo Benchmark" : "▶ Run Batch Evaluation"}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Live Progress Bar during active run */}
+            {isRunning && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "var(--text-main)" }}>
+                  <span>
+                    Running question {progressCount + 1} of {totalPlannedCount}…{" "}
+                    <strong style={{ color: "var(--accent)" }}>[{activeRunningSampleId}]</strong>
+                  </span>
+                  <span>
+                    {Math.round((progressCount / Math.max(1, totalPlannedCount)) * 100)}%
+                  </span>
+                </div>
+                <div
                   style={{
                     width: "100%",
-                    padding: "6px 10px",
-                    borderRadius: "var(--radius-sm)",
-                    background: "var(--bg-surface)",
-                    border: "1px solid var(--border-default)",
-                    color: "var(--text-main)",
-                    fontSize: "12px",
+                    height: "6px",
+                    background: "var(--bg-canvas)",
+                    borderRadius: "3px",
+                    overflow: "hidden",
+                    border: "1px solid var(--border-subtle)",
                   }}
                 >
-                  <option value={1}>1 (Strict Sequential — Lowest Risk)</option>
-                  <option value={2}>2 (Bounded Concurrency — Recommended)</option>
-                </select>
-                <div style={{ fontSize: "10.5px", color: "var(--text-subtle)", marginTop: "2px" }}>
-                  Maintains non-blocking UI and ensures responses are recorded reliably.
+                  <div
+                    style={{
+                      height: "100%",
+                      width: `${(progressCount / Math.max(1, totalPlannedCount)) * 100}%`,
+                      background: "var(--accent)",
+                      transition: "width 0.3s ease",
+                    }}
+                  />
                 </div>
               </div>
-            </div>
-          )}
-        </div>
-
-        {/* Planned Run Summary & Launch Action */}
-        <div
-          style={{
-            marginTop: "6px",
-            padding: "12px 16px",
-            borderRadius: "var(--radius-md)",
-            background: "var(--bg-surface-elevated)",
-            border: "1px solid var(--border-default)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            gap: "12px",
-          }}
-        >
-          <div>
-            <div style={{ fontSize: "12.5px", fontWeight: 700, color: "var(--text-main)" }}>
-              Planned Run Scope: {plannedSampleCount} questions × {models.length} models ={" "}
-              <span style={{ color: "var(--accent)" }}>{plannedSampleCount * models.length} total inferences</span>
-            </div>
-            <div style={{ fontSize: "11px", color: "var(--text-subtle)", marginTop: "2px" }}>
-              Target: {sourceType === "benchmark" ? benchmarkId : csvFile?.name || "Manual CSV"} · Concurrency: {concurrency} · Reference answers hidden from model prompts.
-            </div>
-          </div>
-
-          <div style={{ display: "flex", gap: "10px" }}>
-            {isRunning ? (
-              <button
-                type="button"
-                onClick={handleCancelBatch}
-                style={{
-                  padding: "8px 18px",
-                  borderRadius: "var(--radius-sm)",
-                  background: "rgba(217, 101, 112, 0.15)",
-                  border: "1px solid var(--rose)",
-                  color: "var(--rose)",
-                  fontWeight: 700,
-                  fontSize: "13px",
-                  cursor: "pointer",
-                }}
-              >
-                ⏹ Cancel Batch
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => handleRunBatch()}
-                disabled={plannedSampleCount === 0 || isRunning}
-                style={{
-                  padding: "8px 24px",
-                  borderRadius: "var(--radius-sm)",
-                  background: plannedSampleCount > 0
-                    ? isSimulationMode ? "var(--emerald)" : "var(--accent)"
-                    : "var(--bg-surface)",
-                  border: "1px solid var(--accent-border)",
-                  color: plannedSampleCount > 0 ? "#ffffff" : "var(--text-subtle)",
-                  fontWeight: 700,
-                  fontSize: "13px",
-                  cursor: plannedSampleCount > 0 ? "pointer" : "not-allowed",
-                  boxShadow: "0 2px 8px rgba(66, 133, 244, 0.25)",
-                }}
-              >
-                {isSimulationMode ? "🧪 Run Demo Benchmark" : "▶ Run Batch Evaluation"}
-              </button>
             )}
-          </div>
+
+            {batchError && (
+              <div style={{ padding: "8px 12px", borderRadius: "var(--radius-sm)", background: "rgba(217, 101, 112, 0.12)", border: "1px solid var(--rose)", color: "var(--rose)", fontSize: "12px" }}>
+                {batchError}
+              </div>
+            )}
+          </main>
         </div>
-
-        {/* Live Progress Bar during active run */}
-        {isRunning && (
-          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "var(--text-main)" }}>
-              <span>
-                Running question {progressCount + 1} of {totalPlannedCount}…{" "}
-                <strong style={{ color: "var(--accent)" }}>[{activeRunningSampleId}]</strong>
-              </span>
-              <span>
-                {Math.round((progressCount / Math.max(1, totalPlannedCount)) * 100)}%
-              </span>
-            </div>
-            <div
-              style={{
-                width: "100%",
-                height: "6px",
-                background: "var(--bg-canvas)",
-                borderRadius: "3px",
-                overflow: "hidden",
-                border: "1px solid var(--border-subtle)",
-              }}
-            >
-              <div
-                style={{
-                  height: "100%",
-                  width: `${(progressCount / Math.max(1, totalPlannedCount)) * 100}%`,
-                  background: "var(--accent)",
-                  transition: "width 0.3s ease",
-                }}
-              />
-            </div>
-          </div>
-        )}
-
-        {batchError && (
-          <div style={{ padding: "8px 12px", borderRadius: "var(--radius-sm)", background: "rgba(217, 101, 112, 0.12)", border: "1px solid var(--rose)", color: "var(--rose)", fontSize: "12px" }}>
-            {batchError}
-          </div>
-        )}
       </section>
 
       {/* ── UPSTREAM API ERROR BANNER ────────────────────────────────────────── */}
