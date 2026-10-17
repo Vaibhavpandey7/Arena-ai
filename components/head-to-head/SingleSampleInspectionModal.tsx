@@ -25,6 +25,9 @@ interface Props {
   correctAnswer?: string;
   scoringPolicy?: ReferenceScoringPolicy;
   modelResults: InspectedModelResult[];
+  pluginId?: string;
+  pluginName?: string;
+  metrics?: string[];
 }
 
 export default function SingleSampleInspectionModal({
@@ -37,6 +40,9 @@ export default function SingleSampleInspectionModal({
   correctAnswer,
   scoringPolicy,
   modelResults,
+  pluginId,
+  pluginName,
+  metrics = [],
 }: Props) {
   const [judgeAuditResults, setJudgeAuditResults] = useState<Record<string, any>>({});
   const [isJudging, setIsJudging] = useState<Record<string, boolean>>({});
@@ -53,6 +59,9 @@ export default function SingleSampleInspectionModal({
           options,
           modelAnswer,
           modelId,
+          pluginId,
+          pluginName,
+          metrics,
         }),
       });
       const data = await res.json();
@@ -410,8 +419,8 @@ export default function SingleSampleInspectionModal({
                           <div
                             style={{
                               marginTop: "6px",
-                              padding: "6px 8px",
-                              borderRadius: "4px",
+                              padding: "8px 10px",
+                              borderRadius: "6px",
                               background: "var(--bg-surface)",
                               border: "1px solid var(--border-default)",
                             }}
@@ -421,23 +430,111 @@ export default function SingleSampleInspectionModal({
                                 {judgeAuditResults[m.modelId].error}
                               </div>
                             ) : (
-                              <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                              <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                                   <span
                                     style={{
                                       fontWeight: 700,
+                                      fontSize: "11px",
                                       color: judgeAuditResults[m.modelId].isCorrect ? "var(--emerald)" : "var(--rose)",
                                     }}
                                   >
-                                    {judgeAuditResults[m.modelId].isCorrect ? "✓ Ground Truth Aligned" : "✗ Reasoning Flaw Detected"}
+                                    {judgeAuditResults[m.modelId].isCorrect ? "✓ Ground Truth Aligned" : "✗ Reasoning Divergence"}
                                   </span>
-                                  <span style={{ color: "#38bdf8", fontWeight: 700 }}>
-                                    Score: {judgeAuditResults[m.modelId].reasoningScore}/5
+                                  <span
+                                    style={{
+                                      color:
+                                        (judgeAuditResults[m.modelId].scoreOutOf100 ?? 0) >= 80
+                                          ? "var(--emerald)"
+                                          : (judgeAuditResults[m.modelId].scoreOutOf100 ?? 0) >= 60
+                                          ? "var(--amber)"
+                                          : "var(--rose)",
+                                      fontWeight: 800,
+                                      fontSize: "11px",
+                                      background: "var(--bg-elevated)",
+                                      padding: "1px 6px",
+                                      borderRadius: "4px",
+                                      border: "1px solid var(--border-subtle)",
+                                    }}
+                                  >
+                                    Score: {judgeAuditResults[m.modelId].scoreOutOf100 ?? Math.round((judgeAuditResults[m.modelId].reasoningScore || 0) * 20)}/100
                                   </span>
                                 </div>
-                                <div style={{ color: "var(--text-muted)", fontSize: "10px", marginTop: "2px" }}>
+                                <div style={{ color: "var(--text-muted)", fontSize: "10px", lineHeight: 1.4 }}>
                                   {judgeAuditResults[m.modelId].rationale}
                                 </div>
+
+                                {judgeAuditResults[m.modelId].metricScores &&
+                                  Object.keys(judgeAuditResults[m.modelId].metricScores).length > 0 && (
+                                    <div
+                                      style={{
+                                        marginTop: "4px",
+                                        paddingTop: "6px",
+                                        borderTop: "1px dashed var(--border-subtle)",
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        gap: "4px",
+                                      }}
+                                    >
+                                      <div
+                                        style={{
+                                          fontSize: "9px",
+                                          textTransform: "uppercase",
+                                          letterSpacing: "0.05em",
+                                          color: "var(--text-muted)",
+                                          fontWeight: 700,
+                                          display: "flex",
+                                          justifyContent: "space-between",
+                                        }}
+                                      >
+                                        <span>Insurance Metric Breakdown</span>
+                                        <span>(Scale 0–100)</span>
+                                      </div>
+                                      {Object.entries(judgeAuditResults[m.modelId].metricScores).map(
+                                        ([metName, metScore]: [string, any]) => {
+                                          const num = typeof metScore === "number" ? metScore : 0;
+                                          const barColor =
+                                            num >= 80 ? "var(--emerald)" : num >= 60 ? "var(--amber)" : "var(--rose)";
+                                          return (
+                                            <div
+                                              key={metName}
+                                              style={{ display: "flex", flexDirection: "column", gap: "2px" }}
+                                            >
+                                              <div
+                                                style={{
+                                                  display: "flex",
+                                                  justifyContent: "space-between",
+                                                  fontSize: "9.5px",
+                                                }}
+                                              >
+                                                <span style={{ color: "var(--text-secondary)" }}>{metName}</span>
+                                                <span style={{ fontWeight: 700, color: barColor }}>{num}/100</span>
+                                              </div>
+                                              <div
+                                                style={{
+                                                  height: "4px",
+                                                  width: "100%",
+                                                  background: "var(--bg-card)",
+                                                  borderRadius: "2px",
+                                                  overflow: "hidden",
+                                                }}
+                                              >
+                                                <div
+                                                  style={{
+                                                    width: `${Math.min(100, Math.max(0, num))}%`,
+                                                    height: "100%",
+                                                    background: barColor,
+                                                    borderRadius: "2px",
+                                                    transition: "width 0.3s ease",
+                                                  }}
+                                                />
+                                              </div>
+                                            </div>
+                                          );
+                                        }
+                                      )}
+                                    </div>
+                                  )}
                               </div>
                             )}
                           </div>

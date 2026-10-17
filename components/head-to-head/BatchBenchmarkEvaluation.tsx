@@ -27,6 +27,13 @@ import RadarComparisonChart from "./RadarComparisonChart";
 import TokenSpeedComparisonPanel from "./TokenSpeedComparisonPanel";
 import { simulateBenchmarkResponse } from "@/lib/benchmark-simulator";
 import { mapBenchmarkIdToRadarCategory } from "@/lib/insurance-radar-taxonomy";
+import InsurancePluginSelector from "./InsurancePluginSelector";
+import {
+  INSURANCE_PLUGINS,
+  type InsurancePluginId,
+  type InsurancePluginDefinition,
+  getInsurancePluginsForDataset,
+} from "@/lib/insurance-plugins";
 
 export interface BatchModelResult {
   modelId: string;
@@ -65,6 +72,11 @@ export default function BatchBenchmarkEvaluation() {
     "nvidia/nemotron-3.5-lightning:free",
     "openrouter/free",
   ]);
+
+  // Insurance Plugin State
+  const initialPlugin = getInsurancePluginsForDataset("accuracy-rigor")[0] || INSURANCE_PLUGINS[0];
+  const [activePluginId, setActivePluginId] = useState<InsurancePluginId>(initialPlugin.id);
+  const activePlugin = INSURANCE_PLUGINS.find((p) => p.id === activePluginId) || INSURANCE_PLUGINS[0];
 
   // Benchmark Config
   const [benchmarkId, setBenchmarkId] = useState<InsuranceBenchmarkId>("accuracy-rigor");
@@ -207,13 +219,14 @@ export default function BatchBenchmarkEvaluation() {
 
   // Planned sample count calculation
   const plannedSampleCount = useMemo(() => {
+    const isComplete = sampleLimitOption === "all" || sampleLimitOption === "complete";
     if (sourceType === "benchmark") {
-      if (sampleLimitOption === "all") return totalCategoryCount || availableSamples.length;
+      if (isComplete) return totalCategoryCount || availableSamples.length;
       const num = Number(sampleLimitOption);
       return Math.min(num, totalCategoryCount || availableSamples.length);
     } else {
       const validCases = csvCases.filter((c) => c.errors.length === 0);
-      if (sampleLimitOption === "all") return validCases.length;
+      if (isComplete) return validCases.length;
       const num = Number(sampleLimitOption);
       return Math.min(num, validCases.length);
     }
@@ -400,7 +413,7 @@ export default function BatchBenchmarkEvaluation() {
     try {
       if (sourceType === "benchmark") {
         // Fetch requested sample records from benchmark API
-        const limit = sampleLimitOption === "all" ? 50 : Number(sampleLimitOption);
+        const isComplete = sampleLimitOption === "all" || sampleLimitOption === "complete";
         const query = new URLSearchParams({
           benchmarkId,
           idsOnly: "true",
@@ -409,6 +422,7 @@ export default function BatchBenchmarkEvaluation() {
         const idsBody = await idsRes.json();
         if (!idsRes.ok) throw new Error(idsBody.error || "Failed to fetch benchmark sample IDs");
 
+        const limit = isComplete ? idsBody.ids.length : Number(sampleLimitOption);
         const sampleIds: string[] = idsBody.ids.slice(0, limit);
         const fullRes = await fetch("/api/insurance-benchmarks", {
           method: "POST",
@@ -441,7 +455,8 @@ export default function BatchBenchmarkEvaluation() {
       } else {
         // Manual CSV cases
         const validCases = csvCases.filter((c) => c.errors.length === 0);
-        const limit = sampleLimitOption === "all" ? validCases.length : Number(sampleLimitOption);
+        const isComplete = sampleLimitOption === "all" || sampleLimitOption === "complete";
+        const limit = isComplete ? validCases.length : Number(sampleLimitOption);
         targetCases = validCases.slice(0, limit).map((c) => ({
           id: c.id,
           category: "Ad-hoc Manual CSV",
@@ -890,65 +905,88 @@ export default function BatchBenchmarkEvaluation() {
           </div>
         </div>
 
-        {/* Dataset Selection Controls */}
+        {/* Insurance Plugin Selector & Sample Limit Controls */}
         {sourceType === "benchmark" ? (
-          <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: "14px" }}>
-            <div>
-              <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "var(--text-subtle)", marginBottom: "4px" }}>
-                Benchmark Dataset Category
-              </label>
-              <select
-                value={benchmarkId}
-                disabled={isRunning}
-                onChange={(e) => setBenchmarkId(e.target.value as InsuranceBenchmarkId)}
-                style={{
-                  width: "100%",
-                  padding: "8px 10px",
-                  borderRadius: "var(--radius-sm)",
-                  background: "var(--bg-surface-elevated)",
-                  border: "1px solid var(--border-default)",
-                  color: "var(--text-main)",
-                  fontSize: "13px",
-                  fontWeight: 600,
-                }}
-              >
-                {INSURANCE_BENCHMARKS.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name} ({b.fileName})
-                  </option>
-                ))}
-              </select>
-              <div style={{ fontSize: "11px", color: "var(--text-subtle)", marginTop: "4px" }}>
-                {INSURANCE_BENCHMARKS.find((b) => b.id === benchmarkId)?.description} ·{" "}
-                <strong>{totalCategoryCount} total questions available</strong>
-              </div>
-            </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <InsurancePluginSelector
+              activePluginId={activePluginId}
+              onSelectPlugin={(plugin) => {
+                setActivePluginId(plugin.id);
+                setBenchmarkId(plugin.datasetIds[0]);
+              }}
+              activeDatasetId={benchmarkId}
+              onSelectDataset={(dsId) => setBenchmarkId(dsId)}
+            />
 
-            <div>
-              <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "var(--text-subtle)", marginBottom: "4px" }}>
-                Question Sample Limit
-              </label>
-              <select
-                value={sampleLimitOption}
-                disabled={isRunning}
-                onChange={(e) => setSampleLimitOption(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "8px 10px",
-                  borderRadius: "var(--radius-sm)",
-                  background: "var(--bg-surface-elevated)",
-                  border: "1px solid var(--border-default)",
-                  color: "var(--text-main)",
-                  fontSize: "13px",
-                }}
-              >
-                <option value="5">First 5 Questions (Quick Test)</option>
-                <option value="10">First 10 Questions</option>
-                <option value="20">First 20 Questions</option>
-                <option value="50">Full Group Subset (Up to 50 Questions)</option>
-              </select>
-              <div style={{ fontSize: "11px", color: "var(--text-subtle)", marginTop: "4px" }}>
-                Bounded execution ensures predictable API credit consumption.
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "14px",
+                padding: "14px 16px",
+                background: "var(--bg-surface-elevated)",
+                border: "1px solid var(--border-default)",
+                borderRadius: "var(--radius-md)",
+              }}
+            >
+              <div>
+                <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "var(--text-subtle)", marginBottom: "6px" }}>
+                  Question Sample Limit
+                </label>
+                <select
+                  value={sampleLimitOption}
+                  disabled={isRunning}
+                  onChange={(e) => setSampleLimitOption(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "8px 10px",
+                    borderRadius: "var(--radius-sm)",
+                    background: "var(--bg-surface)",
+                    border: "1px solid var(--border-default)",
+                    color: "var(--text-main)",
+                    fontSize: "13px",
+                    fontWeight: 600,
+                  }}
+                >
+                  <option value="5">First 5 Questions (Quick Test)</option>
+                  <option value="10">First 10 Questions</option>
+                  <option value="20">First 20 Questions</option>
+                  <option value="50">First 50 Questions</option>
+                  <option value="complete">
+                    Complete Dataset ({totalCategoryCount || availableSamples.length} questions)
+                  </option>
+                </select>
+                <div style={{ fontSize: "11px", color: "var(--text-subtle)", marginTop: "4px" }}>
+                  Active category: <strong>{totalCategoryCount} total questions</strong> available in benchmark
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "var(--text-subtle)", marginBottom: "6px" }}>
+                  Target Evaluation Metrics ({activePlugin.metrics.length})
+                </label>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                  {activePlugin.metrics.map((m) => (
+                    <span
+                      key={m.name}
+                      style={{
+                        fontSize: "11px",
+                        padding: "4px 8px",
+                        borderRadius: "var(--radius-sm)",
+                        background: "rgba(59, 130, 246, 0.08)",
+                        border: "1px solid rgba(59, 130, 246, 0.2)",
+                        color: "var(--accent)",
+                        fontWeight: 500,
+                      }}
+                      title={m.description}
+                    >
+                      {m.name}
+                    </span>
+                  ))}
+                </div>
+                <div style={{ fontSize: "10px", color: "var(--text-subtle)", marginTop: "4px" }}>
+                  Evaluated on 0–100 scale by LLM Judge
+                </div>
               </div>
             </div>
           </div>
@@ -1789,6 +1827,9 @@ export default function BatchBenchmarkEvaluation() {
           correctAnswer={inspectedSample.correctAnswer}
           scoringPolicy={inspectedSample.scoringPolicy}
           modelResults={inspectedSample.modelStates}
+          pluginId={activePlugin.id}
+          pluginName={activePlugin.name}
+          metrics={activePlugin.metrics.map((m) => m.name)}
         />
       )}
     </div>

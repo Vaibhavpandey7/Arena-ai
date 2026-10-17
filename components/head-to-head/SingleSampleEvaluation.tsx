@@ -24,6 +24,13 @@ import {
   type InsuranceUseCaseId,
 } from "@/lib/use-case-metrics";
 import { BENCHMARK_GOLD_REGISTRY } from "@/lib/benchmark-gold-data";
+import InsurancePluginSelector from "./InsurancePluginSelector";
+import {
+  INSURANCE_PLUGINS,
+  type InsurancePluginId,
+  type InsurancePluginDefinition,
+  getInsurancePluginsForDataset,
+} from "@/lib/insurance-plugins";
 
 export interface SingleModelState {
   answer: string;
@@ -97,6 +104,11 @@ export default function SingleSampleEvaluation({
   initialSampleId,
   onClearInitialNavigation,
 }: Props) {
+  // Insurance Plugin State
+  const initialPlugin = getInsurancePluginsForDataset(initialBenchmarkId)[0] || INSURANCE_PLUGINS[0];
+  const [activePluginId, setActivePluginId] = useState<InsurancePluginId>(initialPlugin.id);
+  const activePlugin = INSURANCE_PLUGINS.find((p) => p.id === activePluginId) || INSURANCE_PLUGINS[0];
+
   // Source: Benchmark Dataset or Manual Question
   const [source, setSource] = useState<"benchmark" | "manual">("benchmark");
 
@@ -148,12 +160,13 @@ export default function SingleSampleEvaluation({
   const [activeUseCase, setActiveUseCase] = useState<InsuranceUseCaseId>("data-extraction");
   const [manualPrompt, setManualPrompt] = useState(initialPrompt || "");
 
-  // Optional Context Documents (Multiple upload support)
+  // Optional Context Documents (Multiple upload & drag-drop support)
   const [attachedDocs, setAttachedDocs] = useState<ParsedDocument[]>([]);
   const [previewDoc, setPreviewDoc] = useState<ParsedDocument | null>(null);
   const [showDocPreview, setShowDocPreview] = useState(false);
   const [isUploadingDoc, setIsUploadingDoc] = useState(false);
   const [docUploadError, setDocUploadError] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const [showComparisonModal, setShowComparisonModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -173,6 +186,9 @@ export default function SingleSampleEvaluation({
           options: currentOptions,
           modelAnswer,
           modelId,
+          pluginId: activePlugin.id,
+          pluginName: activePlugin.name,
+          metrics: activePlugin.metrics.map((m) => m.name),
         }),
       });
       const data = await res.json();
@@ -188,8 +204,7 @@ export default function SingleSampleEvaluation({
     }
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
+  const uploadFileList = async (files: FileList | File[]) => {
     if (!files || files.length === 0) return;
     setIsUploadingDoc(true);
     setDocUploadError(null);
@@ -225,6 +240,30 @@ export default function SingleSampleEvaluation({
       setIsUploadingDoc(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      await uploadFileList(e.target.files);
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      await uploadFileList(e.dataTransfer.files);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
   };
 
   // Expanded reasoning traces
@@ -1065,12 +1104,56 @@ export default function SingleSampleEvaluation({
               >
                 ▲ Collapse Config
               </button>
+            </div>
+          </div>
 
-              {/* Source Toggle */}
+          {/* Insurance Use-Case Plugins Selector */}
+          <InsurancePluginSelector
+            activePluginId={activePluginId}
+            onSelectPlugin={(plugin) => {
+              setActivePluginId(plugin.id);
+              setBenchmarkId(plugin.datasetIds[0]);
+              setSelectedSampleIndex(0);
+              handleReset();
+            }}
+            activeDatasetId={benchmarkId}
+            onSelectDataset={(dsId) => {
+              setBenchmarkId(dsId);
+              setSelectedSampleIndex(0);
+              handleReset();
+            }}
+          />
+
+          {/* Dual Input Source Switch (Dataset Example vs Document Attachment) */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              flexWrap: "wrap",
+              gap: "10px",
+              padding: "10px 14px",
+              background: "var(--bg-surface-elevated)",
+              borderRadius: "var(--radius-md)",
+              border: "1px solid var(--border-subtle)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <span
+                style={{
+                  fontSize: "11px",
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.06em",
+                  color: "var(--text-subtle)",
+                }}
+              >
+                Evaluation Input Mode:
+              </span>
               <div
                 style={{
                   display: "flex",
-                  background: "var(--bg-surface-elevated)",
+                  background: "var(--bg-canvas)",
                   borderRadius: "var(--radius-sm)",
                   padding: "2px",
                   border: "1px solid var(--border-default)",
@@ -1079,93 +1162,73 @@ export default function SingleSampleEvaluation({
                 <button
                   type="button"
                   onClick={() => {
-                if (!isAnyRunning) {
-                  setSource("benchmark");
-                  handleReset();
-                }
-              }}
-              disabled={isAnyRunning}
-              style={{
-                padding: "6px 14px",
-                borderRadius: "4px",
-                background: source === "benchmark" ? "var(--accent)" : "transparent",
-                color: source === "benchmark" ? "var(--text-inverted)" : "var(--text-muted)",
-                fontWeight: 600,
-                fontSize: "12px",
-                border: "none",
-                cursor: isAnyRunning ? "not-allowed" : "pointer",
-                transition: "all var(--transition-fast)",
-              }}
-            >
-              Benchmark Dataset
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                if (!isAnyRunning) {
-                  setSource("manual");
-                  handleReset();
-                }
-              }}
-              disabled={isAnyRunning}
-              style={{
-                padding: "6px 14px",
-                borderRadius: "4px",
-                background: source === "manual" ? "var(--accent)" : "transparent",
-                color: source === "manual" ? "var(--text-inverted)" : "var(--text-muted)",
-                fontWeight: 600,
-                fontSize: "12px",
-                border: "none",
-                cursor: isAnyRunning ? "not-allowed" : "pointer",
-                transition: "all var(--transition-fast)",
-              }}
-            >
-              Manual Testing
-            </button>
-          </div>
-        </div>
-      </div>
-
-        {/* Source-specific config */}
-        {source === "benchmark" ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            {/* Category Selector */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "12px" }}>
-              <div>
-                <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "var(--text-subtle)", marginBottom: "4px" }}>
-                  Insurance Category
-                </label>
-                <select
-                  value={benchmarkId}
-                  disabled={isAnyRunning}
-                  onChange={(e) => {
-                    setBenchmarkId(e.target.value as InsuranceBenchmarkId);
-                    setSelectedSampleIndex(0);
-                    handleReset();
+                    if (!isAnyRunning) {
+                      setSource("benchmark");
+                      handleReset();
+                    }
                   }}
+                  disabled={isAnyRunning}
                   style={{
-                    width: "100%",
-                    padding: "8px 10px",
-                    borderRadius: "var(--radius-sm)",
-                    background: "var(--bg-surface-elevated)",
-                    border: "1px solid var(--border-default)",
-                    color: "var(--text-main)",
-                    fontSize: "12.5px",
+                    padding: "6px 14px",
+                    borderRadius: "4px",
+                    background: source === "benchmark" ? "var(--accent)" : "transparent",
+                    color: source === "benchmark" ? "var(--text-inverted)" : "var(--text-muted)",
                     fontWeight: 600,
+                    fontSize: "12px",
+                    border: "none",
+                    cursor: isAnyRunning ? "not-allowed" : "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    transition: "all var(--transition-fast)",
                   }}
                 >
-                  {INSURANCE_BENCHMARKS.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.name}
-                    </option>
-                  ))}
-                </select>
+                  <span>📊</span> Example from Dataset
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!isAnyRunning) {
+                      setSource("manual");
+                      handleReset();
+                    }
+                  }}
+                  disabled={isAnyRunning}
+                  style={{
+                    padding: "6px 14px",
+                    borderRadius: "4px",
+                    background: source === "manual" ? "var(--accent)" : "transparent",
+                    color: source === "manual" ? "var(--text-inverted)" : "var(--text-muted)",
+                    fontWeight: 600,
+                    fontSize: "12px",
+                    border: "none",
+                    cursor: isAnyRunning ? "not-allowed" : "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    transition: "all var(--transition-fast)",
+                  }}
+                >
+                  <span>📎</span> Attach Document / Custom Prompt
+                </button>
               </div>
+            </div>
 
-              {/* Sample Selector */}
-              <div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
-                  <label style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-subtle)" }}>
+            <div style={{ fontSize: "11px", color: "var(--text-subtle)", display: "flex", alignItems: "center", gap: "6px" }}>
+              {source === "benchmark" ? (
+                <span>Plugin: <strong>{activePlugin.name}</strong> · Mapped Benchmark CSV</span>
+              ) : (
+                <span>Supports PDF, DOCX, CSV, TXT & Images with Multi-File Upload</span>
+              )}
+            </div>
+          </div>
+
+          {/* Mode 1: Benchmark Dataset Samples */}
+          {source === "benchmark" ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <label style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-subtle)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                     Selected Question Sample ({samples.length > 0 ? `${selectedSampleIndex + 1} of ${samples.length}` : "Loading..."})
                   </label>
                   <div style={{ display: "flex", gap: "6px" }}>
@@ -1206,140 +1269,188 @@ export default function SingleSampleEvaluation({
                   </div>
                 </div>
 
-                <select
-                  value={selectedSampleIndex}
-                  disabled={isAnyRunning || isLoadingSamples}
-                  onChange={(e) => setSelectedSampleIndex(Number(e.target.value))}
-                  style={{
-                    width: "100%",
-                    padding: "8px 10px",
-                    borderRadius: "var(--radius-sm)",
-                    background: "var(--bg-surface-elevated)",
-                    border: "1px solid var(--border-default)",
-                    color: "var(--text-main)",
-                    fontSize: "12px",
-                    fontFamily: "var(--font-mono)",
-                  }}
-                >
-                  {samples.map((s, idx) => (
-                    <option key={s.id} value={idx}>
-                      [{s.id}] {s.preview}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Question Display Card */}
-            {currentBenchmarkRecord && (
-              <div
-                style={{
-                  background: "var(--bg-canvas)",
-                  border: "1px solid var(--border-subtle)",
-                  borderRadius: "var(--radius-md)",
-                  padding: "12px 16px",
-                  fontSize: "13px",
-                  lineHeight: 1.6,
-                  color: "var(--text-main)",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
-                  <span style={{ fontSize: "10.5px", fontFamily: "var(--font-mono)", color: "var(--accent)", fontWeight: 700 }}>
-                    QUESTION PROMPT · {currentBenchmarkRecord.id}
-                  </span>
-                  <span style={{ fontSize: "11px", color: "var(--text-subtle)" }}>
-                    Source Row: {currentBenchmarkRecord.sourceRowNumber}
-                  </span>
-                </div>
-                <div style={{ whiteSpace: "pre-wrap" }}>
-                  {currentBenchmarkRecord.fullQuestion}
-                </div>
-
-                {Object.keys(currentBenchmarkRecord.options).length > 0 && (
-                  <div
-                    style={{
-                      marginTop: "10px",
-                      paddingTop: "10px",
-                      borderTop: "1px solid var(--border-subtle)",
-                      display: "grid",
-                      gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-                      gap: "6px",
-                    }}
-                  >
-                    {Object.entries(currentBenchmarkRecord.options).map(([letter, text]) => (
-                      <div key={letter} style={{ fontSize: "12px", color: "var(--text-muted)" }}>
-                        <strong style={{ color: "var(--accent)" }}>{letter}:</strong> {text}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            {/* Manual Use Case Tabs with Inline Document Attachment */}
-            <div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px", marginBottom: "6px" }}>
-                <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "var(--text-subtle)" }}>
-                  Insurance Use Case Template
-                </label>
-
-                {/* Inline Document Attachment Action */}
+                {/* Inline attachment option in benchmark mode */}
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isAnyRunning || isUploadingDoc}
                     className="arena-header-btn"
-                    style={{ fontSize: "11.5px", padding: "4px 10px", display: "inline-flex", alignItems: "center", gap: "5px" }}
-                    title="Attach multiple insurance policy PDFs, contract wordings, or regulatory schedules"
+                    style={{ fontSize: "11px", padding: "3px 8px", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                    title="Optionally attach insurance policy files to augment this sample"
                   >
                     <span>📎</span>
-                    <span>{isUploadingDoc ? "Parsing…" : attachedDocs.length > 0 ? `Attach More Docs (${attachedDocs.length})` : "Attach Documents"}</span>
+                    <span>{isUploadingDoc ? "Parsing…" : attachedDocs.length > 0 ? `Docs Attached (${attachedDocs.length})` : "Attach Policy Document (Optional)"}</span>
                   </button>
                   <input
                     ref={fileInputRef}
                     type="file"
                     multiple
-                    accept=".pdf,.txt,image/*,.json,.csv,.md"
+                    accept=".pdf,.docx,.doc,.csv,.txt,.json,.md,.png,.jpg,.jpeg,.webp"
                     style={{ display: "none" }}
                     onChange={handleFileChange}
                   />
                 </div>
               </div>
 
-              {/* Template Pills */}
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                {USE_CASES_LIST.map((uc) => (
-                  <button
-                    key={uc.id}
-                    type="button"
-                    onClick={() => {
-                      setActiveUseCase(uc.id);
-                      setManualPrompt(uc.samplePrompt);
-                    }}
-                    style={{
-                      padding: "5px 10px",
-                      borderRadius: "var(--radius-sm)",
-                      fontSize: "11.5px",
-                      fontWeight: 600,
-                      background: activeUseCase === uc.id ? "var(--accent-dim)" : "var(--bg-surface-elevated)",
-                      border: `1px solid ${activeUseCase === uc.id ? "var(--accent-border)" : "var(--border-subtle)"}`,
-                      color: activeUseCase === uc.id ? "var(--accent)" : "var(--text-muted)",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {uc.label}
-                  </button>
+              {/* Sample Selector Dropdown */}
+              <select
+                value={selectedSampleIndex}
+                disabled={isAnyRunning || isLoadingSamples}
+                onChange={(e) => setSelectedSampleIndex(Number(e.target.value))}
+                style={{
+                  width: "100%",
+                  padding: "8px 10px",
+                  borderRadius: "var(--radius-sm)",
+                  background: "var(--bg-surface-elevated)",
+                  border: "1px solid var(--border-default)",
+                  color: "var(--text-main)",
+                  fontSize: "12px",
+                  fontFamily: "var(--font-mono)",
+                }}
+              >
+                {samples.map((s, idx) => (
+                  <option key={s.id} value={idx}>
+                    [{s.id}] {s.preview}
+                  </option>
                 ))}
+              </select>
+
+              {/* Attached docs chips in benchmark mode if present */}
+              {attachedDocs.length > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px" }}>
+                  <span style={{ fontSize: "10.5px", fontWeight: 700, color: "var(--text-subtle)" }}>Context Docs:</span>
+                  {attachedDocs.map((doc, dIdx) => (
+                    <div
+                      key={doc.id || dIdx}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "5px",
+                        background: "var(--bg-surface-elevated)",
+                        border: "1px solid var(--border-default)",
+                        borderRadius: "var(--radius-sm)",
+                        padding: "2px 7px",
+                        fontSize: "11px",
+                      }}
+                    >
+                      <span>📄</span>
+                      <span style={{ color: "var(--text-main)", maxWidth: "140px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={doc.name}>
+                        {doc.name}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPreviewDoc(doc);
+                          setShowDocPreview(true);
+                        }}
+                        style={{ background: "transparent", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: "11px", padding: 0 }}
+                      >
+                        👁
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAttachedDocs((prev) => prev.filter((_, i) => i !== dIdx))}
+                        style={{ background: "transparent", border: "none", color: "var(--rose)", cursor: "pointer", fontSize: "11px", padding: 0 }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Question Display Card */}
+              {currentBenchmarkRecord && (
+                <div
+                  style={{
+                    background: "var(--bg-canvas)",
+                    border: "1px solid var(--border-subtle)",
+                    borderRadius: "var(--radius-md)",
+                    padding: "12px 16px",
+                    fontSize: "13px",
+                    lineHeight: 1.6,
+                    color: "var(--text-main)",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
+                    <span style={{ fontSize: "10.5px", fontFamily: "var(--font-mono)", color: "var(--accent)", fontWeight: 700 }}>
+                      QUESTION PROMPT · {currentBenchmarkRecord.id}
+                    </span>
+                    <span style={{ fontSize: "11px", color: "var(--text-subtle)" }}>
+                      Source Row: {currentBenchmarkRecord.sourceRowNumber}
+                    </span>
+                  </div>
+                  <div style={{ whiteSpace: "pre-wrap" }}>
+                    {currentBenchmarkRecord.fullQuestion}
+                  </div>
+
+                  {Object.keys(currentBenchmarkRecord.options).length > 0 && (
+                    <div
+                      style={{
+                        marginTop: "10px",
+                        paddingTop: "10px",
+                        borderTop: "1px solid var(--border-subtle)",
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                        gap: "6px",
+                      }}
+                    >
+                      {Object.entries(currentBenchmarkRecord.options).map(([letter, text]) => (
+                        <div key={letter} style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+                          <strong style={{ color: "var(--accent)" }}>{letter}:</strong> {text}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Mode 2: Multi-File Drag & Drop Upload + Custom Prompt */
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {/* Dropzone */}
+              <div
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  border: isDragging ? "2px dashed var(--accent)" : "1.5px dashed var(--border-default)",
+                  borderRadius: "var(--radius-md)",
+                  background: isDragging ? "rgba(66, 133, 244, 0.08)" : "var(--bg-canvas)",
+                  padding: "16px 20px",
+                  textAlign: "center",
+                  cursor: "pointer",
+                  transition: "all var(--transition-fast)",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept=".pdf,.docx,.doc,.csv,.txt,.json,.md,.png,.jpg,.jpeg,.webp"
+                  style={{ display: "none" }}
+                  onChange={handleFileChange}
+                />
+                <div style={{ fontSize: "24px" }}>📥</div>
+                <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-main)" }}>
+                  {isUploadingDoc ? "Parsing and indexing documents…" : "Drop insurance documents here, or click to browse"}
+                </div>
+                <div style={{ fontSize: "11px", color: "var(--text-subtle)" }}>
+                  Supports PDF policy wordings, DOCX contracts, CSV rating schedules, TXT slips, and inspection images
+                </div>
               </div>
 
               {/* Uploaded Documents Chip Tray */}
               {attachedDocs.length > 0 && (
-                <div style={{ marginTop: "10px", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px" }}>
+                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px" }}>
                   <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-subtle)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                    Attached Docs:
+                    Attached Docs ({attachedDocs.length}):
                   </span>
                   {attachedDocs.map((doc, dIdx) => (
                     <div
@@ -1351,7 +1462,7 @@ export default function SingleSampleEvaluation({
                         background: "var(--bg-surface-elevated)",
                         border: "1px solid var(--border-default)",
                         borderRadius: "var(--radius-sm)",
-                        padding: "3px 8px",
+                        padding: "4px 9px",
                         fontSize: "11.5px",
                       }}
                     >
@@ -1364,36 +1475,23 @@ export default function SingleSampleEvaluation({
                       </span>
                       <button
                         type="button"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setPreviewDoc(doc);
                           setShowDocPreview(true);
                         }}
-                        style={{
-                          background: "transparent",
-                          border: "none",
-                          color: "var(--accent)",
-                          cursor: "pointer",
-                          fontSize: "11px",
-                          padding: "0 2px",
-                        }}
+                        style={{ background: "transparent", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: "11.5px", padding: "0 2px" }}
                         title="Preview Document"
                       >
                         👁
                       </button>
                       <button
                         type="button"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setAttachedDocs((prev) => prev.filter((_, i) => i !== dIdx));
                         }}
-                        style={{
-                          background: "transparent",
-                          border: "none",
-                          color: "var(--rose)",
-                          cursor: "pointer",
-                          fontSize: "12px",
-                          padding: "0 2px",
-                          lineHeight: 1,
-                        }}
+                        style={{ background: "transparent", border: "none", color: "var(--rose)", cursor: "pointer", fontSize: "12px", padding: "0 2px" }}
                         title="Remove Document"
                       >
                         ✕
@@ -1403,15 +1501,7 @@ export default function SingleSampleEvaluation({
                   <button
                     type="button"
                     onClick={() => setAttachedDocs([])}
-                    style={{
-                      background: "transparent",
-                      border: "none",
-                      color: "var(--text-muted)",
-                      cursor: "pointer",
-                      fontSize: "11px",
-                      textDecoration: "underline",
-                      padding: "2px 4px",
-                    }}
+                    style={{ background: "transparent", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: "11px", textDecoration: "underline" }}
                   >
                     Clear All
                   </button>
@@ -1419,37 +1509,62 @@ export default function SingleSampleEvaluation({
               )}
 
               {docUploadError && (
-                <div style={{ fontSize: "11.5px", color: "var(--rose)", marginTop: "6px" }}>
+                <div style={{ fontSize: "11.5px", color: "var(--rose)" }}>
                   ⚠️ {docUploadError}
                 </div>
               )}
-            </div>
 
-            {/* Manual Prompt Input */}
-            <div>
-              <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "var(--text-subtle)", marginBottom: "4px" }}>
-                Prompt / Task Instructions
-              </label>
-              <textarea
-                value={manualPrompt}
-                onChange={(e) => setManualPrompt(e.target.value)}
-                rows={4}
-                placeholder="Type your insurance question, claim adjudication task, or policy query here..."
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  borderRadius: "var(--radius-sm)",
-                  background: "var(--bg-canvas)",
-                  border: "1px solid var(--border-default)",
-                  color: "var(--text-main)",
-                  fontSize: "13px",
-                  lineHeight: 1.6,
-                  resize: "vertical",
-                }}
-              />
+              {/* Inquiry Prompt with Templates for Active Plugin */}
+              <div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "6px", marginBottom: "6px" }}>
+                  <label style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-subtle)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    Inquiry Prompt ({activePlugin.name})
+                  </label>
+                  <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                    {USE_CASES_LIST.map((uc) => (
+                      <button
+                        key={uc.id}
+                        type="button"
+                        onClick={() => {
+                          setActiveUseCase(uc.id);
+                          setManualPrompt(uc.samplePrompt);
+                        }}
+                        style={{
+                          padding: "2px 8px",
+                          borderRadius: "4px",
+                          fontSize: "10.5px",
+                          fontWeight: 600,
+                          background: activeUseCase === uc.id ? "var(--accent-dim)" : "var(--bg-surface-elevated)",
+                          border: `1px solid ${activeUseCase === uc.id ? "var(--accent-border)" : "var(--border-subtle)"}`,
+                          color: activeUseCase === uc.id ? "var(--accent)" : "var(--text-muted)",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {uc.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <textarea
+                  value={manualPrompt}
+                  onChange={(e) => setManualPrompt(e.target.value)}
+                  rows={4}
+                  placeholder="Type your insurance inquiry, claim adjudication task, policy extraction query, or regulatory review instructions..."
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: "var(--radius-sm)",
+                    background: "var(--bg-canvas)",
+                    border: "1px solid var(--border-default)",
+                    color: "var(--text-main)",
+                    fontSize: "13px",
+                    lineHeight: 1.6,
+                    resize: "vertical",
+                  }}
+                />
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
         {/* Model Selection Row */}
         <div>
@@ -1961,8 +2076,8 @@ export default function SingleSampleEvaluation({
                           <div
                             style={{
                               marginTop: "8px",
-                              padding: "8px 12px",
-                              borderRadius: "var(--radius-sm)",
+                              padding: "10px 14px",
+                              borderRadius: "var(--radius-md)",
                               background: "var(--bg-canvas)",
                               border: "1px solid var(--border-default)",
                             }}
@@ -1972,11 +2087,12 @@ export default function SingleSampleEvaluation({
                                 {judgeAuditResults[modelId].error}
                               </div>
                             ) : (
-                              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "6px" }}>
                                   <span
                                     style={{
                                       fontWeight: 700,
+                                      fontSize: "12px",
                                       color: judgeAuditResults[modelId].isCorrect ? "var(--emerald)" : "var(--rose)",
                                     }}
                                   >
@@ -2004,14 +2120,101 @@ export default function SingleSampleEvaluation({
                                     >
                                       {judgeAuditResults[modelId].complianceStatus}
                                     </span>
-                                    <span style={{ color: "#38bdf8", fontWeight: 700 }}>
-                                      Score: {judgeAuditResults[modelId].reasoningScore}/5
+                                    <span
+                                      style={{
+                                        color:
+                                          (judgeAuditResults[modelId].scoreOutOf100 ?? 0) >= 80
+                                            ? "var(--emerald)"
+                                            : (judgeAuditResults[modelId].scoreOutOf100 ?? 0) >= 60
+                                            ? "var(--amber)"
+                                            : "var(--rose)",
+                                        fontWeight: 800,
+                                        fontSize: "12px",
+                                        background: "var(--bg-surface-elevated)",
+                                        padding: "2px 8px",
+                                        borderRadius: "4px",
+                                        border: "1px solid var(--border-subtle)",
+                                      }}
+                                    >
+                                      Score: {judgeAuditResults[modelId].scoreOutOf100 ?? Math.round((judgeAuditResults[modelId].reasoningScore || 0) * 20)}/100
                                     </span>
                                   </div>
                                 </div>
                                 <div style={{ color: "var(--text-muted)", fontSize: "11px", marginTop: "2px", lineHeight: 1.5 }}>
                                   <strong>Verdict:</strong> {judgeAuditResults[modelId].rationale}
                                 </div>
+
+                                {judgeAuditResults[modelId].metricScores &&
+                                  Object.keys(judgeAuditResults[modelId].metricScores).length > 0 && (
+                                    <div
+                                      style={{
+                                        marginTop: "6px",
+                                        paddingTop: "8px",
+                                        borderTop: "1px dashed var(--border-subtle)",
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        gap: "4px",
+                                      }}
+                                    >
+                                      <div
+                                        style={{
+                                          fontSize: "9.5px",
+                                          textTransform: "uppercase",
+                                          letterSpacing: "0.05em",
+                                          color: "var(--text-muted)",
+                                          fontWeight: 700,
+                                          display: "flex",
+                                          justifyContent: "space-between",
+                                        }}
+                                      >
+                                        <span>Insurance Metric Breakdown</span>
+                                        <span>(Scale 0–100)</span>
+                                      </div>
+                                      {Object.entries(judgeAuditResults[modelId].metricScores).map(
+                                        ([metName, metScore]: [string, any]) => {
+                                          const num = typeof metScore === "number" ? metScore : 0;
+                                          const barColor =
+                                            num >= 80 ? "var(--emerald)" : num >= 60 ? "var(--amber)" : "var(--rose)";
+                                          return (
+                                            <div
+                                              key={metName}
+                                              style={{ display: "flex", flexDirection: "column", gap: "2px" }}
+                                            >
+                                              <div
+                                                style={{
+                                                  display: "flex",
+                                                  justifyContent: "space-between",
+                                                  fontSize: "10px",
+                                                }}
+                                              >
+                                                <span style={{ color: "var(--text-secondary)" }}>{metName}</span>
+                                                <span style={{ fontWeight: 700, color: barColor }}>{num}/100</span>
+                                              </div>
+                                              <div
+                                                style={{
+                                                  height: "4px",
+                                                  width: "100%",
+                                                  background: "var(--bg-surface-elevated)",
+                                                  borderRadius: "2px",
+                                                  overflow: "hidden",
+                                                }}
+                                              >
+                                                <div
+                                                  style={{
+                                                    width: `${Math.min(100, Math.max(0, num))}%`,
+                                                    height: "100%",
+                                                    background: barColor,
+                                                    borderRadius: "2px",
+                                                    transition: "width 0.3s ease",
+                                                  }}
+                                                />
+                                              </div>
+                                            </div>
+                                          );
+                                        }
+                                      )}
+                                    </div>
+                                  )}
                               </div>
                             )}
                           </div>
