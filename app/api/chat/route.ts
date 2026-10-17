@@ -234,6 +234,17 @@ function parseOpenRouterError(status: number, errText: string, modelName: string
       let activeModel = model;
       try {
         for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+          const isReasoningOrFree =
+            activeModel === "openrouter/free" ||
+            activeModel.endsWith(":free") ||
+            activeModel.includes("nemotron") ||
+            activeModel.includes("r1") ||
+            activeModel.includes("qwq");
+          const clientMaxTokens = maxTokens ?? max_tokens;
+          const effectiveMaxTokens = isReasoningOrFree && clientMaxTokens && clientMaxTokens < 750
+            ? 750
+            : clientMaxTokens;
+
           let orResponse = await chatCompletionStream({
             model: activeModel,
             messages,
@@ -241,7 +252,7 @@ function parseOpenRouterError(status: number, errText: string, modelName: string
             toolChoice: round === 0 ? formattedToolChoice : "auto",
             systemPrompt: effectiveSystemPrompt,
             customEndpoint,
-            max_tokens: maxTokens ?? max_tokens,
+            max_tokens: effectiveMaxTokens,
           });
 
           if (!orResponse.ok) {
@@ -276,7 +287,7 @@ function parseOpenRouterError(status: number, errText: string, modelName: string
                 toolChoice: round === 0 ? formattedToolChoice : "auto",
                 systemPrompt: effectiveSystemPrompt,
                 customEndpoint,
-                max_tokens: maxTokens ?? max_tokens,
+                max_tokens: effectiveMaxTokens,
               });
 
               if (!fallbackResponse.ok) {
@@ -304,6 +315,7 @@ function parseOpenRouterError(status: number, errText: string, modelName: string
           const toolCallAccum: Record<number, { id: string; name: string; args: string }> = {};
           let hasToolCalls = false;
           let assistantContent = "";
+          let accumulatedReasoning = "";
           let usage: unknown = null;
           let finishReason: string | null = null;
 
@@ -350,6 +362,7 @@ function parseOpenRouterError(status: number, errText: string, modelName: string
 
               // Reasoning delta
               if (delta.reasoning) {
+                accumulatedReasoning += delta.reasoning;
                 send({ type: "reasoning", delta: delta.reasoning });
               }
 
@@ -378,6 +391,22 @@ function parseOpenRouterError(status: number, errText: string, modelName: string
                 }
               }
             }
+          }
+
+          // If the model produced only reasoning tokens (e.g. reasoning models or openrouter/free routing to Nemotron/DeepSeek-R1)
+          // and hit max_tokens or stopped before emitting delta.content, promote the reasoning text as content
+          if (!assistantContent.trim() && accumulatedReasoning.trim()) {
+            const fallbackContent = sanitizeStreamChunk(accumulatedReasoning.trim());
+            assistantContent = fallbackContent;
+            send({ type: "content", delta: fallbackContent });
+          }
+
+          // If neither content nor reasoning was returned and no tools were called, emit a clear error
+          if (!assistantContent.trim() && !accumulatedReasoning.trim() && !hasToolCalls) {
+            send({
+              type: "error",
+              error: `Model ${activeModel} returned an empty response. Free router models may be under high load; consider selecting a direct model like meta-llama/llama-3.2-3b-instruct.`,
+            });
           }
 
           // Emit usage if available

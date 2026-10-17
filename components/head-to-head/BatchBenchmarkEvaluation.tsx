@@ -233,7 +233,7 @@ export default function BatchBenchmarkEvaluation() {
           prompt,
           systemPrompt: INSTITUTIONAL_INSURANCE_SYSTEM_PROMPT,
           useTools: false,
-          max_tokens: 350,
+          max_tokens: 700,
         }),
         signal,
       });
@@ -274,6 +274,7 @@ export default function BatchBenchmarkEvaluation() {
 
       const decoder = new TextDecoder();
       let answer = "";
+      let reasoningAnswer = "";
       let promptTokens = 0;
       let completionTokens = 0;
       let cost = 0;
@@ -308,6 +309,14 @@ export default function BatchBenchmarkEvaluation() {
                 : null;
             if (content) answer += content;
 
+            const reasoning =
+              parsed.delta && parsed.type === "reasoning"
+                ? parsed.delta
+                : parsed.t === "reasoning"
+                ? parsed.c
+                : null;
+            if (reasoning) reasoningAnswer += reasoning;
+
             const u = parsed.usage || (parsed.t === "metrics" ? parsed.data : null);
             if (u) {
               if (u.prompt_tokens) promptTokens = u.prompt_tokens;
@@ -320,6 +329,12 @@ export default function BatchBenchmarkEvaluation() {
         }
       }
 
+      // If answer is empty but reasoning is available, use reasoning as answer
+      if (!answer.trim() && reasoningAnswer.trim()) {
+        answer = reasoningAnswer.trim();
+      }
+
+      const isSuccess = Boolean(answer.trim());
       return {
         modelId,
         answer,
@@ -327,8 +342,10 @@ export default function BatchBenchmarkEvaluation() {
         promptTokens,
         completionTokens,
         estCostUsd: cost,
-        runStatus: answer.trim() ? "success" : "failed",
-        errorMessage: answer.trim() ? undefined : (streamError || "Model inference returned empty response."),
+        runStatus: isSuccess ? "success" : "failed",
+        errorMessage: isSuccess
+          ? undefined
+          : (streamError || `Model ${modelId} returned an empty response. If using openrouter/free, try a direct instruction model like meta-llama/llama-3.2-3b-instruct.`),
       };
     } catch (err: unknown) {
       if ((err as Error)?.name === "AbortError") {

@@ -400,7 +400,7 @@ export default function SingleSampleEvaluation({
             prompt: promptText,
             systemPrompt: INSTITUTIONAL_INSURANCE_SYSTEM_PROMPT,
             useTools: false,
-            max_tokens: 450,
+            max_tokens: 700,
           }),
           signal: abortRefs.current[idx]?.signal,
         });
@@ -518,12 +518,16 @@ export default function SingleSampleEvaluation({
           }
         }
 
-        updateState((curr) => ({
-          ...curr,
-          isRunning: false,
-          runStatus: curr.answer.trim() ? "success" : "failed",
-          latencyMs: curr.latencyMs || Date.now() - startTime,
-        }));
+        updateState((curr) => {
+          const finalAnswer = curr.answer.trim() || curr.reasoning.trim();
+          return {
+            ...curr,
+            answer: finalAnswer || curr.answer,
+            isRunning: false,
+            runStatus: finalAnswer ? "success" : "failed",
+            latencyMs: curr.latencyMs || Date.now() - startTime,
+          };
+        });
       } catch (err: unknown) {
         if ((err as Error)?.name === "AbortError") {
           updateState((curr) => ({
