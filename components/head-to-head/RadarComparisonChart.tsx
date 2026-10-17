@@ -204,7 +204,7 @@ export default function RadarComparisonChart({
       </div>
 
       {/* Main SVG Radar Visual & Model Legend */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "20px", alignItems: "center" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 280px", gap: "20px", alignItems: "center" }}>
         {/* SVG Container */}
         <div
           style={{
@@ -222,11 +222,11 @@ export default function RadarComparisonChart({
             viewBox={`0 0 ${size} ${size}`}
             style={{ width: "100%", height: "100%", overflow: "visible" }}
           >
-            {/* Background circular web rings */}
+            {/* Background circular web rings (non-interactive) */}
             {rings.map((fraction, rIdx) => {
               const r = fraction * radius;
               return (
-                <g key={fraction}>
+                <g key={fraction} style={{ pointerEvents: "none" }}>
                   <circle
                     cx={center}
                     cy={center}
@@ -251,7 +251,52 @@ export default function RadarComparisonChart({
               );
             })}
 
-            {/* Spokes from center to outer ring */}
+            {/* Model Radar Polygons (pointerEvents: none to avoid stealing hover from spokes) */}
+            {polygons?.map((poly) => {
+              if (!poly) return null;
+              const isVisible = activeModelToggles[poly.modelId] ?? true;
+              if (!isVisible) return null;
+
+              return (
+                <g key={poly.modelId} style={{ pointerEvents: "none" }}>
+                  <polygon
+                    points={poly.points}
+                    fill={poly.color.fill}
+                    stroke={poly.color.stroke}
+                    strokeWidth="2.2"
+                    strokeLinejoin="round"
+                    style={{
+                      transition: "points 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                      filter: `drop-shadow(0 0 6px ${poly.color.stroke}44)`,
+                    }}
+                  />
+                  {/* Data points along vertices */}
+                  {dimensions.map((d, dIdx) => {
+                    const val = poly.dimensionScores[d.id] ?? 0;
+                    const { x, y } = getCoordinates(dIdx, val);
+                    const isHovered = hoveredDim === d.id;
+
+                    return (
+                      <circle
+                        key={d.id}
+                        cx={x}
+                        cy={y}
+                        r={isHovered ? 5.5 : 3.5}
+                        fill={poly.color.dot}
+                        stroke="#0f172a"
+                        strokeWidth="1.5"
+                        style={{
+                          transition: "r 0.15s ease",
+                          pointerEvents: "none",
+                        }}
+                      />
+                    );
+                  })}
+                </g>
+              );
+            })}
+
+            {/* Interactive Spokes & Labels (rendered on top with generous hit target) */}
             {dimensions.map((dim, dIdx) => {
               const { x, y, angle } = getCoordinates(dIdx, 100);
               const isHovered = hoveredDim === dim.id;
@@ -272,13 +317,25 @@ export default function RadarComparisonChart({
                   onMouseLeave={() => setHoveredDim(null)}
                   style={{ cursor: "pointer" }}
                 >
+                  {/* Invisible wide hit stroke to make hover smooth and prevent pixel-jitter */}
                   <line
                     x1={center}
                     y1={center}
                     x2={x}
                     y2={y}
-                    stroke={isHovered ? "rgba(56, 189, 248, 0.7)" : "rgba(255, 255, 255, 0.12)"}
-                    strokeWidth={isHovered ? 1.5 : 1}
+                    stroke="transparent"
+                    strokeWidth={24}
+                    strokeLinecap="round"
+                  />
+                  {/* Visible Spoke Line */}
+                  <line
+                    x1={center}
+                    y1={center}
+                    x2={x}
+                    y2={y}
+                    stroke={isHovered ? "rgba(56, 189, 248, 0.9)" : "rgba(255, 255, 255, 0.12)"}
+                    strokeWidth={isHovered ? 2 : 1}
+                    style={{ pointerEvents: "none", transition: "stroke 0.15s ease, stroke-width 0.15s ease" }}
                   />
                   {/* Dimension Label */}
                   <text
@@ -286,62 +343,25 @@ export default function RadarComparisonChart({
                     y={labelY}
                     fill={isHovered ? "#38bdf8" : "#94a3b8"}
                     fontSize={numDims > 12 ? "9.5" : "11"}
-                    fontWeight={isHovered ? "700" : "500"}
+                    fontWeight="600"
                     textAnchor={textAnchor}
                     dominantBaseline="central"
+                    style={{
+                      transition: "fill 0.15s ease",
+                      userSelect: "none",
+                      pointerEvents: "none",
+                    }}
                   >
                     {dim.shortLabel}
                   </text>
                 </g>
               );
             })}
-
-            {/* Model Radar Polygons */}
-            {polygons?.map((poly) => {
-              if (!poly) return null;
-              const isVisible = activeModelToggles[poly.modelId] ?? true;
-              if (!isVisible) return null;
-
-              return (
-                <g key={poly.modelId}>
-                  <polygon
-                    points={poly.points}
-                    fill={poly.color.fill}
-                    stroke={poly.color.stroke}
-                    strokeWidth="2.2"
-                    strokeLinejoin="round"
-                    style={{
-                      transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                      filter: `drop-shadow(0 0 6px ${poly.color.stroke}44)`,
-                    }}
-                  />
-                  {/* Data points along vertices */}
-                  {dimensions.map((d, dIdx) => {
-                    const val = poly.dimensionScores[d.id] ?? 0;
-                    const { x, y } = getCoordinates(dIdx, val);
-                    const isHovered = hoveredDim === d.id;
-
-                    return (
-                      <circle
-                        key={d.id}
-                        cx={x}
-                        cy={y}
-                        r={isHovered ? 5 : 3.5}
-                        fill={poly.color.dot}
-                        stroke="#0f172a"
-                        strokeWidth="1.5"
-                        style={{ transition: "r 0.15s ease" }}
-                      />
-                    );
-                  })}
-                </g>
-              );
-            })}
           </svg>
         </div>
 
-        {/* Model Toggles & Dimension Detail Card */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "12px", minWidth: "240px" }}>
+        {/* Model Toggles & Dimension Detail Card (fixed 280px width to prevent layout shift) */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "280px", minWidth: "280px", maxWidth: "280px", flexShrink: 0, boxSizing: "border-box" }}>
           {/* Models Legend & Toggles */}
           <div
             style={{
@@ -402,14 +422,17 @@ export default function RadarComparisonChart({
             </div>
           </div>
 
-          {/* Hovered Dimension Inspector */}
+          {/* Hovered Dimension Inspector with stable height */}
           <div
             style={{
               background: "rgba(30, 41, 59, 0.4)",
               borderRadius: "8px",
               padding: "12px",
               border: "1px solid rgba(255, 255, 255, 0.06)",
-              minHeight: "130px",
+              minHeight: "155px",
+              maxHeight: "185px",
+              overflowY: "auto",
+              boxSizing: "border-box",
             }}
           >
             {hoveredDim ? (
