@@ -102,8 +102,8 @@ export default function SingleSampleEvaluation({
 
   // Models
   const [models, setModels] = useState<string[]>([
-    "meta-llama/llama-3.2-3b-instruct",
-    "meta-llama/llama-3.1-8b-instruct",
+    "nvidia/nemotron-3.5-lightning:free",
+    "openrouter/free",
   ]);
   const [states, setStates] = useState<SingleModelState[]>([
     emptyModelState(),
@@ -309,11 +309,12 @@ export default function SingleSampleEvaluation({
   const handleAddModel = () => {
     if (models.length >= 4) return;
     const candidates = [
-      "meta-llama/llama-3.2-3b-instruct",
-      "meta-llama/llama-3.1-8b-instruct",
-      "deepseek/deepseek-chat",
-      "openai/gpt-4o-mini",
-      "meta-llama/llama-3.3-70b-instruct",
+      "nvidia/nemotron-3.5-lightning:free",
+      "openrouter/free",
+      "nvidia/nemotron-3-super-120b-a12b:free",
+      "google/gemma-4-31b-it:free",
+      "liquid/lfm-2.5-2.6b:free",
+      "dots-studio/dots-3-note-preview:free",
     ];
     const nextModel = candidates.find((c) => !models.includes(c)) || candidates[0];
     setModels((prev) => [...prev, nextModel]);

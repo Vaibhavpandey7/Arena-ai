@@ -422,7 +422,7 @@ function parseOpenRouterError(status: number, errText: string, modelName: string
           if (!assistantContent.trim() && !accumulatedReasoning.trim() && !hasToolCalls) {
             send({
               type: "error",
-              error: `Model ${activeModel} returned an empty response. Free router models may be under high load; consider selecting a direct model like meta-llama/llama-3.2-3b-instruct.`,
+              error: `Model ${activeModel} returned an empty response. Free router models may be under high load; consider selecting a direct model like nvidia/nemotron-3.5-lightning:free.`,
             });
           }
 

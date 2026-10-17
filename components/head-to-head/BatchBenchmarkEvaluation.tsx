@@ -62,8 +62,8 @@ export default function BatchBenchmarkEvaluation() {
 
   // Models
   const [models, setModels] = useState<string[]>([
-    "meta-llama/llama-3.2-3b-instruct",
-    "meta-llama/llama-3.1-8b-instruct",
+    "nvidia/nemotron-3.5-lightning:free",
+    "openrouter/free",
   ]);
 
   // Benchmark Config
@@ -142,10 +142,12 @@ export default function BatchBenchmarkEvaluation() {
   const handleAddModel = () => {
     if (models.length >= 4) return;
     const candidates = [
-      "nvidia/nemotron-3-super-120b-a12b:free",
       "nvidia/nemotron-3.5-lightning:free",
       "openrouter/free",
-      "openai/gpt-4o-mini",
+      "nvidia/nemotron-3-super-120b-a12b:free",
+      "google/gemma-4-31b-it:free",
+      "liquid/lfm-2.5-2.6b:free",
+      "dots-studio/dots-3-note-preview:free",
     ];
     const nextModel = candidates.find((c) => !models.includes(c)) || candidates[0];
     setModels((prev) => [...prev, nextModel]);
@@ -345,7 +347,7 @@ export default function BatchBenchmarkEvaluation() {
         runStatus: isSuccess ? "success" : "failed",
         errorMessage: isSuccess
           ? undefined
-          : (streamError || `Model ${modelId} returned an empty response. If using openrouter/free, try a direct instruction model like meta-llama/llama-3.2-3b-instruct.`),
+          : (streamError || `Model ${modelId} returned an empty response. If using openrouter/free, try a direct instruction model like nvidia/nemotron-3.5-lightning:free.`),
       };
     } catch (err: unknown) {
       if ((err as Error)?.name === "AbortError") {
