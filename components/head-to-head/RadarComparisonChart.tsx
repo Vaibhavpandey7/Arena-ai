@@ -25,6 +25,8 @@ interface RadarComparisonChartProps {
       latencyMs: number;
     }>;
   }>;
+  activeCategory?: RadarCategoryId;
+  availableCategories?: RadarCategoryId[];
 }
 
 const MODEL_PALETTE = [
@@ -34,14 +36,38 @@ const MODEL_PALETTE = [
   { stroke: "#f43f5e", fill: "rgba(244, 63, 94, 0.22)", name: "Model D", dot: "#fb7185" },
 ];
 
-export default function RadarComparisonChart({ modelIds, items }: RadarComparisonChartProps) {
-  const [selectedCategory, setSelectedCategory] = useState<RadarCategoryId>("overview");
+export default function RadarComparisonChart({
+  modelIds,
+  items,
+  activeCategory,
+  availableCategories,
+}: RadarComparisonChartProps) {
+  const [selectedCategory, setSelectedCategory] = useState<RadarCategoryId>(
+    activeCategory || "overview"
+  );
   const [hoveredDim, setHoveredDim] = useState<string | null>(null);
   const [activeModelToggles, setActiveModelToggles] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
     modelIds.forEach((m) => (init[m] = true));
     return init;
   });
+
+  // Keep selectedCategory in sync when activeCategory prop changes
+  React.useEffect(() => {
+    if (activeCategory) {
+      setSelectedCategory(activeCategory);
+    }
+  }, [activeCategory]);
+
+  const displayedCategories = useMemo(() => {
+    if (availableCategories && availableCategories.length > 0) {
+      return RADAR_CATEGORIES.filter((c) => availableCategories.includes(c.id));
+    }
+    if (activeCategory) {
+      return RADAR_CATEGORIES.filter((c) => c.id === activeCategory);
+    }
+    return RADAR_CATEGORIES;
+  }, [availableCategories, activeCategory]);
 
   const currentCatDef = useMemo(
     () => RADAR_CATEGORIES.find((c) => c.id === selectedCategory) || RADAR_CATEGORIES[0],
@@ -60,11 +86,11 @@ export default function RadarComparisonChart({ modelIds, items }: RadarCompariso
   };
 
   // SVG Geometry
-  const size = 520;
+  const size = 560;
   const center = size / 2;
-  const radius = 175;
   const dimensions = currentCatDef.dimensions;
   const numDims = dimensions.length;
+  const radius = numDims > 10 ? 165 : 180;
 
   const rings = [0.2, 0.4, 0.6, 0.8, 1.0];
 
@@ -139,40 +165,42 @@ export default function RadarComparisonChart({ modelIds, items }: RadarCompariso
           </p>
         </div>
 
-        {/* Category switcher pills */}
-        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-          {RADAR_CATEGORIES.map((cat) => {
-            const isSelected = selectedCategory === cat.id;
-            return (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => setSelectedCategory(cat.id)}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "5px",
-                  padding: "5px 10px",
-                  fontSize: "12px",
-                  fontWeight: isSelected ? 700 : 500,
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  transition: "all 0.15s ease",
-                  border: isSelected
-                    ? "1px solid #38bdf8"
-                    : "1px solid rgba(255, 255, 255, 0.08)",
-                  background: isSelected
-                    ? "linear-gradient(135deg, rgba(56, 189, 248, 0.25) 0%, rgba(14, 165, 233, 0.15) 100%)"
-                    : "rgba(30, 41, 59, 0.6)",
-                  color: isSelected ? "#38bdf8" : "#cbd5e1",
-                }}
-              >
-                <span>{cat.icon}</span>
-                <span>{cat.name.replace("Insurance ", "").replace(" 5 Core Competencies", "")}</span>
-              </button>
-            );
-          })}
-        </div>
+        {/* Category switcher pills (only displayed if multiple categories are active in the dataset) */}
+        {displayedCategories.length > 1 && (
+          <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+            {displayedCategories.map((cat) => {
+              const isSelected = selectedCategory === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setSelectedCategory(cat.id)}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "5px",
+                    padding: "5px 10px",
+                    fontSize: "12px",
+                    fontWeight: isSelected ? 700 : 500,
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    transition: "all 0.15s ease",
+                    border: isSelected
+                      ? "1px solid #38bdf8"
+                      : "1px solid rgba(255, 255, 255, 0.08)",
+                    background: isSelected
+                      ? "linear-gradient(135deg, rgba(56, 189, 248, 0.25) 0%, rgba(14, 165, 233, 0.15) 100%)"
+                      : "rgba(30, 41, 59, 0.6)",
+                    color: isSelected ? "#38bdf8" : "#cbd5e1",
+                  }}
+                >
+                  <span>{cat.icon}</span>
+                  <span>{cat.name.replace(" Detailed Comparison Radar Chart", "").replace("Insurance ", "").replace(" 5 Core Competencies", "")}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Main SVG Radar Visual & Model Legend */}

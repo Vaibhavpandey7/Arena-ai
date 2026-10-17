@@ -23,10 +23,10 @@ import {
   type ManualInsuranceCsvCase,
   type RawCsvInspection,
 } from "@/lib/manual-insurance-csv";
-import { INSTITUTIONAL_INSURANCE_SYSTEM_PROMPT } from "@/lib/prompts";
 import RadarComparisonChart from "./RadarComparisonChart";
 import TokenSpeedComparisonPanel from "./TokenSpeedComparisonPanel";
 import { simulateBenchmarkResponse } from "@/lib/benchmark-simulator";
+import { mapBenchmarkIdToRadarCategory } from "@/lib/insurance-radar-taxonomy";
 
 export interface BatchModelResult {
   modelId: string;
@@ -231,7 +231,7 @@ export default function BatchBenchmarkEvaluation() {
         body: JSON.stringify({
           model: modelId,
           prompt,
-          systemPrompt: INSTITUTIONAL_INSURANCE_SYSTEM_PROMPT,
+          disableSystemPrompt: true,
           useTools: false,
           max_tokens: 700,
         }),
@@ -1534,6 +1534,7 @@ export default function BatchBenchmarkEvaluation() {
             <RadarComparisonChart
               modelIds={models}
               items={results}
+              activeCategory={mapBenchmarkIdToRadarCategory(benchmarkId)}
             />
 
             <TokenSpeedComparisonPanel
@@ -1556,7 +1557,10 @@ export default function BatchBenchmarkEvaluation() {
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              {categoryScores.map((c) => {
+              {(categoryScores.filter((c) => c.evaluatedCount > 0).length > 0
+                ? categoryScores.filter((c) => c.evaluatedCount > 0)
+                : categoryScores.slice(0, 1)
+              ).map((c) => {
                 const pct = c.accuracy !== null ? Math.round(c.accuracy * 100) : 0;
                 return (
                   <div key={c.categoryId} style={{ display: "flex", flexDirection: "column", gap: "4px" }}>

@@ -36,7 +36,20 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { model, prompt, messages: inputMessages, systemPrompt, useTools, selectedTools, toolChoice, activePlugins, customEndpoint, maxTokens, max_tokens } = body as Record<string, any>;
+  const {
+    model,
+    prompt,
+    messages: inputMessages,
+    systemPrompt,
+    useTools,
+    selectedTools,
+    toolChoice,
+    activePlugins,
+    customEndpoint,
+    maxTokens,
+    max_tokens,
+    disableSystemPrompt,
+  } = body as Record<string, any>;
 
   if (!model || (!prompt && (!inputMessages || inputMessages.length === 0))) {
     return new Response(
@@ -87,12 +100,16 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  let resolvedSystemPrompt = enhanceSystemPrompt(systemPrompt);
+  let resolvedSystemPrompt =
+    disableSystemPrompt || systemPrompt === ""
+      ? ""
+      : enhanceSystemPrompt(systemPrompt, { allowEmpty: Boolean(disableSystemPrompt) });
 
-  // Regulatory RAG Grounding Context Injection
+  // Regulatory RAG Grounding Context Injection (only if system prompt is not explicitly disabled)
   const isRegulatoryCheckActive =
-    activePlugins?.includes("regulatory-check") ||
-    effectiveSelectedTools.includes("regulatory_check_rag");
+    !disableSystemPrompt &&
+    (activePlugins?.includes("regulatory-check") ||
+      effectiveSelectedTools.includes("regulatory_check_rag"));
 
   if (isRegulatoryCheckActive) {
     try {
@@ -125,7 +142,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const effectiveSystemPrompt = forcedToolName
+  const effectiveSystemPrompt = forcedToolName && resolvedSystemPrompt
     ? `${resolvedSystemPrompt}\n\nCRITICAL INSTRUCTION: You MUST invoke the '${forcedToolName}' tool to compute, evaluate, or retrieve the necessary data to answer the user prompt.`
     : resolvedSystemPrompt;
 

@@ -7,7 +7,6 @@ import GroundTruthPanel from "../GroundTruthPanel";
 import { DocumentPreviewModal, ParsedDocument } from "../DocumentPreviewModal";
 import ModelMaximizeModal from "./ModelMaximizeModal";
 import HeadToHeadComparisonModal from "./HeadToHeadComparisonModal";
-import { INSTITUTIONAL_INSURANCE_SYSTEM_PROMPT } from "@/lib/prompts";
 import {
   evaluateReferenceAnswer,
   calculateTokensPerSec,
@@ -398,7 +397,7 @@ export default function SingleSampleEvaluation({
           body: JSON.stringify({
             model: modelId,
             prompt: promptText,
-            systemPrompt: INSTITUTIONAL_INSURANCE_SYSTEM_PROMPT,
+            disableSystemPrompt: true,
             useTools: false,
             max_tokens: 700,
           }),

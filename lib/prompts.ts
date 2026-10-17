@@ -48,8 +48,16 @@ If the user asks a brief, direct factual or procedural question, provide the dir
  * Ensures any user or caller system prompt is augmented with the
  * institutional zero-emoji and structured formatting directives.
  */
-export function enhanceSystemPrompt(customSystemPrompt?: string | null): string {
+export function enhanceSystemPrompt(
+  customSystemPrompt?: string | null,
+  options?: { allowEmpty?: boolean }
+): string {
+  if (options?.allowEmpty && customSystemPrompt === "") {
+    return "";
+  }
+
   if (!customSystemPrompt || !customSystemPrompt.trim()) {
+    if (options?.allowEmpty) return "";
     return INSTITUTIONAL_INSURANCE_SYSTEM_PROMPT;
   }
 
