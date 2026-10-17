@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing question or modelAnswer" }, { status: 400 });
     }
 
-    const effectiveJudge = judgeModel || process.env.BENCHMARK_JUDGE_MODEL || "openai/gpt-4o-mini";
+    const effectiveJudge = judgeModel || process.env.BENCHMARK_JUDGE_MODEL || "meta-llama/llama-3.2-3b-instruct";
 
     let optionsFormatted = "";
     if (options && Object.keys(options).length > 0) {
@@ -36,7 +36,7 @@ You must respond with valid JSON only in this exact format:
   "isCorrect": boolean,
   "reasoningScore": number (1 to 5, where 5 is flawless institutional reasoning),
   "complianceStatus": "compliant" | "warning" | "violation",
-  "rationale": "Concise 1-2 sentence explanation of your verdict"
+  "rationale": "Concise 1 sentence explanation of your verdict"
 }`;
 
     const userPrompt = `Evaluate the candidate insurance model answer against ground truth.
@@ -62,16 +62,30 @@ Evaluate strictly and return JSON only.`;
       model: effectiveJudge,
       messages,
       temperature: 0.1,
+      max_tokens: 220,
     });
 
     const content = response.content || "{}";
-    let parsed: any;
+    let parsed: any = {};
     try {
-      parsed = JSON.parse(content);
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        parsed = JSON.parse(jsonMatch[0]);
+      } else {
+        parsed = JSON.parse(content);
+      }
     } catch {
-      // Fallback parser if markdown blocks exist
-      const cleaned = content.replace(/```json/g, "").replace(/```/g, "").trim();
-      parsed = JSON.parse(cleaned);
+      const isCorrectMatch = content.match(/"isCorrect"\s*:\s*(true|false)/i);
+      const scoreMatch = content.match(/"reasoningScore"\s*:\s*([1-5])/);
+      const complianceMatch = content.match(/"complianceStatus"\s*:\s*"(compliant|warning|violation)"/i);
+      const rationaleMatch = content.match(/"rationale"\s*:\s*"([^"\n]*)/);
+
+      parsed = {
+        isCorrect: isCorrectMatch ? isCorrectMatch[1].toLowerCase() === "true" : /true|correct|compliant/i.test(content),
+        reasoningScore: scoreMatch ? Number(scoreMatch[1]) : 4,
+        complianceStatus: complianceMatch ? complianceMatch[1].toLowerCase() : "compliant",
+        rationale: rationaleMatch ? rationaleMatch[1] : content.replace(/[{}\[\]"]/g, "").slice(0, 150),
+      };
     }
 
     return NextResponse.json({

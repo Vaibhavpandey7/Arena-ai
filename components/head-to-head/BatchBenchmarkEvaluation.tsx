@@ -26,6 +26,7 @@ import {
 import { INSTITUTIONAL_INSURANCE_SYSTEM_PROMPT } from "@/lib/prompts";
 import RadarComparisonChart from "./RadarComparisonChart";
 import TokenSpeedComparisonPanel from "./TokenSpeedComparisonPanel";
+import { simulateBenchmarkResponse } from "@/lib/benchmark-simulator";
 
 export interface BatchModelResult {
   modelId: string;
@@ -35,6 +36,7 @@ export interface BatchModelResult {
   completionTokens: number;
   estCostUsd: number;
   runStatus: "success" | "failed" | "cancelled";
+  errorMessage?: string;
 }
 
 export interface BatchItemResult {
@@ -60,8 +62,8 @@ export default function BatchBenchmarkEvaluation() {
 
   // Models
   const [models, setModels] = useState<string[]>([
-    "openrouter/free",
-    "nvidia/nemotron-3-super-120b-a12b:free",
+    "meta-llama/llama-3.2-3b-instruct",
+    "meta-llama/llama-3.1-8b-instruct",
   ]);
 
   // Benchmark Config
@@ -91,6 +93,12 @@ export default function BatchBenchmarkEvaluation() {
   const [results, setResults] = useState<BatchItemResult[]>([]);
   const [activeRunningSampleId, setActiveRunningSampleId] = useState<string | null>(null);
   const [batchError, setBatchError] = useState<string | null>(null);
+  const [isSimulationMode, setIsSimulationMode] = useState<boolean>(false);
+  const [apiErrorMessage, setApiErrorMessage] = useState<{
+    type: "credits_exhausted" | "rate_limit_exceeded" | "upstream_error";
+    modelId: string;
+    message: string;
+  } | null>(null);
 
   // Table Filters & Sort
   const [tableSearch, setTableSearch] = useState("");
@@ -225,11 +233,19 @@ export default function BatchBenchmarkEvaluation() {
           prompt,
           systemPrompt: INSTITUTIONAL_INSURANCE_SYSTEM_PROMPT,
           useTools: false,
+          max_tokens: 350,
         }),
         signal,
       });
 
       if (!res.ok) {
+        let errMsg = `Request failed (${res.status})`;
+        try {
+          const errData = await res.json();
+          if (errData.error) errMsg = errData.error;
+        } catch {
+          // fallback
+        }
         return {
           modelId,
           answer: "",
@@ -238,6 +254,7 @@ export default function BatchBenchmarkEvaluation() {
           completionTokens: 0,
           estCostUsd: 0,
           runStatus: "failed",
+          errorMessage: errMsg,
         };
       }
 
@@ -251,6 +268,7 @@ export default function BatchBenchmarkEvaluation() {
           completionTokens: 0,
           estCostUsd: 0,
           runStatus: "failed",
+          errorMessage: "Failed to read response stream from API",
         };
       }
 
@@ -260,6 +278,7 @@ export default function BatchBenchmarkEvaluation() {
       let completionTokens = 0;
       let cost = 0;
       let buffer = "";
+      let streamError = "";
 
       while (true) {
         const { done, value } = await reader.read();
@@ -277,6 +296,10 @@ export default function BatchBenchmarkEvaluation() {
 
           try {
             const parsed = JSON.parse(dataStr);
+            if (parsed.type === "error" && parsed.error) {
+              streamError = typeof parsed.error === "string" ? parsed.error : JSON.stringify(parsed.error);
+            }
+
             const content =
               parsed.delta && (parsed.type === "content" || parsed.type === "text")
                 ? parsed.delta
@@ -305,6 +328,7 @@ export default function BatchBenchmarkEvaluation() {
         completionTokens,
         estCostUsd: cost,
         runStatus: answer.trim() ? "success" : "failed",
+        errorMessage: answer.trim() ? undefined : (streamError || "Model inference returned empty response."),
       };
     } catch (err: unknown) {
       if ((err as Error)?.name === "AbortError") {
@@ -326,16 +350,19 @@ export default function BatchBenchmarkEvaluation() {
         completionTokens: 0,
         estCostUsd: 0,
         runStatus: "failed",
+        errorMessage: (err as Error)?.message || "Inference failed due to network error",
       };
     }
   };
 
   // Run Batch Action
-  const handleRunBatch = async () => {
+  const handleRunBatch = async (overrideSimulation?: boolean) => {
     if (isRunning) return;
+    const isSim = overrideSimulation !== undefined ? overrideSimulation : isSimulationMode;
     setIsRunning(true);
     isCancelledRef.current = false;
     setBatchError(null);
+    setApiErrorMessage(null);
     setResults([]);
     setProgressCount(0);
     setFailedCount(0);
@@ -417,8 +444,21 @@ export default function BatchBenchmarkEvaluation() {
         const itemAbortController = new AbortController();
         abortControllersRef.current.push(itemAbortController);
 
-        // Run each model for this sample with stagger delay
+        // Run each model for this sample with stagger delay or simulation
         const modelPromises = models.map(async (mId, mIdx) => {
+          if (isSim) {
+            await new Promise((resolve) => setTimeout(resolve, 150 + mIdx * 80));
+            return simulateBenchmarkResponse({
+              modelId: mId,
+              modelIndex: mIdx,
+              question: item.fullQuestion,
+              options: item.options,
+              correctAnswer: item.correctAnswer,
+              scoringPolicy: item.scoringPolicy,
+              category: item.category,
+            });
+          }
+
           if (mIdx > 0 && requestDelayMs > 0) {
             await new Promise((resolve) => setTimeout(resolve, mIdx * requestDelayMs));
           }
@@ -430,6 +470,21 @@ export default function BatchBenchmarkEvaluation() {
         const anyFailed = modelResults.some((m) => m.runStatus === "failed");
         if (anyFailed) {
           setFailedCount((prev) => prev + 1);
+          const failedWithMsg = modelResults.find((m) => m.runStatus === "failed" && m.errorMessage);
+          if (failedWithMsg?.errorMessage) {
+            const msg = failedWithMsg.errorMessage;
+            let type: "credits_exhausted" | "rate_limit_exceeded" | "upstream_error" = "upstream_error";
+            if (/credit|payment|afford|402/i.test(msg)) {
+              type = "credits_exhausted";
+            } else if (/rate limit|429|daily|quota|free-models-per-day/i.test(msg)) {
+              type = "rate_limit_exceeded";
+            }
+            setApiErrorMessage({
+              type,
+              modelId: failedWithMsg.modelId,
+              message: msg,
+            });
+          }
         }
 
         setResults((prev) => [
@@ -705,54 +760,114 @@ export default function BatchBenchmarkEvaluation() {
             </p>
           </div>
 
-          {/* Dataset Source Toggle */}
-          <div
-            style={{
-              display: "flex",
-              background: "var(--bg-surface-elevated)",
-              borderRadius: "var(--radius-sm)",
-              padding: "2px",
-              border: "1px solid var(--border-default)",
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => {
-                if (!isRunning) setSourceType("benchmark");
-              }}
-              disabled={isRunning}
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+            {/* Engine Mode Toggle */}
+            <div
               style={{
-                padding: "6px 14px",
-                borderRadius: "4px",
-                background: sourceType === "benchmark" ? "var(--accent)" : "transparent",
-                color: sourceType === "benchmark" ? "var(--text-inverted)" : "var(--text-muted)",
-                fontWeight: 600,
-                fontSize: "12px",
-                border: "none",
-                cursor: isRunning ? "not-allowed" : "pointer",
+                display: "flex",
+                background: "var(--bg-surface-elevated)",
+                borderRadius: "var(--radius-sm)",
+                padding: "2px",
+                border: "1px solid var(--border-default)",
               }}
             >
-              Built-in Benchmark
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                if (!isRunning) setSourceType("manual-csv");
-              }}
-              disabled={isRunning}
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isRunning) setIsSimulationMode(false);
+                }}
+                disabled={isRunning}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: "4px",
+                  background: !isSimulationMode ? "var(--accent)" : "transparent",
+                  color: !isSimulationMode ? "var(--text-inverted)" : "var(--text-muted)",
+                  fontWeight: 600,
+                  fontSize: "12px",
+                  border: "none",
+                  cursor: isRunning ? "not-allowed" : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                }}
+                title="Execute live inferences via OpenRouter API"
+              >
+                <span>⚡ Live API</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isRunning) setIsSimulationMode(true);
+                }}
+                disabled={isRunning}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: "4px",
+                  background: isSimulationMode ? "var(--emerald)" : "transparent",
+                  color: isSimulationMode ? "#ffffff" : "var(--text-muted)",
+                  fontWeight: 600,
+                  fontSize: "12px",
+                  border: "none",
+                  cursor: isRunning ? "not-allowed" : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                }}
+                title="Zero-cost insurance benchmark simulation mode"
+              >
+                <span>🧪 Demo Mode</span>
+              </button>
+            </div>
+
+            {/* Dataset Source Toggle */}
+            <div
               style={{
-                padding: "6px 14px",
-                borderRadius: "4px",
-                background: sourceType === "manual-csv" ? "var(--accent)" : "transparent",
-                color: sourceType === "manual-csv" ? "var(--text-inverted)" : "var(--text-muted)",
-                fontWeight: 600,
-                fontSize: "12px",
-                border: "none",
-                cursor: isRunning ? "not-allowed" : "pointer",
+                display: "flex",
+                background: "var(--bg-surface-elevated)",
+                borderRadius: "var(--radius-sm)",
+                padding: "2px",
+                border: "1px solid var(--border-default)",
               }}
             >
-              Manual CSV Upload
-            </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isRunning) setSourceType("benchmark");
+                }}
+                disabled={isRunning}
+                style={{
+                  padding: "6px 14px",
+                  borderRadius: "4px",
+                  background: sourceType === "benchmark" ? "var(--accent)" : "transparent",
+                  color: sourceType === "benchmark" ? "var(--text-inverted)" : "var(--text-muted)",
+                  fontWeight: 600,
+                  fontSize: "12px",
+                  border: "none",
+                  cursor: isRunning ? "not-allowed" : "pointer",
+                }}
+              >
+                Built-in Benchmark
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isRunning) setSourceType("manual-csv");
+                }}
+                disabled={isRunning}
+                style={{
+                  padding: "6px 14px",
+                  borderRadius: "4px",
+                  background: sourceType === "manual-csv" ? "var(--accent)" : "transparent",
+                  color: sourceType === "manual-csv" ? "var(--text-inverted)" : "var(--text-muted)",
+                  fontWeight: 600,
+                  fontSize: "12px",
+                  border: "none",
+                  cursor: isRunning ? "not-allowed" : "pointer",
+                }}
+              >
+                Manual CSV Upload
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1065,21 +1180,23 @@ export default function BatchBenchmarkEvaluation() {
             ) : (
               <button
                 type="button"
-                onClick={handleRunBatch}
+                onClick={() => handleRunBatch()}
                 disabled={plannedSampleCount === 0 || isRunning}
                 style={{
                   padding: "8px 24px",
                   borderRadius: "var(--radius-sm)",
-                  background: plannedSampleCount > 0 ? "var(--accent)" : "var(--bg-surface)",
+                  background: plannedSampleCount > 0
+                    ? isSimulationMode ? "var(--emerald)" : "var(--accent)"
+                    : "var(--bg-surface)",
                   border: "1px solid var(--accent-border)",
-                  color: plannedSampleCount > 0 ? "var(--text-inverted)" : "var(--text-subtle)",
+                  color: plannedSampleCount > 0 ? "#ffffff" : "var(--text-subtle)",
                   fontWeight: 700,
                   fontSize: "13px",
                   cursor: plannedSampleCount > 0 ? "pointer" : "not-allowed",
                   boxShadow: "0 2px 8px rgba(66, 133, 244, 0.25)",
                 }}
               >
-                ▶ Run Batch Evaluation
+                {isSimulationMode ? "🧪 Run Demo Benchmark" : "▶ Run Batch Evaluation"}
               </button>
             )}
           </div>
@@ -1125,6 +1242,121 @@ export default function BatchBenchmarkEvaluation() {
           </div>
         )}
       </section>
+
+      {/* ── UPSTREAM API ERROR BANNER ────────────────────────────────────────── */}
+      {apiErrorMessage && (
+        <div
+          role="alert"
+          style={{
+            background:
+              apiErrorMessage.type === "credits_exhausted"
+                ? "linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(245, 158, 11, 0.08))"
+                : "linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(239, 68, 68, 0.08))",
+            border: `1px solid ${apiErrorMessage.type === "credits_exhausted" ? "var(--rose)" : "var(--amber)"}`,
+            borderRadius: "var(--radius-md)",
+            padding: "16px 20px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "12px",
+            boxShadow: "0 4px 16px rgba(0, 0, 0, 0.25)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <span style={{ fontSize: "24px" }}>
+                {apiErrorMessage.type === "credits_exhausted" ? "💳" : "⏳"}
+              </span>
+              <div>
+                <h4 style={{ margin: 0, fontSize: "14.5px", fontWeight: 700, color: "var(--text-main)" }}>
+                  {apiErrorMessage.type === "credits_exhausted"
+                    ? "OpenRouter Credit Limit Reached (HTTP 402)"
+                    : apiErrorMessage.type === "rate_limit_exceeded"
+                    ? "OpenRouter Free Tier Daily Quota Exhausted (HTTP 429)"
+                    : "Model Inference Upstream Failure"}
+                </h4>
+                <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--text-muted)", lineHeight: 1.5 }}>
+                  Model <strong style={{ color: "var(--text-main)" }}>{apiErrorMessage.modelId}</strong> was rejected by OpenRouter:{" "}
+                  <span style={{ color: "var(--text-main)" }}>{apiErrorMessage.message}</span>
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setApiErrorMessage(null)}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "var(--text-subtle)",
+                cursor: "pointer",
+                fontSize: "18px",
+                padding: "2px 6px",
+              }}
+              aria-label="Dismiss alert"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              flexWrap: "wrap",
+              paddingTop: "10px",
+              borderTop: "1px solid var(--border-subtle)",
+            }}
+          >
+            <a
+              href="https://openrouter.ai/settings/credits"
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                background: "var(--accent)",
+                color: "var(--text-inverted)",
+                padding: "7px 16px",
+                borderRadius: "var(--radius-sm)",
+                fontSize: "12px",
+                fontWeight: 600,
+                textDecoration: "none",
+              }}
+            >
+              💳 Top Up Credits on OpenRouter ↗
+            </a>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsSimulationMode(true);
+                handleRunBatch(true);
+              }}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                background: "var(--bg-surface-elevated)",
+                border: "1px solid var(--border-default)",
+                color: "var(--emerald)",
+                padding: "7px 16px",
+                borderRadius: "var(--radius-sm)",
+                fontSize: "12px",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              ⚡ Run in Demo Simulation Mode
+            </button>
+
+            <span style={{ fontSize: "11px", color: "var(--text-subtle)" }}>
+              Demo mode simulates realistic actuary responses, populating all 5 Radar Charts and Token Speed metrics with zero API costs.
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* ── BATCH RESULTS DASHBOARD ─────────────────────────────────────────── */}
       {results.length > 0 && (
@@ -1463,7 +1695,18 @@ export default function BatchBenchmarkEvaluation() {
                                   ) : ev?.correct === false ? (
                                     <span style={{ color: "var(--rose)", fontWeight: 700 }}>✗ Fail</span>
                                   ) : m?.runStatus === "failed" ? (
-                                    <span style={{ color: "var(--rose)" }}>Failed</span>
+                                    <span
+                                      style={{
+                                        color: "var(--rose)",
+                                        cursor: m.errorMessage ? "help" : "default",
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        gap: "3px",
+                                      }}
+                                      title={m.errorMessage || "Model inference failed"}
+                                    >
+                                      ⚠️ Failed
+                                    </span>
                                   ) : (
                                     <span style={{ color: "var(--text-subtle)" }}>—</span>
                                   )}

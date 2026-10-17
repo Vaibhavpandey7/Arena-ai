@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { model, prompt, messages: inputMessages, systemPrompt, useTools, selectedTools, toolChoice, activePlugins, customEndpoint } = body;
+  const { model, prompt, messages: inputMessages, systemPrompt, useTools, selectedTools, toolChoice, activePlugins, customEndpoint, maxTokens, max_tokens } = body as Record<string, any>;
 
   if (!model || (!prompt && (!inputMessages || inputMessages.length === 0))) {
     return new Response(
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
   // Build full conversational thread messages
   let conversationMessages: ChatMessage[] = [];
   if (inputMessages && inputMessages.length > 0) {
-    conversationMessages = inputMessages.map((m) => ({
+    conversationMessages = inputMessages.map((m: any) => ({
       role: m.role,
       content: m.content,
       tool_call_id: m.tool_call_id,
@@ -241,6 +241,7 @@ function parseOpenRouterError(status: number, errText: string, modelName: string
             toolChoice: round === 0 ? formattedToolChoice : "auto",
             systemPrompt: effectiveSystemPrompt,
             customEndpoint,
+            max_tokens: maxTokens ?? max_tokens,
           });
 
           if (!orResponse.ok) {
@@ -275,6 +276,7 @@ function parseOpenRouterError(status: number, errText: string, modelName: string
                 toolChoice: round === 0 ? formattedToolChoice : "auto",
                 systemPrompt: effectiveSystemPrompt,
                 customEndpoint,
+                max_tokens: maxTokens ?? max_tokens,
               });
 
               if (!fallbackResponse.ok) {

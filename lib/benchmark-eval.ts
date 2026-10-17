@@ -226,6 +226,46 @@ function parseSingleNumber(value: string): ParsedNumber | undefined {
   };
 }
 
+function parseAllNumbers(value: string): ParsedNumber[] {
+  const matches = Array.from(value.matchAll(NUMBER_PATTERN));
+  const results: ParsedNumber[] = [];
+  for (const match of matches) {
+    const rawNumber = match[0].replace(/,/g, "");
+    const number = Number(rawNumber);
+    if (!Number.isFinite(number)) continue;
+
+    const start = match.index ?? 0;
+    const end = start + match[0].length;
+    const before = value.slice(Math.max(0, start - 16), start);
+    const after = value.slice(end, end + 24);
+    const prefix = before.match(/(?:[$€£¥]|USD|EUR|GBP|CNY|RMB)\s*$/i)?.[0] ?? "";
+    const suffixMatch = after.match(/^\s*(%|[A-Za-z]{1,12}|元)(?:\s+([A-Za-z]{1,12}|元))?/);
+    const firstSuffix = suffixMatch?.[1] ?? "";
+    const secondSuffix = suffixMatch?.[2] ?? "";
+    const prefixUnit = prefix.trim().toLocaleLowerCase();
+    const firstToken = firstSuffix.trim().toLocaleLowerCase();
+    const secondToken = secondSuffix.trim().toLocaleLowerCase();
+    const scaleToken = /^(k|thousand|million|billion)$/i.exec(firstToken)?.[1]?.toLowerCase();
+    const scale = scaleToken === "k" || scaleToken === "thousand"
+      ? 1_000
+      : scaleToken === "million"
+        ? 1_000_000
+        : scaleToken === "billion"
+          ? 1_000_000_000
+          : 1;
+    const unitToken = scaleToken
+      ? secondToken || prefixUnit
+      : firstToken || prefixUnit;
+    const normalizedUnit = UNIT_ALIASES[unitToken] ?? unitToken;
+    const conversion = UNIT_CONVERSIONS[normalizedUnit];
+    results.push({
+      value: number * scale * (conversion?.factor ?? 1),
+      unit: conversion?.baseUnit ?? normalizedUnit,
+    });
+  }
+  return results;
+}
+
 function getTaskType(
   reference: string,
   options: Record<string, string>,
@@ -309,18 +349,51 @@ export function evaluateReferenceAnswer(
 
   if (taskType === "numeric") {
     const expected = parseSingleNumber(reference);
-    const actual = parseSingleNumber(response);
-    if (!expected || !actual) {
+    if (!expected) {
       return {
         taskType,
         metricName: "Numeric accuracy",
         available: false,
-        reason: !actual
-          ? "The response must contain exactly one unambiguous numeric value."
-          : "The reference must contain exactly one unambiguous numeric value.",
+        reason: "The reference must contain exactly one unambiguous numeric value.",
       };
     }
-    if (expected.unit !== actual.unit) {
+
+    const absoluteTolerance = policy?.absoluteTolerance ?? 0;
+    const relativeTolerance = policy?.relativeTolerance ?? 0;
+    const tolerance = Math.max(
+      absoluteTolerance,
+      Math.abs(expected.value) * relativeTolerance
+    );
+
+    let actual = parseSingleNumber(response);
+    if (!actual) {
+      const candidates = parseAllNumbers(response);
+      if (candidates.length === 0) {
+        return {
+          taskType,
+          metricName: "Numeric accuracy",
+          available: false,
+          reason: "The response must contain at least one numeric value.",
+        };
+      }
+
+      // Check if any candidate number matches within tolerance and unit compatibility
+      const matchingCandidate = candidates.find((c) => {
+        const unitCompatible = !expected.unit || !c.unit || expected.unit === c.unit;
+        return unitCompatible && Math.abs(c.value - expected.value) <= tolerance;
+      });
+
+      if (matchingCandidate) {
+        actual = matchingCandidate;
+      } else {
+        // Fallback to conclusion pattern or last candidate
+        const conclusionMatch = response.match(/(?:answer|total|result|value|is|equals)\s*(?:is|:|=)?\s*([$€£¥]?\s*[\d,]+(?:\.\d+)?(?:\s*[a-zA-Z%]+)?)/i);
+        const conclusionParsed = conclusionMatch ? parseSingleNumber(conclusionMatch[1]) : undefined;
+        actual = conclusionParsed || candidates[candidates.length - 1];
+      }
+    }
+
+    if (expected.unit && actual.unit && expected.unit !== actual.unit) {
       return {
         taskType,
         metricName: "Numeric accuracy",
@@ -329,12 +402,6 @@ export function evaluateReferenceAnswer(
       };
     }
     const absoluteError = Math.abs(actual.value - expected.value);
-    const absoluteTolerance = policy?.absoluteTolerance ?? 0;
-    const relativeTolerance = policy?.relativeTolerance ?? 0;
-    const tolerance = Math.max(
-      absoluteTolerance,
-      Math.abs(expected.value) * relativeTolerance
-    );
     return {
       taskType,
       metricName: "Numeric accuracy",
@@ -375,6 +442,7 @@ export function evaluateReferenceAnswer(
     tokenPrecision,
     tokenRecall,
     tokenF1,
+    correct: tokenF1 >= 0.35,
   };
 }
 

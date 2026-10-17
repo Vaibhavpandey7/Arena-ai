@@ -101,10 +101,10 @@ export default function SingleSampleEvaluation({
   // Source: Benchmark Dataset or Manual Question
   const [source, setSource] = useState<"benchmark" | "manual">("benchmark");
 
-  // Models (defaults to free tier to save credits)
+  // Models
   const [models, setModels] = useState<string[]>([
-    "openrouter/free",
-    "nvidia/nemotron-3-super-120b-a12b:free",
+    "meta-llama/llama-3.2-3b-instruct",
+    "meta-llama/llama-3.1-8b-instruct",
   ]);
   const [states, setStates] = useState<SingleModelState[]>([
     emptyModelState(),
@@ -310,9 +310,9 @@ export default function SingleSampleEvaluation({
   const handleAddModel = () => {
     if (models.length >= 4) return;
     const candidates = [
-      "nvidia/nemotron-3-super-120b-a12b:free",
-      "nvidia/nemotron-3.5-lightning:free",
-      "openrouter/free",
+      "meta-llama/llama-3.2-3b-instruct",
+      "meta-llama/llama-3.1-8b-instruct",
+      "deepseek/deepseek-chat",
       "openai/gpt-4o-mini",
       "meta-llama/llama-3.3-70b-instruct",
     ];
@@ -400,6 +400,7 @@ export default function SingleSampleEvaluation({
             prompt: promptText,
             systemPrompt: INSTITUTIONAL_INSURANCE_SYSTEM_PROMPT,
             useTools: false,
+            max_tokens: 450,
           }),
           signal: abortRefs.current[idx]?.signal,
         });
@@ -450,6 +451,18 @@ export default function SingleSampleEvaluation({
 
             try {
               const parsed = JSON.parse(dataStr);
+              if (parsed.type === "error" && parsed.error) {
+                const errText = typeof parsed.error === "string" ? parsed.error : JSON.stringify(parsed.error);
+                updateState((curr) => ({
+                  ...curr,
+                  isRunning: false,
+                  runStatus: "failed",
+                  answer: `⚠️ Inference Failed: ${errText}`,
+                  latencyMs: curr.latencyMs || Date.now() - startTime,
+                }));
+                return;
+              }
+
               if (parsed.type === "done" || parsed.t === "done") {
                 updateState((curr) => ({
                   ...curr,

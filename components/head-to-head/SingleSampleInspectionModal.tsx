@@ -12,6 +12,7 @@ interface InspectedModelResult {
   promptTokens?: number;
   completionTokens?: number;
   estCostUsd?: number;
+  errorMessage?: string;
 }
 
 interface Props {
@@ -323,9 +324,24 @@ export default function SingleSampleInspectionModal({
                   }}
                 >
                   {m.runStatus === "failed" ? (
-                    <span style={{ color: "var(--rose)", fontStyle: "italic" }}>
-                      Model inference failed or returned empty response.
-                    </span>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px", padding: "12px", background: "rgba(239, 68, 68, 0.08)", border: "1px solid rgba(239, 68, 68, 0.25)", borderRadius: "var(--radius-sm)" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--rose)", fontWeight: 700, fontSize: "12px" }}>
+                        <span>⚠️ Inference Failed Upstream</span>
+                      </div>
+                      <div style={{ fontSize: "11.5px", color: "var(--text-main)", lineHeight: 1.5 }}>
+                        {m.errorMessage || "Model inference failed or returned an empty response from OpenRouter."}
+                      </div>
+                      {/credit|payment|afford|402/i.test(m.errorMessage || "") && (
+                        <div style={{ fontSize: "11px", color: "var(--amber)", marginTop: "4px" }}>
+                          💡 <strong>Remedy:</strong> This OpenRouter account has no purchased credits. Visit <a href="https://openrouter.ai/settings/credits" target="_blank" rel="noreferrer" style={{ color: "var(--accent)", textDecoration: "underline" }}>openrouter.ai/settings/credits</a> to top up, or switch to Demo Mode.
+                        </div>
+                      )}
+                      {/rate limit|429|daily|free-models-per-day/i.test(m.errorMessage || "") && (
+                        <div style={{ fontSize: "11px", color: "var(--amber)", marginTop: "4px" }}>
+                          💡 <strong>Remedy:</strong> Daily free tier limit (50 requests/day) reached. Quota resets at 00:00 UTC, or unlocks 1,000 requests/day with $10 in credits.
+                        </div>
+                      )}
+                    </div>
                   ) : m.answer ? (
                     <StructuredMarkdown content={m.answer} />
                   ) : (
