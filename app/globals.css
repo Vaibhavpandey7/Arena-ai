@@ -8772,11 +8772,52 @@ body {
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  transition: border-color 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .h2h-stacked-card:hover {
   border-color: var(--border-strong);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+
+/* Stage 1 Side Panel Layout */
+.h2h-stage1-layout {
+  display: grid;
+  grid-template-columns: 330px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 960px) {
+  .h2h-stage1-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.h2h-sidepanel-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.h2h-sidepanel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 8px;
 }
 
 @keyframes h2hFadeIn {
@@ -8789,3 +8830,4 @@ body {
     transform: translateY(0);
   }
 }
+

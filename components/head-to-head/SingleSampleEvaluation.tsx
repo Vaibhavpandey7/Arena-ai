@@ -109,8 +109,8 @@ export default function SingleSampleEvaluation({
   const [activePluginId, setActivePluginId] = useState<InsurancePluginId>(initialPlugin.id);
   const activePlugin = INSURANCE_PLUGINS.find((p) => p.id === activePluginId) || INSURANCE_PLUGINS[0];
 
-  // Source: Benchmark Dataset or Manual Question
-  const [source, setSource] = useState<"benchmark" | "manual">("benchmark");
+  // Source: Benchmark Dataset or Manual Question (Defaults to Attach Document / Custom Prompt)
+  const [source, setSource] = useState<"benchmark" | "manual">("manual");
 
   // Models
   const [models, setModels] = useState<string[]>([
@@ -750,19 +750,16 @@ export default function SingleSampleEvaluation({
       <div
         key={modelId + idx}
         className={isStacked ? "h2h-stacked-card" : undefined}
-        style={
-          isStacked
-            ? undefined
-            : {
-                background: "var(--bg-surface)",
-                border: "1px solid var(--border-default)",
-                borderRadius: "var(--radius-lg)",
-                display: "flex",
-                flexDirection: "column",
-                overflow: "hidden",
-                minWidth: layoutMode === "columns" && models.length > 2 ? "380px" : undefined,
-              }
-        }
+        style={{
+          background: "var(--bg-surface)",
+          border: "1px solid var(--border-default)",
+          borderRadius: "var(--radius-lg)",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          width: "100%",
+          minWidth: !isStacked && layoutMode === "columns" && models.length > 2 ? "380px" : undefined,
+        }}
       >
         {/* Card Header */}
         <div
@@ -1107,22 +1104,97 @@ export default function SingleSampleEvaluation({
             </div>
           </div>
 
-          {/* Insurance Use-Case Plugins Selector */}
-          <InsurancePluginSelector
-            activePluginId={activePluginId}
-            onSelectPlugin={(plugin) => {
-              setActivePluginId(plugin.id);
-              setBenchmarkId(plugin.datasetIds[0]);
-              setSelectedSampleIndex(0);
-              handleReset();
-            }}
-            activeDatasetId={benchmarkId}
-            onSelectDataset={(dsId) => {
-              setBenchmarkId(dsId);
-              setSelectedSampleIndex(0);
-              handleReset();
-            }}
-          />
+        {/* ── STAGE 1: 2-COLUMN SIDE PANEL LAYOUT ───────────────────────── */}
+        <div className="h2h-stage1-layout" style={{ marginTop: "8px" }}>
+          {/* LEFT SIDE PANEL (~330px): Models first, then Use Cases */}
+          <aside style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            {/* Card 1: Evaluation Models Selection */}
+            <div className="h2h-sidepanel-card">
+              <div className="h2h-sidepanel-header">
+                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <span>🤖</span>
+                  <span>Models ({models.length} of 4)</span>
+                </span>
+                {models.length < 4 && !isAnyRunning && (
+                  <button
+                    type="button"
+                    onClick={handleAddModel}
+                    className="h2h-add-model-btn"
+                    style={{ fontSize: "10.5px", padding: "2px 8px" }}
+                  >
+                    + Add Model
+                  </button>
+                )}
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {models.map((mId, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      background: "var(--bg-surface-elevated)",
+                      borderRadius: "var(--radius-sm)",
+                      border: "1px solid var(--border-subtle)",
+                      padding: "8px 10px",
+                    }}
+                  >
+                    <ModelSelectWidget
+                      label={`Model ${String.fromCharCode(65 + idx)}`}
+                      value={mId}
+                      disabled={isAnyRunning}
+                      onChange={(newId) => handleModelChange(idx, newId)}
+                      onRemove={models.length > 2 && !isAnyRunning ? () => handleRemoveModel(idx) : undefined}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Card 2: Insurance Use Cases (Plugins) */}
+            <div className="h2h-sidepanel-card">
+              <div className="h2h-sidepanel-header">
+                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <span>🧩</span>
+                  <span>Use Cases</span>
+                </span>
+                <span
+                  style={{
+                    fontSize: "10.5px",
+                    fontWeight: 700,
+                    padding: "1px 7px",
+                    borderRadius: "10px",
+                    background: "rgba(66, 133, 244, 0.12)",
+                    color: "var(--accent)",
+                    border: "1px solid rgba(66, 133, 244, 0.25)",
+                  }}
+                >
+                  {INSURANCE_PLUGINS.length} Available
+                </span>
+              </div>
+
+              <InsurancePluginSelector
+                compact={true}
+                hideDetails={true}
+                hideHeader={true}
+                activePluginId={activePluginId}
+                onSelectPlugin={(plugin) => {
+                  setActivePluginId(plugin.id);
+                  setBenchmarkId(plugin.datasetIds[0]);
+                  setSelectedSampleIndex(0);
+                  handleReset();
+                }}
+                activeDatasetId={benchmarkId}
+                onSelectDataset={(dsId) => {
+                  setBenchmarkId(dsId);
+                  setSelectedSampleIndex(0);
+                  handleReset();
+                }}
+              />
+            </div>
+          </aside>
+
+          {/* RIGHT MAIN PANEL (flex: 1) */}
+          <main style={{ display: "flex", flexDirection: "column", gap: "16px", minWidth: 0 }}>
 
           {/* Dual Input Source Switch (Dataset Example vs Document Attachment) */}
           <div
@@ -1514,42 +1586,16 @@ export default function SingleSampleEvaluation({
                 </div>
               )}
 
-              {/* Inquiry Prompt with Templates for Active Plugin */}
+              {/* Clean Custom Prompt / Task Instructions Input (Inquiry prompt replaced with clean prompt input) */}
               <div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "6px", marginBottom: "6px" }}>
-                  <label style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-subtle)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                    Inquiry Prompt ({activePlugin.name})
-                  </label>
-                  <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                    {USE_CASES_LIST.map((uc) => (
-                      <button
-                        key={uc.id}
-                        type="button"
-                        onClick={() => {
-                          setActiveUseCase(uc.id);
-                          setManualPrompt(uc.samplePrompt);
-                        }}
-                        style={{
-                          padding: "2px 8px",
-                          borderRadius: "4px",
-                          fontSize: "10.5px",
-                          fontWeight: 600,
-                          background: activeUseCase === uc.id ? "var(--accent-dim)" : "var(--bg-surface-elevated)",
-                          border: `1px solid ${activeUseCase === uc.id ? "var(--accent-border)" : "var(--border-subtle)"}`,
-                          color: activeUseCase === uc.id ? "var(--accent)" : "var(--text-muted)",
-                          cursor: "pointer",
-                        }}
-                      >
-                        {uc.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "var(--text-subtle)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "6px" }}>
+                  Custom Prompt / Task Instructions (Optional)
+                </label>
                 <textarea
                   value={manualPrompt}
                   onChange={(e) => setManualPrompt(e.target.value)}
                   rows={4}
-                  placeholder="Type your insurance inquiry, claim adjudication task, policy extraction query, or regulatory review instructions..."
+                  placeholder="Type your insurance query, claim review question, coverage interpretation task, or specific instructions for analyzing the document(s)..."
                   style={{
                     width: "100%",
                     padding: "10px 12px",
@@ -1562,56 +1608,60 @@ export default function SingleSampleEvaluation({
                     resize: "vertical",
                   }}
                 />
+                <div style={{ fontSize: "11px", color: "var(--text-subtle)", marginTop: "4px" }}>
+                  💡 If left blank, models will automatically perform a comprehensive standard insurance analysis on the attached document(s).
+                </div>
               </div>
             </div>
           )}
 
-        {/* Model Selection Row */}
-        <div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
-            <label style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-subtle)" }}>
-              Evaluation Models ({models.length} of 4)
-            </label>
-            {models.length < 4 && !isAnyRunning && (
-              <button
-                type="button"
-                onClick={handleAddModel}
-                className="h2h-add-model-btn"
-              >
-                + Add Model
-              </button>
-            )}
-          </div>
-
+          {/* Target Evaluation Metrics Card inside Main Panel */}
           <div
             style={{
-              display: "grid",
-              gridTemplateColumns: `repeat(${models.length}, 1fr)`,
-              gap: "12px",
+              background: "var(--bg-surface-elevated)",
+              border: "1px solid var(--border-subtle)",
+              borderRadius: "var(--radius-md)",
+              padding: "10px 14px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "8px",
             }}
           >
-            {models.map((mId, idx) => (
-              <div
-                key={idx}
-                style={{
-                  background: "var(--bg-surface-elevated)",
-                  borderRadius: "var(--radius-sm)",
-                  border: "1px solid var(--border-subtle)",
-                  padding: "8px 10px",
-                }}
-              >
-                <ModelSelectWidget
-                  label={`Model ${String.fromCharCode(65 + idx)}`}
-                  value={mId}
-                  disabled={isAnyRunning}
-                  onChange={(newId) => handleModelChange(idx, newId)}
-                  onRemove={models.length > 2 && !isAnyRunning ? () => handleRemoveModel(idx) : undefined}
-                />
-              </div>
-            ))}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "6px" }}>
+              <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                ⚖️ LLM Judge Target Metrics (Scored 0–100):
+              </span>
+              <span style={{ fontSize: "11px", color: "var(--text-subtle)" }}>
+                Active Use Case: <strong>{activePlugin.name}</strong>
+              </span>
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+              {activePlugin.metrics.map((metric, mIdx) => (
+                <div
+                  key={metric.id}
+                  title={metric.description}
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: 600,
+                    padding: "3px 9px",
+                    borderRadius: "var(--radius-sm)",
+                    background: "rgba(16, 185, 129, 0.08)",
+                    border: "1px solid rgba(16, 185, 129, 0.25)",
+                    color: "var(--emerald)",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "5px",
+                  }}
+                >
+                  <span style={{ fontSize: "9px", opacity: 0.8 }}>M{mIdx + 1}</span>
+                  <span>{metric.name}</span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </main>
+      </div>
+    </section>
 
       {/* ── STAGE 2: RUN ────────────────────────────────────────────────────── */}
       <section
@@ -1883,7 +1933,10 @@ export default function SingleSampleEvaluation({
           <div
             className="h2h-columns-rail"
             style={{
-              gridTemplateColumns: `repeat(${models.length}, minmax(${models.length > 2 ? "380px" : "1fr"}, 1fr))`,
+              gridTemplateColumns:
+                models.length > 2
+                  ? `repeat(${models.length}, minmax(380px, 1fr))`
+                  : `repeat(${models.length}, minmax(0, 1fr))`,
             }}
           >
             {models.map((modelId, idx) => renderModelCard(modelId, idx, false))}
