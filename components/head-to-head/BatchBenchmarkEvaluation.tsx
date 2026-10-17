@@ -24,6 +24,8 @@ import {
   type RawCsvInspection,
 } from "@/lib/manual-insurance-csv";
 import { INSTITUTIONAL_INSURANCE_SYSTEM_PROMPT } from "@/lib/prompts";
+import RadarComparisonChart from "./RadarComparisonChart";
+import TokenSpeedComparisonPanel from "./TokenSpeedComparisonPanel";
 
 export interface BatchModelResult {
   modelId: string;
@@ -92,7 +94,7 @@ export default function BatchBenchmarkEvaluation() {
 
   // Table Filters & Sort
   const [tableSearch, setTableSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "correct" | "incorrect" | "failed">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "correct" | "incorrect" | "failed" | "disagreements">("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
   // Single-Sample Inspection Modal
@@ -569,6 +571,18 @@ export default function BatchBenchmarkEvaluation() {
 
       // Status
       if (statusFilter !== "all") {
+        if (statusFilter === "disagreements") {
+          if (r.modelStates.length < 2) return false;
+          const verdicts = r.modelStates.map((m) => {
+            if (m.runStatus === "failed") return "failed";
+            if (!m.answer || !r.correctAnswer) return "unscored";
+            const ev = evaluateReferenceAnswer(m.answer, r.correctAnswer, r.options, r.scoringPolicy);
+            return ev.correct === true ? "pass" : ev.correct === false ? "fail" : "unscored";
+          });
+          const first = verdicts[0];
+          return verdicts.some((v) => v !== first);
+        }
+
         const modelA = r.modelStates[0];
         if (statusFilter === "failed" && modelA?.runStatus === "failed") return true;
         if (!modelA?.answer || !r.correctAnswer) return false;
@@ -626,36 +640,32 @@ export default function BatchBenchmarkEvaluation() {
     const headers = [
       "Question ID",
       "Category",
-      "Model A ID",
-      "Model A Correct",
-      "Model A Latency (ms)",
-      "Model B ID",
-      "Model B Correct",
-      "Model B Latency (ms)",
+      ...models.flatMap((mId, idx) => [
+        `Model ${String.fromCharCode(65 + idx)} (${mId.split("/").pop()}) Result`,
+        `Model ${String.fromCharCode(65 + idx)} Latency (ms)`,
+        `Model ${String.fromCharCode(65 + idx)} TPS`,
+      ]),
       "Expected Answer",
     ];
 
     const rows = results.map((r) => {
-      const mA = r.modelStates[0];
-      const mB = r.modelStates[1];
-      const evA =
-        mA?.answer && r.correctAnswer
-          ? evaluateReferenceAnswer(mA.answer, r.correctAnswer, r.options, r.scoringPolicy)
-          : null;
-      const evB =
-        mB?.answer && r.correctAnswer
-          ? evaluateReferenceAnswer(mB.answer, r.correctAnswer, r.options, r.scoringPolicy)
-          : null;
+      const modelCols = models.flatMap((_, idx) => {
+        const m = r.modelStates[idx];
+        const ev =
+          m?.answer && r.correctAnswer
+            ? evaluateReferenceAnswer(m.answer, r.correctAnswer, r.options, r.scoringPolicy)
+            : null;
+        const resultStr =
+          ev?.correct !== undefined ? (ev.correct ? "PASS" : "FAIL") : m?.runStatus || "N/A";
+        const latency = m?.latencyMs ?? 0;
+        const tps = latency > 0 && m?.completionTokens ? (m.completionTokens / (latency / 1000)).toFixed(1) : "0";
+        return [resultStr, latency, tps];
+      });
 
       return [
         `"${r.sampleId}"`,
         `"${r.category}"`,
-        `"${mA?.modelId || ""}"`,
-        evA?.correct !== undefined ? (evA.correct ? "PASS" : "FAIL") : "N/A",
-        mA?.latencyMs ?? 0,
-        `"${mB?.modelId || ""}"`,
-        evB?.correct !== undefined ? (evB.correct ? "PASS" : "FAIL") : "N/A",
-        mB?.latencyMs ?? 0,
+        ...modelCols,
         `"${(r.correctAnswer || "").replace(/"/g, '""')}"`,
       ].join(",");
     });
@@ -1270,6 +1280,19 @@ export default function BatchBenchmarkEvaluation() {
             )}
           </div>
 
+          {/* ── 5-RADAR CAPABILITY & TOKEN SPEED COMPARISON DASHBOARDS ──────── */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
+            <RadarComparisonChart
+              modelIds={models}
+              items={results}
+            />
+
+            <TokenSpeedComparisonPanel
+              modelIds={models}
+              items={results}
+            />
+          </div>
+
           {/* 5-Category Breakdown Section */}
           <div
             style={{
@@ -1374,6 +1397,7 @@ export default function BatchBenchmarkEvaluation() {
                   }}
                 >
                   <option value="all">All Outcomes</option>
+                  <option value="disagreements">⚠️ Disagreements Only</option>
                   <option value="correct">Model A Correct</option>
                   <option value="incorrect">Model A Incorrect</option>
                   <option value="failed">Failed / Errored</option>
@@ -1388,25 +1412,19 @@ export default function BatchBenchmarkEvaluation() {
                   <tr style={{ background: "var(--bg-surface-elevated)", color: "var(--text-muted)" }}>
                     <th style={{ padding: "8px 12px", borderBottom: "1px solid var(--border-subtle)" }}>ID</th>
                     <th style={{ padding: "8px 12px", borderBottom: "1px solid var(--border-subtle)" }}>Question Preview</th>
-                    <th style={{ padding: "8px 12px", borderBottom: "1px solid var(--border-subtle)" }}>Model A Result</th>
-                    <th style={{ padding: "8px 12px", borderBottom: "1px solid var(--border-subtle)" }}>Model B Result</th>
-                    <th style={{ padding: "8px 12px", borderBottom: "1px solid var(--border-subtle)" }}>Model A Latency</th>
+                    {models.map((mId, mIdx) => (
+                      <th key={mId} style={{ padding: "8px 12px", borderBottom: "1px solid var(--border-subtle)" }}>
+                        <div style={{ display: "flex", flexDirection: "column" }}>
+                          <span style={{ fontWeight: 700, color: "var(--text-main)" }}>Model {String.fromCharCode(65 + mIdx)}</span>
+                          <span style={{ fontSize: "10px", color: "var(--text-subtle)", fontWeight: 400 }}>{mId.split("/").pop()}</span>
+                        </div>
+                      </th>
+                    ))}
                     <th style={{ padding: "8px 12px", borderBottom: "1px solid var(--border-subtle)" }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredTableResults.map((r) => {
-                    const mA = r.modelStates[0];
-                    const mB = r.modelStates[1];
-                    const evA =
-                      mA?.answer && r.correctAnswer
-                        ? evaluateReferenceAnswer(mA.answer, r.correctAnswer, r.options, r.scoringPolicy)
-                        : null;
-                    const evB =
-                      mB?.answer && r.correctAnswer
-                        ? evaluateReferenceAnswer(mB.answer, r.correctAnswer, r.options, r.scoringPolicy)
-                        : null;
-
                     return (
                       <tr
                         key={r.sampleId}
@@ -1425,31 +1443,39 @@ export default function BatchBenchmarkEvaluation() {
                         <td style={{ padding: "8px 12px", maxWidth: "340px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: "var(--text-main)" }}>
                           {r.preview}
                         </td>
-                        <td style={{ padding: "8px 12px" }}>
-                          {evA?.correct === true ? (
-                            <span style={{ color: "var(--emerald)", fontWeight: 700 }}>✓ Correct</span>
-                          ) : evA?.correct === false ? (
-                            <span style={{ color: "var(--rose)", fontWeight: 700 }}>✗ Incorrect</span>
-                          ) : mA?.runStatus === "failed" ? (
-                            <span style={{ color: "var(--rose)" }}>Failed</span>
-                          ) : (
-                            <span style={{ color: "var(--text-subtle)" }}>Not Scored</span>
-                          )}
-                        </td>
-                        <td style={{ padding: "8px 12px" }}>
-                          {evB?.correct === true ? (
-                            <span style={{ color: "var(--emerald)", fontWeight: 700 }}>✓ Correct</span>
-                          ) : evB?.correct === false ? (
-                            <span style={{ color: "var(--rose)", fontWeight: 700 }}>✗ Incorrect</span>
-                          ) : mB?.runStatus === "failed" ? (
-                            <span style={{ color: "var(--rose)" }}>Failed</span>
-                          ) : (
-                            <span style={{ color: "var(--text-subtle)" }}>Not Scored</span>
-                          )}
-                        </td>
-                        <td style={{ padding: "8px 12px", fontFamily: "var(--font-mono)", color: "var(--text-subtle)" }}>
-                          {mA?.latencyMs ? `${(mA.latencyMs / 1000).toFixed(2)}s` : "—"}
-                        </td>
+                        {models.map((mId, mIdx) => {
+                          const m = r.modelStates[mIdx];
+                          const ev =
+                            m?.answer && r.correctAnswer
+                              ? evaluateReferenceAnswer(m.answer, r.correctAnswer, r.options, r.scoringPolicy)
+                              : null;
+                          const tps =
+                            m?.latencyMs && m?.completionTokens
+                              ? (m.completionTokens / (m.latencyMs / 1000)).toFixed(1)
+                              : null;
+
+                          return (
+                            <td key={mId} style={{ padding: "8px 12px" }}>
+                              <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                                <div>
+                                  {ev?.correct === true ? (
+                                    <span style={{ color: "var(--emerald)", fontWeight: 700 }}>✓ Pass</span>
+                                  ) : ev?.correct === false ? (
+                                    <span style={{ color: "var(--rose)", fontWeight: 700 }}>✗ Fail</span>
+                                  ) : m?.runStatus === "failed" ? (
+                                    <span style={{ color: "var(--rose)" }}>Failed</span>
+                                  ) : (
+                                    <span style={{ color: "var(--text-subtle)" }}>—</span>
+                                  )}
+                                </div>
+                                <div style={{ fontSize: "10.5px", color: "var(--text-subtle)", fontFamily: "var(--font-mono)" }}>
+                                  {m?.latencyMs ? `${(m.latencyMs / 1000).toFixed(2)}s` : "—"}
+                                  {tps && tps !== "0.0" ? ` · ${tps} t/s` : ""}
+                                </div>
+                              </div>
+                            </td>
+                          );
+                        })}
                         <td style={{ padding: "8px 12px" }}>
                           <button
                             type="button"

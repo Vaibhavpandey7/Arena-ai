@@ -5,8 +5,8 @@ import ModelSelectWidget from "../ModelSelectWidget";
 import StructuredMarkdown from "../StructuredMarkdown";
 import GroundTruthPanel from "../GroundTruthPanel";
 import { DocumentPreviewModal, ParsedDocument } from "../DocumentPreviewModal";
-import { DocumentIngestModal } from "../DocumentIngestModal";
 import ModelMaximizeModal from "./ModelMaximizeModal";
+import HeadToHeadComparisonModal from "./HeadToHeadComparisonModal";
 import { INSTITUTIONAL_INSURANCE_SYSTEM_PROMPT } from "@/lib/prompts";
 import {
   evaluateReferenceAnswer,
@@ -79,12 +79,6 @@ const USE_CASES_LIST: { id: InsuranceUseCaseId; label: string; samplePrompt: str
     goldKey: "SC-002",
   },
   {
-    id: "ai-triage",
-    label: "AI Triage",
-    samplePrompt: "Assess this First Notice of Loss (FNOL) for motor vehicle collision involving pedestrian injury and route to appropriate claim severity tier.",
-    goldKey: "SC-003",
-  },
-  {
     id: "claim-assessment",
     label: "Claim Assessment",
     samplePrompt: "Adjudicate comprehensive auto coverage for stolen vehicle with recovery damages, calculating net payable indemnity after $500 deductible.",
@@ -95,18 +89,6 @@ const USE_CASES_LIST: { id: InsuranceUseCaseId; label: string; samplePrompt: str
     label: "EIOPA Regulatory Check",
     samplePrompt: "Review Solvency II Article 132 Prudent Person Principle compliance for life insurer allocating 18% of technical provisions into private credit funds.",
     goldKey: "SC-005",
-  },
-  {
-    id: "underwriting-risk",
-    label: "Underwriting Risk Assessment",
-    samplePrompt: "Evaluate commercial cyber insurance submission for regional healthcare network: MFA enforcement, backup segregation, and ransomware sublimit recommendation.",
-    goldKey: "SC-006",
-  },
-  {
-    id: "actuarial-reasoning",
-    label: "Actuarial Reasoning",
-    samplePrompt: "Calculate cumulative development factors and estimated ultimate losses for 2024 accident year using the provided 5-year paid loss triangle.",
-    goldKey: "SC-008",
   },
 ];
 
@@ -167,45 +149,51 @@ export default function SingleSampleEvaluation({
   const [activeUseCase, setActiveUseCase] = useState<InsuranceUseCaseId>("data-extraction");
   const [manualPrompt, setManualPrompt] = useState(initialPrompt || "");
 
-  // Optional Context Document
-  const [attachedDoc, setAttachedDoc] = useState<ParsedDocument | null>(null);
-  const [showDocModal, setShowDocModal] = useState(false);
+  // Optional Context Documents (Multiple upload support)
+  const [attachedDocs, setAttachedDocs] = useState<ParsedDocument[]>([]);
+  const [previewDoc, setPreviewDoc] = useState<ParsedDocument | null>(null);
   const [showDocPreview, setShowDocPreview] = useState(false);
-  const [showContextDrawer, setShowContextDrawer] = useState(false);
   const [isUploadingDoc, setIsUploadingDoc] = useState(false);
   const [docUploadError, setDocUploadError] = useState<string | null>(null);
+  const [showComparisonModal, setShowComparisonModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
     setIsUploadingDoc(true);
     setDocUploadError(null);
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
+      const newDocs: ParsedDocument[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const formData = new FormData();
+        formData.append("file", file);
 
-      const res = await fetch("/api/documents/parse", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "Failed to parse document");
+        const res = await fetch("/api/documents/parse", {
+          method: "POST",
+          body: formData,
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || `Failed to parse ${file.name}`);
+        }
+
+        newDocs.push({
+          ...data.document,
+          content: data.document.text || data.document.content || "",
+          fileUrl: URL.createObjectURL(file),
+          mimeType: file.type || "application/pdf",
+        });
       }
 
-      setAttachedDoc({
-        ...data.document,
-        fileUrl: URL.createObjectURL(file),
-        mimeType: file.type || "application/pdf",
-      });
-      setShowContextDrawer(true);
+      setAttachedDocs((prev) => [...prev, ...newDocs]);
     } catch (err: unknown) {
-      setDocUploadError((err as Error)?.message || "Failed to upload document");
+      setDocUploadError((err as Error)?.message || "Failed to upload document(s)");
     } finally {
       setIsUploadingDoc(false);
-      e.target.value = "";
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -330,6 +318,7 @@ export default function SingleSampleEvaluation({
     ];
     const nextModel = candidates.find((c) => !models.includes(c)) || candidates[0];
     setModels((prev) => [...prev, nextModel]);
+    setStates((prev) => [...prev, emptyModelState()]);
   };
 
   const handleRemoveModel = (idx: number) => {
@@ -361,14 +350,20 @@ export default function SingleSampleEvaluation({
       questionText = manualPrompt.trim();
     }
 
-    if (!attachedDoc) return questionText;
+    if (attachedDocs.length === 0) return questionText;
 
-    const docHeader = `[ATTACHED POLICY / DOCUMENT: ${attachedDoc.name} | Type: ${attachedDoc.type}]\n--- DOCUMENT CONTENT START ---\n${attachedDoc.text}\n--- DOCUMENT CONTENT END ---\n\n`;
+    const docsContext = attachedDocs
+      .map(
+        (doc, idx) =>
+          `[ATTACHED DOCUMENT ${idx + 1}: ${doc.name} | Type: ${doc.type}]\n--- DOCUMENT CONTENT START ---\n${doc.text || ""}\n--- DOCUMENT CONTENT END ---`
+      )
+      .join("\n\n");
+
     if (!questionText) {
-      return `${docHeader}[TASK]\nPlease analyse this attached policy document according to standard insurance underwriting, claims assessment, and regulatory review principles. Summarise key findings, coverage limits, exclusions, deductibles, and risk indicators.`;
+      return `${docsContext}\n\n[TASK]\nPlease analyse these attached insurance documents according to standard insurance underwriting, claims assessment, and regulatory review principles. Summarise key findings, coverage limits, exclusions, deductibles, and risk indicators.`;
     }
-    return `${docHeader}[QUESTION / INQUIRY]\n${questionText}`;
-  }, [source, currentBenchmarkRecord, manualPrompt, attachedDoc]);
+    return `${docsContext}\n\n[QUESTION / INQUIRY]\n${questionText}`;
+  }, [source, currentBenchmarkRecord, manualPrompt, attachedDocs]);
 
   // Stream a single model
   const streamSingleModel = useCallback(
@@ -600,7 +595,7 @@ export default function SingleSampleEvaluation({
 
   // Calculate Executive Verdict
   const answeredModels = models
-    .map((mId, idx) => ({ idx, modelId: mId, state: states[idx] }))
+    .map((mId, idx) => ({ idx, modelId: mId, state: states[idx] || emptyModelState() }))
     .filter((m) => !!m.state.answer);
 
   const hasVerdict = answeredModels.length >= 2;
@@ -928,14 +923,14 @@ export default function SingleSampleEvaluation({
               📂 {source === "benchmark" ? (INSURANCE_BENCHMARKS.find((b) => b.id === benchmarkId)?.name || benchmarkId) : (USE_CASES_LIST.find((u) => u.id === activeUseCase)?.label || activeUseCase)}
             </span>
             <span className="h2h-chip sample">
-              📑 {source === "benchmark" ? (currentBenchmarkRecord?.id || `Sample #${selectedSampleIndex + 1}`) : "Manual Prompt"}
+              📑 {source === "benchmark" ? (currentBenchmarkRecord?.id || `Sample #${selectedSampleIndex + 1}`) : "Manual Testing"}
             </span>
             <span className="h2h-chip models">
               🤖 {models.map((m, i) => `Model ${String.fromCharCode(65 + i)}: ${m.split("/").pop()}`).join(" vs ")}
             </span>
-            {attachedDoc && (
+            {attachedDocs.length > 0 && (
               <span className="h2h-chip doc">
-                📄 {attachedDoc.name}
+                📄 {attachedDocs.length === 1 ? attachedDocs[0].name : `${attachedDocs.length} Docs Attached`}
               </span>
             )}
           </div>
@@ -1077,7 +1072,7 @@ export default function SingleSampleEvaluation({
                 transition: "all var(--transition-fast)",
               }}
             >
-              Manual Question
+              Manual Testing
             </button>
           </div>
         </div>
@@ -1235,11 +1230,38 @@ export default function SingleSampleEvaluation({
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            {/* Manual Use Case Tabs */}
+            {/* Manual Use Case Tabs with Inline Document Attachment */}
             <div>
-              <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "var(--text-subtle)", marginBottom: "6px" }}>
-                Insurance Use Case Template
-              </label>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px", marginBottom: "6px" }}>
+                <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "var(--text-subtle)" }}>
+                  Insurance Use Case Template
+                </label>
+
+                {/* Inline Document Attachment Action */}
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isAnyRunning || isUploadingDoc}
+                    className="arena-header-btn"
+                    style={{ fontSize: "11.5px", padding: "4px 10px", display: "inline-flex", alignItems: "center", gap: "5px" }}
+                    title="Attach multiple insurance policy PDFs, contract wordings, or regulatory schedules"
+                  >
+                    <span>📎</span>
+                    <span>{isUploadingDoc ? "Parsing…" : attachedDocs.length > 0 ? `Attach More Docs (${attachedDocs.length})` : "Attach Documents"}</span>
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept=".pdf,.txt,image/*,.json,.csv,.md"
+                    style={{ display: "none" }}
+                    onChange={handleFileChange}
+                  />
+                </div>
+              </div>
+
+              {/* Template Pills */}
               <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
                 {USE_CASES_LIST.map((uc) => (
                   <button
@@ -1264,6 +1286,95 @@ export default function SingleSampleEvaluation({
                   </button>
                 ))}
               </div>
+
+              {/* Uploaded Documents Chip Tray */}
+              {attachedDocs.length > 0 && (
+                <div style={{ marginTop: "10px", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px" }}>
+                  <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-subtle)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    Attached Docs:
+                  </span>
+                  {attachedDocs.map((doc, dIdx) => (
+                    <div
+                      key={doc.id || dIdx}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        background: "var(--bg-surface-elevated)",
+                        border: "1px solid var(--border-default)",
+                        borderRadius: "var(--radius-sm)",
+                        padding: "3px 8px",
+                        fontSize: "11.5px",
+                      }}
+                    >
+                      <span>📄</span>
+                      <strong style={{ color: "var(--text-main)", maxWidth: "160px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={doc.name}>
+                        {doc.name}
+                      </strong>
+                      <span style={{ fontSize: "10.5px", color: "var(--text-subtle)", fontFamily: "var(--font-mono)" }}>
+                        ({doc.formattedSize || `${doc.wordCount}w`})
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPreviewDoc(doc);
+                          setShowDocPreview(true);
+                        }}
+                        style={{
+                          background: "transparent",
+                          border: "none",
+                          color: "var(--accent)",
+                          cursor: "pointer",
+                          fontSize: "11px",
+                          padding: "0 2px",
+                        }}
+                        title="Preview Document"
+                      >
+                        👁
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAttachedDocs((prev) => prev.filter((_, i) => i !== dIdx));
+                        }}
+                        style={{
+                          background: "transparent",
+                          border: "none",
+                          color: "var(--rose)",
+                          cursor: "pointer",
+                          fontSize: "12px",
+                          padding: "0 2px",
+                          lineHeight: 1,
+                        }}
+                        title="Remove Document"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setAttachedDocs([])}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      color: "var(--text-muted)",
+                      cursor: "pointer",
+                      fontSize: "11px",
+                      textDecoration: "underline",
+                      padding: "2px 4px",
+                    }}
+                  >
+                    Clear All
+                  </button>
+                </div>
+              )}
+
+              {docUploadError && (
+                <div style={{ fontSize: "11.5px", color: "var(--rose)", marginTop: "6px" }}>
+                  ⚠️ {docUploadError}
+                </div>
+              )}
             </div>
 
             {/* Manual Prompt Input */}
@@ -1336,103 +1447,6 @@ export default function SingleSampleEvaluation({
               </div>
             ))}
           </div>
-        </div>
-
-        {/* Collapsible Document Attachment Drawer */}
-        <div style={{ borderTop: "1px solid var(--border-subtle)", paddingTop: "10px" }}>
-          <button
-            type="button"
-            onClick={() => setShowContextDrawer(!showContextDrawer)}
-            style={{
-              background: "transparent",
-              border: "none",
-              color: "var(--text-muted)",
-              fontSize: "12px",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              padding: 0,
-            }}
-          >
-            <span>{showContextDrawer ? "▼" : "▶"}</span>
-            <span style={{ fontWeight: 600 }}>
-              Optional Document Context {attachedDoc ? `(1 attached: ${attachedDoc.name})` : "(0 attached)"}
-            </span>
-          </button>
-
-          {showContextDrawer && (
-            <div
-              style={{
-                marginTop: "10px",
-                padding: "12px",
-                borderRadius: "var(--radius-sm)",
-                background: "var(--bg-surface-elevated)",
-                border: "1px solid var(--border-subtle)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: "10px",
-                flexWrap: "wrap",
-              }}
-            >
-              <div>
-                <div style={{ fontSize: "12px", color: "var(--text-main)", fontWeight: 600 }}>
-                  {attachedDoc ? attachedDoc.name : "No policy or regulatory document attached"}
-                </div>
-                <div style={{ fontSize: "11px", color: "var(--text-subtle)", marginTop: "2px" }}>
-                  {attachedDoc
-                    ? `${attachedDoc.type.toUpperCase()} · ${attachedDoc.formattedSize} · Provided to all models as context`
-                    : "Attach an insurance policy PDF, contract wordings, or regulatory document."}
-                </div>
-              </div>
-
-              <div style={{ display: "flex", gap: "8px" }}>
-                {attachedDoc ? (
-                  <>
-                    <button
-                      type="button"
-                      className="arena-header-btn"
-                      onClick={() => setShowDocPreview(true)}
-                    >
-                      Preview Document
-                    </button>
-                    <button
-                      type="button"
-                      className="arena-header-btn"
-                      onClick={() => setAttachedDoc(null)}
-                      style={{ color: "var(--rose)" }}
-                    >
-                      Remove
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      className="arena-header-btn"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isAnyRunning || isUploadingDoc}
-                    >
-                      {isUploadingDoc ? "Parsing Document…" : "+ Attach Policy PDF / Text"}
-                    </button>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept=".pdf,.txt,image/*"
-                      style={{ display: "none" }}
-                      onChange={handleFileChange}
-                    />
-                  </>
-                )}
-              </div>
-              {docUploadError && (
-                <div style={{ width: "100%", fontSize: "11px", color: "var(--rose)", marginTop: "4px" }}>
-                  {docUploadError}
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </section>
 
@@ -1547,7 +1561,16 @@ export default function SingleSampleEvaluation({
       >
         {/* Executive Verdict Banner */}
         {hasVerdict && (
-          <div className="h2h-verdict-strip">
+          <div
+            className="h2h-verdict-strip"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              flexWrap: "wrap",
+              gap: "12px",
+            }}
+          >
             <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
               <span
                 style={{
@@ -1871,22 +1894,27 @@ export default function SingleSampleEvaluation({
         )}
       </section>
 
-      {/* Document Ingest Modal */}
-      {showDocModal && (
-        <DocumentIngestModal
-          initialDocument={attachedDoc}
-          isOpen={showDocModal}
-          onClose={() => setShowDocModal(false)}
-          onIngestSuccess={() => setShowDocModal(false)}
+      {/* Head-to-Head Comparison Scorecard Modal */}
+      {showComparisonModal && (
+        <HeadToHeadComparisonModal
+          models={models}
+          states={states}
+          goldAnswer={goldAnswer}
+          options={currentOptions}
+          scoringPolicy={scoringPolicy}
+          onClose={() => setShowComparisonModal(false)}
         />
       )}
 
       {/* Document Preview Modal */}
-      {attachedDoc && (
+      {previewDoc && (
         <DocumentPreviewModal
           isOpen={showDocPreview}
-          onClose={() => setShowDocPreview(false)}
-          document={attachedDoc}
+          onClose={() => {
+            setShowDocPreview(false);
+            setPreviewDoc(null);
+          }}
+          document={previewDoc}
         />
       )}
 

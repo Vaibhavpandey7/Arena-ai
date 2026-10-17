@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import StructuredMarkdown from "../StructuredMarkdown";
 import { evaluateReferenceAnswer, type ReferenceScoringPolicy } from "@/lib/benchmark-eval";
 
@@ -37,6 +37,36 @@ export default function SingleSampleInspectionModal({
   scoringPolicy,
   modelResults,
 }: Props) {
+  const [judgeAuditResults, setJudgeAuditResults] = useState<Record<string, any>>({});
+  const [isJudging, setIsJudging] = useState<Record<string, boolean>>({});
+
+  const handleRunJudge = async (modelId: string, modelAnswer: string) => {
+    setIsJudging((prev) => ({ ...prev, [modelId]: true }));
+    try {
+      const res = await fetch("/api/benchmark/judge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: fullQuestion,
+          correctAnswer,
+          options,
+          modelAnswer,
+          modelId,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || "Judge failed");
+      setJudgeAuditResults((prev) => ({ ...prev, [modelId]: data }));
+    } catch (err: any) {
+      setJudgeAuditResults((prev) => ({
+        ...prev,
+        [modelId]: { error: err.message || "Judge failed" },
+      }));
+    } finally {
+      setIsJudging((prev) => ({ ...prev, [modelId]: false }));
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -333,6 +363,69 @@ export default function SingleSampleInspectionModal({
                         Token F1: {(evalResult.tokenF1 * 100).toFixed(1)}% (Precision:{" "}
                         {((evalResult.tokenPrecision ?? 0) * 100).toFixed(1)}%, Recall:{" "}
                         {((evalResult.tokenRecall ?? 0) * 100).toFixed(1)}%)
+                      </div>
+                    )}
+
+                    {/* LLM-as-a-Judge Trigger */}
+                    {m.answer && (
+                      <div style={{ marginTop: "8px", paddingTop: "8px", borderTop: "1px dashed var(--border-subtle)" }}>
+                        <button
+                          type="button"
+                          onClick={() => handleRunJudge(m.modelId, m.answer!)}
+                          disabled={isJudging[m.modelId]}
+                          style={{
+                            fontSize: "10.5px",
+                            fontWeight: 600,
+                            padding: "3px 8px",
+                            borderRadius: "4px",
+                            background: "rgba(56, 189, 248, 0.12)",
+                            color: "#38bdf8",
+                            border: "1px solid rgba(56, 189, 248, 0.25)",
+                            cursor: isJudging[m.modelId] ? "not-allowed" : "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "4px",
+                          }}
+                        >
+                          {isJudging[m.modelId] ? "⏳ Auditing with LLM Judge…" : "⚖️ Audit with LLM Judge"}
+                        </button>
+
+                        {judgeAuditResults[m.modelId] && (
+                          <div
+                            style={{
+                              marginTop: "6px",
+                              padding: "6px 8px",
+                              borderRadius: "4px",
+                              background: "var(--bg-surface)",
+                              border: "1px solid var(--border-default)",
+                            }}
+                          >
+                            {judgeAuditResults[m.modelId].error ? (
+                              <div style={{ color: "var(--rose)", fontSize: "10px" }}>
+                                {judgeAuditResults[m.modelId].error}
+                              </div>
+                            ) : (
+                              <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                  <span
+                                    style={{
+                                      fontWeight: 700,
+                                      color: judgeAuditResults[m.modelId].isCorrect ? "var(--emerald)" : "var(--rose)",
+                                    }}
+                                  >
+                                    {judgeAuditResults[m.modelId].isCorrect ? "✓ Ground Truth Aligned" : "✗ Reasoning Flaw Detected"}
+                                  </span>
+                                  <span style={{ color: "#38bdf8", fontWeight: 700 }}>
+                                    Score: {judgeAuditResults[m.modelId].reasoningScore}/5
+                                  </span>
+                                </div>
+                                <div style={{ color: "var(--text-muted)", fontSize: "10px", marginTop: "2px" }}>
+                                  {judgeAuditResults[m.modelId].rationale}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
