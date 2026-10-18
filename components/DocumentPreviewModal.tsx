@@ -333,7 +333,7 @@ export function DocumentPreviewModal({
             <span className="meta-tag">Character Count: {activeDoc.charCount?.toLocaleString() ?? 0}</span>
             <span className="meta-tag">Estimated Context Window: ~{activeDoc.tokenCount?.toLocaleString() ?? 0} tokens</span>
             <span className="meta-tag">
-              Engine: {activeDoc.type?.toUpperCase().includes("OCR") ? "Vision AI OCR + Poppler" : "Poppler PDF Layout"}
+              Engine: {activeDoc.type?.toUpperCase().includes("OCR") ? "Deep Extraction Engine" : "Digital Document Engine"}
             </span>
             {resolvedFileUrl && <span className="meta-tag">Visual Layer: Active</span>}
           </div>

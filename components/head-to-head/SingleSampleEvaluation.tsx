@@ -314,11 +314,11 @@ function formatDocType(type: string): string {
 
             if (isPdf) {
               const { ocrPdfWithTesseract } = await import("@/lib/client-pdf-renderer");
-              const ocrRes = await ocrPdfWithTesseract(file, 0, (info) => {
+              const ocrRes = await ocrPdfWithTesseract(file, 0, () => {
                 setUploadingFiles((prev) =>
                   prev.map((item) =>
                     item.id === qId
-                      ? { ...item, status: "ocr", statusText: info.status }
+                      ? { ...item, status: "ocr", statusText: "Parsing…" }
                       : item
                   )
                 );
@@ -356,11 +356,11 @@ function formatDocType(type: string): string {
               }
             } else if (isImage) {
               const { ocrImageWithTesseract } = await import("@/lib/client-pdf-renderer");
-              const imageText = await ocrImageWithTesseract(file, (percent, status) => {
+              const imageText = await ocrImageWithTesseract(file, () => {
                 setUploadingFiles((prev) =>
                   prev.map((item) =>
                     item.id === qId
-                      ? { ...item, status: "ocr", statusText: status }
+                      ? { ...item, status: "ocr", statusText: "Parsing…" }
                       : item
                   )
                 );
@@ -1809,7 +1809,7 @@ function formatDocType(type: string): string {
                     style={{ fontSize: "11px", padding: "3px 8px", display: "inline-flex", alignItems: "center", gap: "4px" }}
                     title="Optionally attach insurance policy files to augment this sample"
                   >
-                    <span>{isUploadingDoc ? "Parsing & Running OCR…" : attachedDocs.length > 0 ? `Docs Attached (${attachedDocs.length})` : "Attach Policy Document (Optional)"}</span>
+                    <span>{isUploadingDoc ? "Parsing…" : attachedDocs.length > 0 ? `Docs Attached (${attachedDocs.length})` : "Attach Policy Document (Optional)"}</span>
                   </button>
                   <input
                     ref={fileInputRef}
@@ -1995,34 +1995,29 @@ function formatDocType(type: string): string {
                 />
                 <div style={{ fontSize: "13px", fontWeight: 700, color: isUploadingDoc ? "var(--accent)" : "var(--text-main)", display: "flex", alignItems: "center", gap: "8px" }}>
                   {isUploadingDoc && <span className="live-dot" />}
-                  {isUploadingDoc ? "Running Hybrid pypdf & Tesseract OCR Pipeline…" : "Drop insurance documents here, or click to browse"}
+                  {isUploadingDoc ? "Parsing document…" : "Drop insurance documents here, or click to browse"}
                 </div>
                 <div style={{ fontSize: "11px", color: "var(--text-subtle)" }}>
                   {isUploadingDoc
-                    ? "Hybrid Engine Active: Python pypdf + Mozilla PDF.js + Tesseract.js WebAssembly OCR"
-                    : "Supports PDF policy wordings (Digital & Scanned), inspection images (PNG/JPG), DOCX, CSV, and TXT"}
+                    ? "Parsing in progress · Extracting document text"
+                    : "Supports PDF policy wordings, inspection images, DOCX, CSV, and TXT"}
                 </div>
               </div>
 
-              {/* Upload Queue Banner (Chat Arena parity) */}
+              {/* Upload Queue Banner */}
               {uploadingFiles.length > 0 && (
                 <div className="arena-multi-upload-banner" style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                     <div className="arena-upload-spinner" />
                     <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-main)" }}>
-                      Processing {uploadingFiles.length} file{uploadingFiles.length > 1 ? "s" : ""} (pypdf & Free OCR)…
+                      Processing {uploadingFiles.length} file{uploadingFiles.length > 1 ? "s" : ""} (parsing in progress)…
                     </span>
                   </div>
                   <div className="arena-multi-upload-items" style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
                     {uploadingFiles.map((item) => (
-                      <span key={item.id} className={`arena-multi-upload-item ${item.status}`} title={item.statusText || item.name}>
-                        {item.status === "parsing" || item.status === "ocr" ? "…" : item.status === "done" ? "Done" : "Error"}
+                      <span key={item.id} className={`arena-multi-upload-item ${item.status}`} title={item.name}>
+                        {item.status === "parsing" || item.status === "ocr" ? "Parsing…" : item.status === "done" ? "Done" : "Error"}
                         {" "}{item.name}
-                        {item.statusText && item.status !== "done" && (
-                          <span style={{ opacity: 0.85, fontSize: "11px", marginLeft: "4px", color: "var(--accent)" }}>
-                            ({item.statusText})
-                          </span>
-                        )}
                       </span>
                     ))}
                   </div>

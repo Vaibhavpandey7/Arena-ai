@@ -170,7 +170,7 @@ export async function POST(req: NextRequest) {
             wordCount: 0,
             charCount: 0,
             tokenCount: 0,
-            preview: "Image detected. Transcribing text via Free OCR (Tesseract)...",
+            preview: "Image detected. Parsing document...",
           },
         });
       } else if (ext === "pdf" || file.type === "application/pdf") {
@@ -195,7 +195,7 @@ export async function POST(req: NextRequest) {
               wordCount: 0,
               charCount: 0,
               tokenCount: 0,
-              preview: "Scanned document detected. Running Free OCR on pages...",
+              preview: "Scanned document detected. Parsing document...",
             },
           });
         }

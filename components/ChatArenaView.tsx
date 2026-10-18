@@ -1364,19 +1364,14 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <div className="arena-upload-spinner" />
                   <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-main)" }}>
-                    Processing {uploadingFiles.length} file{uploadingFiles.length > 1 ? "s" : ""} (parsing & OCR)…
+                    Processing {uploadingFiles.length} file{uploadingFiles.length > 1 ? "s" : ""} (parsing in progress)…
                   </span>
                 </div>
                 <div className="arena-multi-upload-items">
                   {uploadingFiles.map((item) => (
-                    <span key={item.id} className={`arena-multi-upload-item ${item.status}`} title={item.statusText || item.name}>
-                      {item.status === "parsing" || item.status === "ocr" ? "…" : item.status === "done" ? "Done" : "Error"}
+                    <span key={item.id} className={`arena-multi-upload-item ${item.status}`} title={item.name}>
+                      {item.status === "parsing" || item.status === "ocr" ? "Parsing…" : item.status === "done" ? "Done" : "Error"}
                       {" "}{item.name}
-                      {item.statusText && item.status !== "done" && (
-                        <span style={{ opacity: 0.85, fontSize: "11px", marginLeft: "4px", color: "var(--accent)" }}>
-                          ({item.statusText})
-                        </span>
-                      )}
                     </span>
                   ))}
                 </div>
