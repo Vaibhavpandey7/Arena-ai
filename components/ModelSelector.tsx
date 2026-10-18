@@ -31,7 +31,7 @@ interface Props {
 }
 
 const FEATURED_IDS = [
-  "openrouter/free",
+  "dil/dil-v1",
   "nvidia/nemotron-3-super-120b-a12b:free",
   "nvidia/nemotron-3.5-lightning:free",
   "deepseek/deepseek-r1",
@@ -81,9 +81,9 @@ const COMPARE_PRESETS = [
 
 function isModelFree(m: NormalizedModel) {
   if (m.isCustom) return false;
+  if (m.id.toLowerCase().includes("dil") || m.id.toLowerCase() === "openrouter/free") return false;
   return (
     m.id.toLowerCase().endsWith(":free") ||
-    m.id.toLowerCase() === "openrouter/free" ||
     (m.pricing && Number(m.pricing.prompt) === 0 && Number(m.pricing.completion) === 0)
   );
 }

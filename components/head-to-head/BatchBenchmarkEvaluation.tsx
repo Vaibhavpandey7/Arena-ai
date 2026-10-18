@@ -161,7 +161,7 @@ export default function BatchBenchmarkEvaluation() {
       "deepseek/deepseek-r1",
       "openai/gpt-4o",
       "deepseek/deepseek-chat",
-      "openrouter/free",
+      "dil/dil-v1",
       "nvidia/nemotron-3-super-120b-a12b:free",
     ];
     const nextModel = candidates.find((c) => !models.includes(c)) || candidates[0];
@@ -389,7 +389,7 @@ export default function BatchBenchmarkEvaluation() {
         runStatus: isSuccess ? "success" : "failed",
         errorMessage: isSuccess
           ? undefined
-          : (streamError || `Model ${modelId} returned an empty response. If using openrouter/free, try a direct instruction model like nvidia/nemotron-3.5-lightning:free.`),
+          : (streamError || `Model ${modelId} returned an empty response. Please select an alternate reasoning model like DIL-v1 or GPT-4o Mini.`),
       };
     } catch (err: unknown) {
       if ((err as Error)?.name === "AbortError") {

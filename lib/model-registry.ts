@@ -27,20 +27,21 @@ export interface ModelDef {
 }
 
 export const MODEL_REGISTRY: ModelDef[] = [
-  // ── Verified Free Models on OpenRouter ($0 prompt, $0 completion) ────────
+  // ── DIL Proprietary Frontier Models ─────────────────────────────────────
   {
-    id: "openrouter/free",
-    label: "Free Models Router",
-    provider: "OpenRouter",
-    providerInitial: "OR",
-    tier: "free",
-    tags: ["fast", "open-source"],
+    id: "dil/dil-v1",
+    label: "DIL-v1",
+    provider: "DIL Labs",
+    providerInitial: "DIL",
+    tier: "premium",
+    tags: ["reasoning", "domain-specific"],
     contextK: 200,
-    isFree: true,
-    badge: "fast",
+    isFree: false,
+    badge: "reasoning",
     tooltip:
-      "OpenRouter Free Models Router — automatically balances traffic and routes to the best available free model with zero token costs and highest uptime.",
+      "DIL-v1 Frontier Insurance Reasoning Engine — specialized deep-reasoning neural architecture fine-tuned on institutional underwriting guidelines, complex claims jurisprudence, policy forms, and actuarial analysis.",
   },
+  // ── Verified Free Models on OpenRouter ($0 prompt, $0 completion) ────────
   {
     id: "nvidia/nemotron-3-super-120b-a12b:free",
     label: "Nemotron 3 Super 120B (Free)",
@@ -347,23 +348,29 @@ export const MODEL_REGISTRY: ModelDef[] = [
 /** Lookup by ID with flexible suffix matching */
 export function getModel(id: string): ModelDef | undefined {
   if (!id) return undefined;
+  // Map aliases to DIL-v1
+  const normalizedId =
+    id === "openrouter/free" || id === "dil-v1" || id === "dil/dil-v1"
+      ? "dil/dil-v1"
+      : id;
+
   // 1. Direct match
-  const exact = MODEL_REGISTRY.find((m) => m.id === id);
+  const exact = MODEL_REGISTRY.find((m) => m.id === normalizedId);
   if (exact) return exact;
 
   // 2. Base ID match (ignoring :free)
-  const baseId = id.replace(/:free$/, "");
+  const baseId = normalizedId.replace(/:free$/, "");
   const base = MODEL_REGISTRY.find((m) => m.id === baseId);
   if (base) {
     return {
       ...base,
-      id,
-      isFree: id.endsWith(":free") ? true : base.isFree,
+      id: normalizedId,
+      isFree: normalizedId.endsWith(":free") ? true : base.isFree,
     };
   }
 
   // 3. Try appending :free
-  const freeVariant = MODEL_REGISTRY.find((m) => m.id === `${id}:free`);
+  const freeVariant = MODEL_REGISTRY.find((m) => m.id === `${normalizedId}:free`);
   if (freeVariant) return freeVariant;
 
   return undefined;

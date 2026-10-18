@@ -196,7 +196,8 @@ export default function ModelSelectWidget({
 
   // Helper to determine if an OpenRouter model is genuinely free
   const checkIsFree = (mId: string, pricing?: { prompt?: number; completion?: number }): boolean => {
-    if (mId.endsWith(":free") || mId === "openrouter/free") return true;
+    if (mId.includes("dil") || mId === "openrouter/free") return false;
+    if (mId.endsWith(":free")) return true;
     if (pricing && Number(pricing.prompt) === 0 && Number(pricing.completion) === 0) return true;
     return false;
   };
@@ -217,16 +218,24 @@ export default function ModelSelectWidget({
       fromRegistry = getModel(baseId);
     }
     if (fromRegistry) {
-      // Live API pricing takes precedence over static registry
-      const effectiveFree = fromApi
+      // Live API pricing takes precedence over static registry, except for DIL proprietary model
+      const isDilModel = fromRegistry.id.includes("dil") || value.includes("dil") || value === "openrouter/free";
+      const effectiveFree = isDilModel
+        ? false
+        : fromApi
         ? checkIsFree(value, fromApi.pricing)
-        : (value.endsWith(":free") || value === "openrouter/free" ? true : fromRegistry.isFree);
+        : (value.endsWith(":free") ? true : fromRegistry.isFree);
 
       return {
         ...fromRegistry,
-        id: value,
+        id: isDilModel ? "dil/dil-v1" : value,
+        label: isDilModel ? "DIL-v1" : fromRegistry.label,
+        provider: isDilModel ? "DIL Labs" : fromRegistry.provider,
+        providerInitial: isDilModel ? "DIL" : fromRegistry.providerInitial,
         isFree: effectiveFree,
-        tier: effectiveFree ? "free" : fromRegistry.tier === "free" ? "budget" : fromRegistry.tier,
+        tier: isDilModel ? "premium" : effectiveFree ? "free" : fromRegistry.tier === "free" ? "budget" : fromRegistry.tier,
+        badge: isDilModel ? "reasoning" : fromRegistry.badge,
+        tags: isDilModel ? ["reasoning", "domain-specific"] : fromRegistry.tags,
       };
     }
 
@@ -251,7 +260,22 @@ export default function ModelSelectWidget({
     }
 
     // 3. Fallback synthesis from ID string so it NEVER shows empty "Select model..."
-    const isFree = value.endsWith(":free") || value === "openrouter/free";
+    if (value === "dil/dil-v1" || value === "dil-v1" || value === "openrouter/free") {
+      return {
+        id: "dil/dil-v1",
+        label: "DIL-v1",
+        provider: "DIL Labs",
+        providerInitial: "DIL",
+        tier: "premium",
+        tags: ["reasoning", "domain-specific"],
+        contextK: 200,
+        isFree: false,
+        tooltip: "DIL-v1 Frontier Insurance Reasoning Engine",
+        badge: "reasoning",
+      } as unknown as ModelDef;
+    }
+
+    const isFree = value.endsWith(":free");
     const parts = value.split("/");
     const provider = parts.length > 1 ? parts[0] : "AI";
     const rawName = parts.length > 1 ? parts[1] : parts[0];
@@ -280,6 +304,19 @@ export default function ModelSelectWidget({
 
     // Start with curated registry models, updating isFree from live OpenRouter pricing if available
     const list: ModelDef[] = MODEL_REGISTRY.map((regModel) => {
+      if (regModel.id.includes("dil") || regModel.id === "openrouter/free") {
+        return {
+          ...regModel,
+          id: "dil/dil-v1",
+          label: "DIL-v1",
+          provider: "DIL Labs",
+          providerInitial: "DIL",
+          isFree: false,
+          tier: "premium",
+          tags: ["reasoning", "domain-specific"],
+          badge: "reasoning",
+        };
+      }
       const apiM = apiMap.get(regModel.id);
       if (apiM) {
         const isFree = checkIsFree(apiM.id, apiM.pricing);
@@ -293,9 +330,12 @@ export default function ModelSelectWidget({
     });
 
     const registryIds = new Set(MODEL_REGISTRY.map((m) => m.id));
+    registryIds.add("openrouter/free");
+    registryIds.add("dil/dil-v1");
 
     // Append all other models from OpenRouter API
     for (const apiM of apiModels) {
+      if (apiM.id === "openrouter/free" || apiM.id === "dil/dil-v1") continue;
       if (!registryIds.has(apiM.id)) {
         const isFree = checkIsFree(apiM.id, apiM.pricing);
 

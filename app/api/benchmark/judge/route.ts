@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing question or modelAnswer" }, { status: 400 });
     }
 
-    const defaultJudge = process.env.OPENROUTER_API_KEY ? "openai/gpt-4o-mini" : "openrouter/free";
+    const defaultJudge = process.env.OPENROUTER_API_KEY ? "openai/gpt-4o-mini" : "dil/dil-v1";
     const effectiveJudge = judgeModel || process.env.BENCHMARK_JUDGE_MODEL || defaultJudge;
 
     // Normalize metrics with rich descriptions from request or INSURANCE_PLUGINS registry

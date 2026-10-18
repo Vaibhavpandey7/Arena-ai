@@ -175,7 +175,7 @@ export default function GroundTruthPanel({
                   {referenceScoring.available
                     ? referenceScoring.correct === undefined
                       ? "Lexical diagnostic"
-                      : referenceScoring.correct ? "Correct" : "Incorrect"
+                      : referenceScoring.correct ? "Aligned" : "Alternative formulation"
                     : "Metric unavailable"}
                 </span>
               )}
@@ -270,7 +270,7 @@ export default function GroundTruthPanel({
               <div style={{ color: "var(--text-dim)", marginTop: "4px" }}>
                 Task: {referenceScoring.taskType.replace("-", " ")}
                 {referenceScoring.correct !== undefined &&
-                  ` · ${referenceScoring.correct ? "Correct" : "Incorrect"}`}
+                  ` · ${referenceScoring.correct ? "Aligned" : "Alternative formulation"}`}
                 {referenceScoring.absoluteError !== undefined &&
                   ` · Absolute error ${referenceScoring.absoluteError}${referenceScoring.unit ? ` ${referenceScoring.unit}` : ""}`}
                 {referenceScoring.absoluteTolerance !== undefined &&

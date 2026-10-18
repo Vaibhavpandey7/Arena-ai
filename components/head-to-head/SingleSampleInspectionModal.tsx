@@ -240,9 +240,6 @@ export default function SingleSampleInspectionModal({
                 ? evaluateReferenceAnswer(m.answer, correctAnswer, options, scoringPolicy)
                 : null;
 
-            const isCorrect = evalResult?.correct === true;
-            const isIncorrect = evalResult?.correct === false;
-
             return (
               <div
                 key={m.modelId || idx}
@@ -289,35 +286,6 @@ export default function SingleSampleInspectionModal({
                     </div>
                   </div>
 
-                  {evalResult && correctAnswer && (
-                    <span
-                      style={{
-                        padding: "2px 8px",
-                        borderRadius: "12px",
-                        fontSize: "11px",
-                        fontWeight: 700,
-                        background: isCorrect
-                          ? "rgba(52, 168, 83, 0.15)"
-                          : isIncorrect
-                          ? "rgba(217, 101, 112, 0.15)"
-                          : "rgba(255, 255, 255, 0.08)",
-                        color: isCorrect
-                          ? "var(--emerald)"
-                          : isIncorrect
-                          ? "var(--rose)"
-                          : "var(--text-muted)",
-                        border: `1px solid ${
-                          isCorrect
-                            ? "rgba(52, 168, 83, 0.4)"
-                            : isIncorrect
-                            ? "rgba(217, 101, 112, 0.4)"
-                            : "var(--border-subtle)"
-                        }`,
-                      }}
-                    >
-                      {isCorrect ? "Correct" : isIncorrect ? "Incorrect" : evalResult.metricName}
-                    </span>
-                  )}
                 </div>
 
                 {/* Model Answer Body */}
@@ -436,15 +404,18 @@ export default function SingleSampleInspectionModal({
                                     style={{
                                       fontWeight: 700,
                                       fontSize: "11px",
-                                      color: judgeAuditResults[m.modelId].isCorrect ? "var(--emerald)" : "var(--rose)",
+                                      color:
+                                        judgeAuditResults[m.modelId].complianceStatus === "compliant"
+                                          ? "var(--emerald)"
+                                          : judgeAuditResults[m.modelId].complianceStatus === "warning"
+                                          ? "var(--amber, #f59e0b)"
+                                          : "var(--rose)",
                                     }}
                                   >
-                                    {correctAnswer
-                                      ? judgeAuditResults[m.modelId].isCorrect
-                                        ? "Ground Truth Aligned"
-                                        : "Reasoning Divergence"
-                                      : judgeAuditResults[m.modelId].complianceStatus === "compliant"
+                                    {judgeAuditResults[m.modelId].complianceStatus === "compliant"
                                       ? "Institutional Compliant"
+                                      : judgeAuditResults[m.modelId].complianceStatus === "warning"
+                                      ? "Institutional Advisory"
                                       : "Institutional Review"}
                                   </span>
                                   <span

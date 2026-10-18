@@ -109,7 +109,7 @@ export default function HeadToHeadComparisonModal({
       "Total Tokens",
       "Word Count",
       "Est Cost (USD)",
-      "Ground Truth Match",
+      "Scoring Verification",
       "Scoring Method",
       "Lexical F1 (%)",
       "Divergence Reason",
@@ -125,7 +125,7 @@ export default function HeadToHeadComparisonModal({
       m.state.promptTokens + m.state.completionTokens,
       m.wordCount,
       m.state.estCostUsd.toFixed(5),
-      m.evalResult?.correct === true ? "PASS" : m.evalResult?.correct === false ? "FAIL" : "UNSCORED",
+      m.evalResult ? "EVALUATED" : "UNSCORED",
       m.evalResult?.metricName || "N/A",
       m.evalResult?.tokenF1 !== undefined ? (m.evalResult.tokenF1 * 100).toFixed(1) : "N/A",
       `"${(m.evalResult?.reason || "").replace(/"/g, '""')}"`,
@@ -425,39 +425,19 @@ export default function HeadToHeadComparisonModal({
                 ))}
               </tr>
 
-              {/* Category 2: Ground Truth Alignment */}
+              {/* Category 2: Reference Alignment & Scoring Metrics */}
               <tr style={{ background: "rgba(255, 255, 255, 0.02)" }}>
                 <td colSpan={modelMetrics.length + 1} style={{ padding: "8px 14px", fontSize: "11px", fontWeight: 700, color: "#34d399", letterSpacing: "0.05em", textTransform: "uppercase", borderTop: "1px solid var(--border-subtle)" }}>
-                  Ground Truth Alignment & Accuracy
+                  Reference Alignment & Scoring Metrics
                 </td>
               </tr>
               <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                <td style={{ padding: "10px 14px", color: "var(--text-muted)", fontWeight: 600 }}>Match Status</td>
-                {modelMetrics.map((m) => {
-                  const isCorrect = m.evalResult?.correct === true;
-                  const isIncorrect = m.evalResult?.correct === false;
-                  return (
-                    <td key={m.idx} style={{ padding: "10px 14px" }}>
-                      {m.evalResult ? (
-                        <span
-                          style={{
-                            padding: "3px 8px",
-                            borderRadius: "12px",
-                            fontSize: "11px",
-                            fontWeight: 700,
-                            background: isCorrect ? "rgba(52, 168, 83, 0.15)" : isIncorrect ? "rgba(217, 101, 112, 0.15)" : "rgba(255, 255, 255, 0.08)",
-                            color: isCorrect ? "var(--emerald)" : isIncorrect ? "var(--rose)" : "var(--text-muted)",
-                            border: `1px solid ${isCorrect ? "rgba(52, 168, 83, 0.4)" : isIncorrect ? "rgba(217, 101, 112, 0.4)" : "var(--border-subtle)"}`,
-                          }}
-                        >
-                          {isCorrect ? "PASS (Exact / Numeric)" : isIncorrect ? "FAIL (Divergent)" : m.evalResult.metricName}
-                        </span>
-                      ) : (
-                        <span style={{ color: "var(--text-subtle)", fontStyle: "italic" }}>No reference answer</span>
-                      )}
-                    </td>
-                  );
-                })}
+                <td style={{ padding: "10px 14px", color: "var(--text-muted)", fontWeight: 600 }}>Scoring Method</td>
+                {modelMetrics.map((m) => (
+                  <td key={m.idx} style={{ padding: "10px 14px", color: "var(--text-subtle)", fontSize: "12px" }}>
+                    {m.evalResult?.metricName || "N/A"}
+                  </td>
+                ))}
               </tr>
               <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
                 <td style={{ padding: "10px 14px", color: "var(--text-muted)", fontWeight: 600 }}>Scoring Method</td>

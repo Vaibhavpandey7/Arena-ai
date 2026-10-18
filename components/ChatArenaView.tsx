@@ -153,7 +153,7 @@ function createDefaultThread(initialTitle?: string): ChatThread {
     title: initialTitle || "New Insurance Thread",
     createdAt: Date.now(),
     updatedAt: Date.now(),
-    model: "openrouter/free",
+    model: "dil/dil-v1",
     activePlugins: ["regulatory-check", "premium-calculator"],
     messages: [],
     attachedDocs: [],
@@ -436,7 +436,7 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
   const messages = activeThread.messages || [];
   const attachedDocs = activeThread.attachedDocs || [];
   const threadDocs = activeThread.threadDocs || [];
-  const selectedModel = activeThread.model || "openrouter/free";
+  const selectedModel = activeThread.model === "openrouter/free" ? "dil/dil-v1" : activeThread.model || "dil/dil-v1";
   const activePlugins = new Set(activeThread.activePlugins || ["regulatory-check", "premium-calculator"]);
 
   const modelInfo = MODELS.find((m) => m.id === selectedModel);

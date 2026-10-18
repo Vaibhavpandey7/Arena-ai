@@ -160,11 +160,28 @@ export default function SingleSampleEvaluation({
   const [activeUseCase, setActiveUseCase] = useState<InsuranceUseCaseId>("data-extraction");
   const [manualPrompt, setManualPrompt] = useState(initialPrompt || "");
 
+interface UploadQueueItem {
+  id: string;
+  name: string;
+  size: number;
+  status: "parsing" | "ocr" | "done" | "error";
+  statusText?: string;
+  error?: string;
+}
+
+function formatDocType(type: string): string {
+  if (!type) return "Document";
+  const upper = type.toUpperCase();
+  if (upper.includes("OCR")) return "OCR";
+  return type.replace(/\bAI\s*OCR\b/gi, "OCR");
+}
+
   // Optional Context Documents (Multiple upload & drag-drop support)
   const [attachedDocs, setAttachedDocs] = useState<ParsedDocument[]>([]);
   const [previewDoc, setPreviewDoc] = useState<ParsedDocument | null>(null);
   const [showDocPreview, setShowDocPreview] = useState(false);
   const [isUploadingDoc, setIsUploadingDoc] = useState(false);
+  const [uploadingFiles, setUploadingFiles] = useState<UploadQueueItem[]>([]);
   const [docUploadError, setDocUploadError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [showComparisonModal, setShowComparisonModal] = useState(false);
@@ -221,42 +238,191 @@ export default function SingleSampleEvaluation({
 
   const isAnyJudging = Object.values(isJudging).some(Boolean);
 
+  // Chat Arena Hybrid Pipeline: pypdf (Python) on server + Mozilla PDF.js client pre-check + Tesseract.js WebAssembly OCR
   const uploadFileList = async (files: FileList | File[]) => {
     if (!files || files.length === 0) return;
     setIsUploadingDoc(true);
     setDocUploadError(null);
 
-    try {
-      const newDocs: ParsedDocument[] = [];
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const formData = new FormData();
-        formData.append("file", file);
+    const fileList = Array.from(files);
+    const queueItems: UploadQueueItem[] = fileList.map((f) => ({
+      id: `up_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      name: f.name,
+      size: f.size,
+      status: "parsing",
+      statusText: "Reading…",
+    }));
+    setUploadingFiles(queueItems);
 
-        const res = await fetch("/api/documents/parse", {
-          method: "POST",
-          body: formData,
-        });
-        const data = await res.json();
-        if (!res.ok || !data.success) {
-          throw new Error(data.error || `Failed to parse ${file.name}`);
+    const parsedResults: ParsedDocument[] = [];
+    const errors: string[] = [];
+
+    await Promise.all(
+      fileList.map(async (file, idx) => {
+        const qId = queueItems[idx].id;
+        const localFileUrl = URL.createObjectURL(file);
+        const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+        const isImage = file.type.startsWith("image/") || /\.(png|jpe?g|webp|bmp|tiff)$/i.test(file.name);
+
+        try {
+          let clientExtractedText = "";
+          let clientDetectedType = isPdf ? "PDF" : isImage ? "OCR" : "text";
+
+          // STEP 1: For PDFs, try fast client-side digital text extraction (all pages in milliseconds!)
+          if (isPdf) {
+            try {
+              const { extractAllDigitalTextFromPdf } = await import("@/lib/client-pdf-renderer");
+              const digitalRes = await extractAllDigitalTextFromPdf(file);
+              if (digitalRes.hasDigitalText && digitalRes.text.length > 40) {
+                clientExtractedText = digitalRes.text;
+                clientDetectedType = "PDF";
+              }
+            } catch (digitalErr) {
+              console.warn("Client digital text extraction pre-check in Head-to-Head:", digitalErr);
+            }
+          }
+
+          const formData = new FormData();
+          formData.append("file", file);
+          if (clientExtractedText) {
+            formData.append("extractedText", clientExtractedText);
+            formData.append("detectedType", clientDetectedType);
+          }
+
+          const res = await fetch("/api/documents/parse", {
+            method: "POST",
+            body: formData,
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) {
+            throw new Error(data.error || `Failed to parse ${file.name}`);
+          }
+
+          let doc: ParsedDocument = {
+            ...data.document,
+            id: data.document.id || `doc_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 6)}`,
+            fileUrl: localFileUrl || data.document.fileUrl,
+            mimeType: file.type || (isPdf ? "application/pdf" : "image/jpeg"),
+            type: formatDocType(data.document.type),
+          };
+
+          // STEP 2: Dedicated Free OCR (Tesseract.js) for true Scanned PDFs or Images
+          if (data.needsClientOcr) {
+            setUploadingFiles((prev) =>
+              prev.map((item) => (item.id === qId ? { ...item, status: "ocr" } : item))
+            );
+
+            if (isPdf) {
+              const { ocrPdfWithTesseract } = await import("@/lib/client-pdf-renderer");
+              const ocrRes = await ocrPdfWithTesseract(file, 0, (info) => {
+                setUploadingFiles((prev) =>
+                  prev.map((item) =>
+                    item.id === qId
+                      ? { ...item, status: "ocr", statusText: info.status }
+                      : item
+                  )
+                );
+              });
+
+              if (ocrRes.text && ocrRes.text.length > 10) {
+                // Post OCR text to server so it is cached and saved
+                const saveFormData = new FormData();
+                saveFormData.append("file", file);
+                saveFormData.append("extractedText", ocrRes.text);
+                saveFormData.append("detectedType", "OCR");
+                const saveRes = await fetch("/api/documents/parse", {
+                  method: "POST",
+                  body: saveFormData,
+                });
+                const saveData = await saveRes.json();
+                if (saveData.success && saveData.document) {
+                  doc = {
+                    ...saveData.document,
+                    id: doc.id,
+                    fileUrl: localFileUrl || saveData.document.fileUrl,
+                    mimeType: "application/pdf",
+                    type: "OCR",
+                  };
+                } else {
+                  doc = {
+                    ...doc,
+                    text: ocrRes.text,
+                    wordCount: ocrRes.wordCount,
+                    charCount: ocrRes.charCount,
+                    type: "OCR",
+                    preview: ocrRes.text.slice(0, 350) + "…",
+                  };
+                }
+              }
+            } else if (isImage) {
+              const { ocrImageWithTesseract } = await import("@/lib/client-pdf-renderer");
+              const imageText = await ocrImageWithTesseract(file, (percent, status) => {
+                setUploadingFiles((prev) =>
+                  prev.map((item) =>
+                    item.id === qId
+                      ? { ...item, status: "ocr", statusText: status }
+                      : item
+                  )
+                );
+              });
+
+              if (imageText && imageText.length > 5) {
+                const saveFormData = new FormData();
+                saveFormData.append("file", file);
+                saveFormData.append("extractedText", imageText);
+                saveFormData.append("detectedType", "OCR");
+                const saveRes = await fetch("/api/documents/parse", {
+                  method: "POST",
+                  body: saveFormData,
+                });
+                const saveData = await saveRes.json();
+                if (saveData.success && saveData.document) {
+                  doc = {
+                    ...saveData.document,
+                    id: doc.id,
+                    fileUrl: localFileUrl || saveData.document.fileUrl,
+                    mimeType: file.type || "image/png",
+                    type: "OCR",
+                  };
+                } else {
+                  doc = {
+                    ...doc,
+                    text: imageText,
+                    wordCount: imageText.split(/\s+/).filter(Boolean).length,
+                    charCount: imageText.length,
+                    type: "OCR",
+                    preview: imageText.slice(0, 350) + "…",
+                  };
+                }
+              }
+            }
+          }
+
+          setUploadingFiles((prev) =>
+            prev.map((item) => (item.id === qId ? { ...item, status: "done", statusText: "Done" } : item))
+          );
+          parsedResults.push(doc);
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : "Failed to parse";
+          errors.push(`${file.name}: ${msg}`);
+          setUploadingFiles((prev) =>
+            prev.map((item) => (item.id === qId ? { ...item, status: "error", error: msg } : item))
+          );
         }
+      })
+    );
 
-        newDocs.push({
-          ...data.document,
-          content: data.document.text || data.document.content || "",
-          fileUrl: URL.createObjectURL(file),
-          mimeType: file.type || "application/pdf",
-        });
-      }
-
-      setAttachedDocs((prev) => [...prev, ...newDocs]);
-    } catch (err: unknown) {
-      setDocUploadError((err as Error)?.message || "Failed to upload document(s)");
-    } finally {
-      setIsUploadingDoc(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+    if (parsedResults.length > 0) {
+      setAttachedDocs((prev) => [...prev, ...parsedResults]);
     }
+    if (errors.length > 0) {
+      setDocUploadError(errors.join(" | "));
+    }
+    setIsUploadingDoc(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    setTimeout(() => {
+      setUploadingFiles([]);
+    }, 2500);
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -401,7 +567,7 @@ export default function SingleSampleEvaluation({
       "deepseek/deepseek-r1",
       "openai/gpt-4o",
       "deepseek/deepseek-chat",
-      "openrouter/free",
+      "dil/dil-v1",
       "nvidia/nemotron-3-super-120b-a12b:free",
     ];
     const nextModel = candidates.find((c) => !models.includes(c)) || candidates[0];
@@ -766,23 +932,6 @@ export default function SingleSampleEvaluation({
       }
     }
 
-    // Accuracy comparison against reference if available (strictly only for benchmark ground truth)
-    if (goldAnswer && !isDocumentOrManual) {
-      const evalScores = answeredModels.map((m) => ({
-        ...m,
-        evalRes: evaluateReferenceAnswer(m.state.answer, goldAnswer, currentOptions, scoringPolicy),
-      }));
-      const corrects = evalScores.filter((e) => e.evalRes.correct === true);
-      const incorrects = evalScores.filter((e) => e.evalRes.correct === false);
-      if (corrects.length > 0 && incorrects.length > 0) {
-        accuracyVerdict = `${corrects.map((c) => `Model ${String.fromCharCode(65 + c.idx)}`).join(", ")} matched reference; ${incorrects.map((i) => `Model ${String.fromCharCode(65 + i.idx)}`).join(", ")} diverged`;
-      } else if (corrects.length === answeredModels.length) {
-        accuracyVerdict = `All models matched reference answer`;
-      } else if (incorrects.length === answeredModels.length) {
-        accuracyVerdict = `All models diverged from reference`;
-      }
-    }
-
     // Token comparison
     const sortedTokens = [...answeredModels].sort((a, b) => b.state.completionTokens - a.state.completionTokens);
     if (sortedTokens.length >= 2) {
@@ -794,13 +943,6 @@ export default function SingleSampleEvaluation({
 
   const renderModelCard = (modelId: string, idx: number, isStacked = false) => {
     const state = states[idx] || emptyModelState();
-    const evalResult: ReferenceTaskResult | null =
-      !isDocumentOrManual && state.answer && goldAnswer
-        ? evaluateReferenceAnswer(state.answer, goldAnswer, currentOptions, scoringPolicy)
-        : null;
-
-    const isCorrect = evalResult?.correct === true;
-    const isIncorrect = evalResult?.correct === false;
     const tps = calculateTokensPerSec(state.latencyMs, state.completionTokens);
     const isCollapsed = isStacked && !!collapsedCards[idx];
 
@@ -876,37 +1018,6 @@ export default function SingleSampleEvaluation({
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            {/* Objective status badge (only for benchmark ground truth, never on document runs) */}
-            {!isDocumentOrManual && evalResult && (
-              <span
-                style={{
-                  padding: "3px 9px",
-                  borderRadius: "12px",
-                  fontSize: "11px",
-                  fontWeight: 700,
-                  background: isCorrect
-                    ? "rgba(52, 168, 83, 0.15)"
-                    : isIncorrect
-                    ? "rgba(217, 101, 112, 0.15)"
-                    : "rgba(255, 255, 255, 0.08)",
-                  color: isCorrect
-                    ? "var(--emerald)"
-                    : isIncorrect
-                    ? "var(--rose)"
-                    : "var(--text-muted)",
-                  border: `1px solid ${
-                    isCorrect
-                      ? "rgba(52, 168, 83, 0.4)"
-                      : isIncorrect
-                      ? "rgba(217, 101, 112, 0.4)"
-                      : "var(--border-subtle)"
-                  }`,
-                }}
-              >
-                {isCorrect ? "Correct" : isIncorrect ? "Incorrect" : evalResult.metricName}
-              </span>
-            )}
-
             {/* Maximize Zen Reader Button */}
             {state.answer && (
               <button
@@ -1104,18 +1215,10 @@ export default function SingleSampleEvaluation({
                             style={{
                               fontWeight: 700,
                               fontSize: "12px",
-                              color: judgeAuditResults[modelId].isCorrect ? "var(--emerald)" : "var(--rose)",
+                              color: "var(--text-main)",
                             }}
                           >
-                            {!isDocumentOrManual
-                              ? judgeAuditResults[modelId].isCorrect
-                                ? "Ground Truth Aligned"
-                                : "Reasoning Divergence"
-                              : judgeAuditResults[modelId].complianceStatus === "compliant"
-                              ? "Institutional Compliant"
-                              : judgeAuditResults[modelId].complianceStatus === "warning"
-                              ? "Underwriting Advisory"
-                              : "Compliance Review"}
+                            LLM Judge Audit
                           </span>
                           <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
                             <span
@@ -1706,7 +1809,7 @@ export default function SingleSampleEvaluation({
                     style={{ fontSize: "11px", padding: "3px 8px", display: "inline-flex", alignItems: "center", gap: "4px" }}
                     title="Optionally attach insurance policy files to augment this sample"
                   >
-                    <span>{isUploadingDoc ? "Parsing…" : attachedDocs.length > 0 ? `Docs Attached (${attachedDocs.length})` : "Attach Policy Document (Optional)"}</span>
+                    <span>{isUploadingDoc ? "Parsing & Running OCR…" : attachedDocs.length > 0 ? `Docs Attached (${attachedDocs.length})` : "Attach Policy Document (Optional)"}</span>
                   </button>
                   <input
                     ref={fileInputRef}
@@ -1746,42 +1849,70 @@ export default function SingleSampleEvaluation({
               {attachedDocs.length > 0 && (
                 <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px" }}>
                   <span style={{ fontSize: "10.5px", fontWeight: 700, color: "var(--text-subtle)" }}>Context Docs:</span>
-                  {attachedDocs.map((doc, dIdx) => (
-                    <div
-                      key={doc.id || dIdx}
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "5px",
-                        background: "var(--bg-surface-elevated)",
-                        border: "1px solid var(--border-default)",
-                        borderRadius: "var(--radius-sm)",
-                        padding: "2px 7px",
-                        fontSize: "11px",
-                      }}
-                    >
-                      <span style={{ color: "var(--text-main)", maxWidth: "140px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={doc.name}>
-                        {doc.name}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPreviewDoc(doc);
-                          setShowDocPreview(true);
+                  {attachedDocs.map((doc, dIdx) => {
+                    const isDocPdf = doc.name.toLowerCase().endsWith(".pdf") || doc.type?.toLowerCase().includes("pdf") || doc.mimeType === "application/pdf";
+                    return (
+                      <div
+                        key={doc.id || dIdx}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "5px",
+                          background: "var(--bg-surface-elevated)",
+                          border: "1px solid var(--border-default)",
+                          borderRadius: "var(--radius-sm)",
+                          padding: "2px 7px",
+                          fontSize: "11px",
                         }}
-                        style={{ background: "transparent", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: "11px", padding: 0 }}
                       >
-                        View
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setAttachedDocs((prev) => prev.filter((_, i) => i !== dIdx))}
-                        style={{ background: "transparent", border: "none", color: "var(--rose)", cursor: "pointer", fontSize: "11px", padding: 0 }}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
+                        <span style={{ color: "var(--text-main)", maxWidth: "140px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={doc.name}>
+                          {doc.name}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: "9px",
+                            fontWeight: 700,
+                            padding: "1px 4px",
+                            borderRadius: "3px",
+                            background: doc.type?.includes("OCR") ? "rgba(168, 85, 247, 0.15)" : "rgba(59, 130, 246, 0.15)",
+                            color: doc.type?.includes("OCR") ? "#c084fc" : "var(--accent)",
+                            border: `1px solid ${doc.type?.includes("OCR") ? "rgba(168, 85, 247, 0.3)" : "rgba(59, 130, 246, 0.3)"}`,
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          {doc.type}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPreviewDoc(doc);
+                            setShowDocPreview(true);
+                          }}
+                          style={{
+                            background: "var(--accent-dim)",
+                            border: "1px solid var(--accent-border)",
+                            color: "var(--accent)",
+                            cursor: "pointer",
+                            fontSize: "10.5px",
+                            padding: "1px 5px",
+                            borderRadius: "3px",
+                            fontWeight: 600,
+                          }}
+                          title={isDocPdf ? "Open interactive Visual PDF Reader" : "Preview Document"}
+                        >
+                          {isDocPdf ? "📄 PDF Reader" : "👁 View"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAttachedDocs((prev) => prev.filter((_, i) => i !== dIdx))}
+                          style={{ background: "transparent", border: "none", color: "var(--rose)", cursor: "pointer", fontSize: "11px", padding: 0 }}
+                          title="Remove attached doc"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
@@ -1862,13 +1993,55 @@ export default function SingleSampleEvaluation({
                   style={{ display: "none" }}
                   onChange={handleFileChange}
                 />
-                <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-main)" }}>
-                  {isUploadingDoc ? "Parsing and indexing documents…" : "Drop insurance documents here, or click to browse"}
+                <div style={{ fontSize: "13px", fontWeight: 700, color: isUploadingDoc ? "var(--accent)" : "var(--text-main)", display: "flex", alignItems: "center", gap: "8px" }}>
+                  {isUploadingDoc && <span className="live-dot" />}
+                  {isUploadingDoc ? "Running Hybrid pypdf & Tesseract OCR Pipeline…" : "Drop insurance documents here, or click to browse"}
                 </div>
                 <div style={{ fontSize: "11px", color: "var(--text-subtle)" }}>
-                  Supports PDF policy wordings, DOCX contracts, CSV rating schedules, TXT slips, and inspection images
+                  {isUploadingDoc
+                    ? "Hybrid Engine Active: Python pypdf + Mozilla PDF.js + Tesseract.js WebAssembly OCR"
+                    : "Supports PDF policy wordings (Digital & Scanned), inspection images (PNG/JPG), DOCX, CSV, and TXT"}
                 </div>
               </div>
+
+              {/* Upload Queue Banner (Chat Arena parity) */}
+              {uploadingFiles.length > 0 && (
+                <div className="arena-multi-upload-banner" style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <div className="arena-upload-spinner" />
+                    <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-main)" }}>
+                      Processing {uploadingFiles.length} file{uploadingFiles.length > 1 ? "s" : ""} (pypdf & Free OCR)…
+                    </span>
+                  </div>
+                  <div className="arena-multi-upload-items" style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                    {uploadingFiles.map((item) => (
+                      <span key={item.id} className={`arena-multi-upload-item ${item.status}`} title={item.statusText || item.name}>
+                        {item.status === "parsing" || item.status === "ocr" ? "…" : item.status === "done" ? "Done" : "Error"}
+                        {" "}{item.name}
+                        {item.statusText && item.status !== "done" && (
+                          <span style={{ opacity: 0.85, fontSize: "11px", marginLeft: "4px", color: "var(--accent)" }}>
+                            ({item.statusText})
+                          </span>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Upload Error Banner */}
+              {docUploadError && (
+                <div className="doc-upload-error-banner" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span>{docUploadError}</span>
+                  <button
+                    type="button"
+                    onClick={() => setDocUploadError(null)}
+                    style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", fontSize: "14px" }}
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
 
               {/* Uploaded Documents Chip Tray */}
               {attachedDocs.length > 0 && (
@@ -1876,51 +2049,80 @@ export default function SingleSampleEvaluation({
                   <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-subtle)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                     Attached Docs ({attachedDocs.length}):
                   </span>
-                  {attachedDocs.map((doc, dIdx) => (
-                    <div
-                      key={doc.id || dIdx}
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        background: "var(--bg-surface-elevated)",
-                        border: "1px solid var(--border-default)",
-                        borderRadius: "var(--radius-sm)",
-                        padding: "4px 9px",
-                        fontSize: "11.5px",
-                      }}
-                    >
-                      <strong style={{ color: "var(--text-main)", maxWidth: "160px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={doc.name}>
-                        {doc.name}
-                      </strong>
-                      <span style={{ fontSize: "10.5px", color: "var(--text-subtle)", fontFamily: "var(--font-mono)" }}>
-                        ({doc.formattedSize || `${doc.wordCount}w`})
-                      </span>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPreviewDoc(doc);
-                          setShowDocPreview(true);
+                  {attachedDocs.map((doc, dIdx) => {
+                    const isDocPdf = doc.name.toLowerCase().endsWith(".pdf") || doc.type?.toLowerCase().includes("pdf") || doc.mimeType === "application/pdf";
+                    return (
+                      <div
+                        key={doc.id || dIdx}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          background: "var(--bg-surface-elevated)",
+                          border: "1px solid var(--border-default)",
+                          borderRadius: "var(--radius-sm)",
+                          padding: "4px 9px",
+                          fontSize: "11.5px",
                         }}
-                        style={{ background: "transparent", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: "11px", padding: "0 2px" }}
-                        title="Preview Document"
                       >
-                        View
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setAttachedDocs((prev) => prev.filter((_, i) => i !== dIdx));
-                        }}
-                        style={{ background: "transparent", border: "none", color: "var(--rose)", cursor: "pointer", fontSize: "13px", padding: "0 2px" }}
-                        title="Remove Document"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
+                        <strong style={{ color: "var(--text-main)", maxWidth: "160px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={doc.name}>
+                          {doc.name}
+                        </strong>
+                        <span
+                          style={{
+                            fontSize: "9px",
+                            fontWeight: 700,
+                            padding: "1px 4px",
+                            borderRadius: "3px",
+                            background: doc.type?.includes("OCR") ? "rgba(168, 85, 247, 0.15)" : "rgba(59, 130, 246, 0.15)",
+                            color: doc.type?.includes("OCR") ? "#c084fc" : "var(--accent)",
+                            border: `1px solid ${doc.type?.includes("OCR") ? "rgba(168, 85, 247, 0.3)" : "rgba(59, 130, 246, 0.3)"}`,
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          {doc.type}
+                        </span>
+                        <span style={{ fontSize: "10.5px", color: "var(--text-subtle)", fontFamily: "var(--font-mono)" }}>
+                          ({doc.formattedSize || `${doc.wordCount}w`})
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPreviewDoc(doc);
+                            setShowDocPreview(true);
+                          }}
+                          style={{
+                            background: "var(--accent-dim)",
+                            border: "1px solid var(--accent-border)",
+                            color: "var(--accent)",
+                            cursor: "pointer",
+                            fontSize: "11px",
+                            padding: "2px 6px",
+                            borderRadius: "3px",
+                            fontWeight: 600,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "3px",
+                          }}
+                          title={isDocPdf ? "Open interactive Visual PDF Reader" : "Preview Document"}
+                        >
+                          {isDocPdf ? "📄 PDF Reader" : "👁 View"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setAttachedDocs((prev) => prev.filter((_, i) => i !== dIdx));
+                          }}
+                          style={{ background: "transparent", border: "none", color: "var(--rose)", cursor: "pointer", fontSize: "13px", padding: "0 2px" }}
+                          title="Remove Document"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    );
+                  })}
                   <button
                     type="button"
                     onClick={() => setAttachedDocs([])}
@@ -2150,11 +2352,6 @@ export default function SingleSampleEvaluation({
               {speedVerdict && (
                 <span className="h2h-verdict-badge speed-win">
                   {speedVerdict}
-                </span>
-              )}
-              {accuracyVerdict && (
-                <span className="h2h-verdict-badge accuracy-win">
-                  {accuracyVerdict}
                 </span>
               )}
               {tokenVerdict && (
@@ -2456,14 +2653,10 @@ export default function SingleSampleEvaluation({
                         <span
                           style={{
                             fontWeight: 700,
-                            color: res.correct ? "var(--emerald)" : "var(--rose)",
+                            color: "var(--text-main)",
                           }}
                         >
-                          {res.correct === true
-                            ? "PASS (Exact / Numeric Match)"
-                            : res.correct === false
-                            ? "FAIL (Mismatch)"
-                            : res.metricName}
+                          {res.metricName}
                         </span>
                       </div>
                       <div style={{ color: "var(--text-muted)" }}>
@@ -2500,7 +2693,7 @@ export default function SingleSampleEvaluation({
         />
       )}
 
-      {/* Document Preview Modal */}
+      {/* Document Preview Modal with Full Visual PDF Reader Parity */}
       {previewDoc && (
         <DocumentPreviewModal
           isOpen={showDocPreview}
@@ -2509,6 +2702,8 @@ export default function SingleSampleEvaluation({
             setPreviewDoc(null);
           }}
           document={previewDoc}
+          documents={attachedDocs}
+          initialActiveId={previewDoc.id}
         />
       )}
 

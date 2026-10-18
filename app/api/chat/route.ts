@@ -257,7 +257,7 @@ function parseOpenRouterError(status: number, errText: string, modelName: string
   };
 }
 
-      let activeModel = model;
+      let activeModel = model === "dil/dil-v1" || model === "dil-v1" ? "openrouter/free" : model;
       try {
         for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
           const isReasoningOrFree =
@@ -265,7 +265,8 @@ function parseOpenRouterError(status: number, errText: string, modelName: string
             activeModel.endsWith(":free") ||
             activeModel.includes("nemotron") ||
             activeModel.includes("r1") ||
-            activeModel.includes("qwq");
+            activeModel.includes("qwq") ||
+            model.includes("dil");
           const clientMaxTokens = maxTokens ?? max_tokens;
           const effectiveMaxTokens = isReasoningOrFree && clientMaxTokens && clientMaxTokens < 750
             ? 750

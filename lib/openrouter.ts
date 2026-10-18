@@ -92,12 +92,12 @@ const MOCK_MODELS: NormalizedModel[] = [
     supportsReasoning: true,
   },
   {
-    id: "openrouter/free",
-    name: "Free Models Router",
+    id: "dil/dil-v1",
+    name: "DIL-v1",
     context_length: 200000,
-    pricing: { prompt: 0, completion: 0 },
+    pricing: { prompt: 0.0000008, completion: 0.0000024 },
     supportsTools: true,
-    supportsReasoning: false,
+    supportsReasoning: true,
   },
   {
     id: "qwen/qwen3.8-27b:free",
@@ -200,18 +200,28 @@ export async function listModels(): Promise<NormalizedModel[]> {
 
     const models: NormalizedModel[] = (json.data ?? []).map((m: Record<string, unknown>) => {
       const params: string[] = (m.supported_parameters as string[]) ?? [];
-      const id = String(m.id ?? "");
-      const supportsReasoning =
+      let id = String(m.id ?? "");
+      let name = String(m.name ?? id);
+      let supportsReasoning =
         params.includes("reasoning") ||
-        /r1|qwq|thinking/.test(id.toLowerCase());
+        /r1|qwq|thinking|dil/.test(id.toLowerCase());
+      let pricing = {
+        prompt: Number((m.pricing as Record<string, unknown>)?.prompt ?? 0),
+        completion: Number((m.pricing as Record<string, unknown>)?.completion ?? 0),
+      };
+
+      if (id === "openrouter/free" || id === "dil/dil-v1") {
+        id = "dil/dil-v1";
+        name = "DIL-v1";
+        supportsReasoning = true;
+        pricing = { prompt: 0.0000008, completion: 0.0000024 };
+      }
+
       return {
         id,
-        name: String(m.name ?? id),
+        name,
         context_length: Number(m.context_length ?? 4096),
-        pricing: {
-          prompt: Number((m.pricing as Record<string, unknown>)?.prompt ?? 0),
-          completion: Number((m.pricing as Record<string, unknown>)?.completion ?? 0),
-        },
+        pricing,
         supportsTools:
           params.includes("tools") || params.includes("tool_choice"),
         supportsReasoning,
@@ -251,16 +261,19 @@ export async function chatCompletion(params: ChatParams): Promise<ChatResponse> 
     ? [{ role: "system", content: params.systemPrompt }, ...params.messages]
     : params.messages;
 
-  const isGemmaOrNoTools = params.model.toLowerCase().includes("gemma");
+  const effectiveModel =
+    params.model === "dil/dil-v1" || params.model === "dil-v1" ? "openrouter/free" : params.model;
+
+  const isGemmaOrNoTools = effectiveModel.toLowerCase().includes("gemma");
   const effectiveTools = isGemmaOrNoTools ? undefined : (params.tools ?? undefined);
 
   const body: Record<string, unknown> = {
-    model: params.model,
+    model: effectiveModel,
     messages,
     tools: effectiveTools,
     temperature: params.temperature ?? 0.7,
     max_tokens: params.max_tokens ?? (
-      /r1|qwq|reasoning|thinking|o1|o3|dots/i.test(params.model) ? 2500 : 1800
+      /r1|qwq|reasoning|thinking|o1|o3|dots|dil/i.test(effectiveModel) ? 2500 : 1800
     ),
     usage: { include: true },
     ...(!params.customEndpoint ? { provider: { allow_fallbacks: true, sort: "throughput" } } : {}),
@@ -397,16 +410,19 @@ export async function chatCompletionStream(params: ChatParams): Promise<Response
     ? [{ role: "system", content: params.systemPrompt }, ...params.messages]
     : params.messages;
 
-  const isGemmaOrNoTools = params.model.toLowerCase().includes("gemma");
+  const effectiveModel =
+    params.model === "dil/dil-v1" || params.model === "dil-v1" ? "openrouter/free" : params.model;
+
+  const isGemmaOrNoTools = effectiveModel.toLowerCase().includes("gemma");
   const effectiveTools = isGemmaOrNoTools ? undefined : (params.tools ?? undefined);
 
   const body: Record<string, unknown> = {
-    model: params.model,
+    model: effectiveModel,
     messages,
     tools: effectiveTools,
     temperature: params.temperature ?? 0.7,
     max_tokens: params.max_tokens ?? (
-      /r1|qwq|reasoning|thinking|o1|o3|dots/i.test(params.model) ? 2500 : 1800
+      /r1|qwq|reasoning|thinking|o1|o3|dots|dil/i.test(effectiveModel) ? 2500 : 1800
     ),
     stream: true,
     usage: { include: true },
