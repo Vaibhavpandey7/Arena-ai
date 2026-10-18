@@ -275,7 +275,7 @@ export default function BatchBenchmarkEvaluation() {
           prompt,
           disableSystemPrompt: true,
           useTools: false,
-          max_tokens: 700,
+          max_tokens: 1800,
         }),
         signal,
       });

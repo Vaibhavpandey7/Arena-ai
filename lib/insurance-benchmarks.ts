@@ -222,8 +222,36 @@ export function getInsuranceBenchmarkPreview(
   return `${truncated.slice(0, wordBoundary > 0 ? wordBoundary : maxLength)}…`;
 }
 
+export function isBenchmarkPromptCorrupted(prompt: string): boolean {
+  if (!prompt || prompt.trim().length < 15) return true;
+  if (prompt.includes("<think>") || prompt.includes("</think>")) return true;
+  const trimmed = prompt.trim();
+  if (/^The core differences (between|of)/i.test(trimmed) && trimmed.length < 2000 && !trimmed.includes("Question:")) {
+    const lastChar = trimmed.slice(-1);
+    if (![".", "?", "!", "\"", "'", ")"].includes(lastChar)) return true;
+  }
+  const lastChar = trimmed.slice(-1);
+  if (/[a-zA-Z0-9,\-]$/.test(trimmed) && !trimmed.endsWith("A") && !trimmed.endsWith("B") && !trimmed.endsWith("C") && !trimmed.endsWith("D") && !trimmed.endsWith("E")) {
+    if (![".", "?", "!", "\"", "'", ")", "}", "]", ":"].includes(lastChar)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export function getInsuranceBenchmarkPrompt(
   record: InsuranceBenchmarkRecord
 ): string {
+  if (record.fullQuestion && !isBenchmarkPromptCorrupted(record.fullQuestion)) {
+    return record.fullQuestion;
+  }
+  if (record.questionStem) {
+    let healed = `You are a professional insurance expert. Please analyze and answer the following question thoroughly and accurately based on insurance principles:\n\n[QUESTION]\n${record.questionStem}`;
+    if (record.options && Object.keys(record.options).length > 0) {
+      healed += `\n\nOptions:\n` + Object.entries(record.options).map(([k, v]) => `${k}. ${v}`).join("\n");
+      healed += `\n\nAnswer:`;
+    }
+    return healed;
+  }
   return record.fullQuestion;
 }

@@ -447,7 +447,7 @@ export default function SingleSampleInspectionModal({
                                         (judgeAuditResults[m.modelId].scoreOutOf100 ?? 0) >= 80
                                           ? "var(--emerald)"
                                           : (judgeAuditResults[m.modelId].scoreOutOf100 ?? 0) >= 60
-                                          ? "var(--amber)"
+                                          ? "var(--amber, #f59e0b)"
                                           : "var(--rose)",
                                       fontWeight: 800,
                                       fontSize: "11px",
@@ -494,7 +494,7 @@ export default function SingleSampleInspectionModal({
                                         ([metName, metScore]: [string, any]) => {
                                           const num = typeof metScore === "number" ? metScore : 0;
                                           const barColor =
-                                            num >= 80 ? "var(--emerald)" : num >= 60 ? "var(--amber)" : "var(--rose)";
+                                            num >= 80 ? "var(--emerald)" : num >= 60 ? "var(--amber, #f59e0b)" : "var(--rose)";
                                           return (
                                             <div
                                               key={metName}
@@ -512,11 +512,12 @@ export default function SingleSampleInspectionModal({
                                               </div>
                                               <div
                                                 style={{
-                                                  height: "4px",
+                                                  height: "5px",
                                                   width: "100%",
-                                                  background: "var(--bg-card)",
-                                                  borderRadius: "2px",
+                                                  background: "rgba(255, 255, 255, 0.08)",
+                                                  borderRadius: "3px",
                                                   overflow: "hidden",
+                                                  border: "1px solid rgba(255, 255, 255, 0.05)",
                                                 }}
                                               >
                                                 <div
@@ -524,7 +525,7 @@ export default function SingleSampleInspectionModal({
                                                     width: `${Math.min(100, Math.max(0, num))}%`,
                                                     height: "100%",
                                                     background: barColor,
-                                                    borderRadius: "2px",
+                                                    borderRadius: "3px",
                                                     transition: "width 0.3s ease",
                                                   }}
                                                 />

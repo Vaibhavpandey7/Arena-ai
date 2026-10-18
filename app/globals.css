@@ -49,6 +49,11 @@
   --emerald-dim:        rgba(52, 168, 83, 0.12);
   --emerald-glow:       rgba(52, 168, 83, 0.25);
 
+  /* Google Amber / Warning Yellow */
+  --amber:              #f59e0b;
+  --amber-dim:          rgba(245, 158, 11, 0.15);
+  --amber-glow:         rgba(245, 158, 11, 0.25);
+
   /* Gemini Coral / Rose */
   --rose:               #d96570;
   --rose-dim:           rgba(217, 101, 112, 0.12);

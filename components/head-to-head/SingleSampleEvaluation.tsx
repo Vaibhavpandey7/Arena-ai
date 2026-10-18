@@ -433,8 +433,35 @@ export default function SingleSampleEvaluation({
   // Derive current effective prompt
   const getEffectivePrompt = useCallback(() => {
     let questionText = "";
-    if (source === "benchmark") {
-      questionText = currentBenchmarkRecord?.fullQuestion || "";
+    if (source === "benchmark" && currentBenchmarkRecord) {
+      const q = (currentBenchmarkRecord.fullQuestion || "").trim();
+      const isCorrupted =
+        !q ||
+        q.includes("<think>") ||
+        q.includes("</think>") ||
+        (/^The core differences (between|of)/i.test(q) && q.length < 2000 && !q.includes("Question:")) ||
+        (/[a-zA-Z0-9,\-]$/.test(q) &&
+          !q.endsWith("A") &&
+          !q.endsWith("B") &&
+          !q.endsWith("C") &&
+          !q.endsWith("D") &&
+          !q.endsWith("E") &&
+          ![".", "?", "!", "\"", "'", ")", "}", "]", ":"].includes(q.slice(-1)));
+
+      if (isCorrupted && currentBenchmarkRecord.questionStem) {
+        let healed = `You are a professional insurance expert. Please analyze and answer the following question thoroughly and accurately based on insurance principles:\n\n[QUESTION]\n${currentBenchmarkRecord.questionStem}`;
+        if (currentBenchmarkRecord.options && Object.keys(currentBenchmarkRecord.options).length > 0) {
+          healed +=
+            `\n\nOptions:\n` +
+            Object.entries(currentBenchmarkRecord.options)
+              .map(([k, v]) => `${k}. ${v}`)
+              .join("\n");
+          healed += `\n\nAnswer:`;
+        }
+        questionText = healed;
+      } else {
+        questionText = currentBenchmarkRecord.fullQuestion || "";
+      }
     } else {
       questionText = manualPrompt.trim();
     }
@@ -485,7 +512,7 @@ export default function SingleSampleEvaluation({
             prompt: promptText,
             disableSystemPrompt: true,
             useTools: false,
-            max_tokens: 700,
+            max_tokens: 1800,
           }),
           signal: abortRefs.current[idx]?.signal,
         });
@@ -1111,7 +1138,7 @@ export default function SingleSampleEvaluation({
                                   (judgeAuditResults[modelId].scoreOutOf100 ?? 0) >= 80
                                     ? "var(--emerald)"
                                     : (judgeAuditResults[modelId].scoreOutOf100 ?? 0) >= 60
-                                    ? "var(--amber)"
+                                    ? "var(--amber, #f59e0b)"
                                     : "var(--rose)",
                                 fontWeight: 800,
                                 fontSize: "12px",
@@ -1173,7 +1200,11 @@ export default function SingleSampleEvaluation({
                                 ([metName, metScore]: [string, any]) => {
                                   const num = typeof metScore === "number" ? metScore : 0;
                                   const barColor =
-                                    num >= 80 ? "var(--emerald)" : num >= 60 ? "var(--amber)" : "var(--rose)";
+                                    num >= 80
+                                      ? "var(--emerald)"
+                                      : num >= 60
+                                      ? "var(--amber, #f59e0b)"
+                                      : "var(--rose)";
                                   return (
                                     <div
                                       key={metName}
@@ -1191,11 +1222,12 @@ export default function SingleSampleEvaluation({
                                       </div>
                                       <div
                                         style={{
-                                          height: "4px",
+                                          height: "5px",
                                           width: "100%",
-                                          background: "var(--bg-surface-elevated)",
-                                          borderRadius: "2px",
+                                          background: "rgba(255, 255, 255, 0.08)",
+                                          borderRadius: "3px",
                                           overflow: "hidden",
+                                          border: "1px solid rgba(255, 255, 255, 0.05)",
                                         }}
                                       >
                                         <div
@@ -1203,7 +1235,7 @@ export default function SingleSampleEvaluation({
                                             width: `${Math.min(100, Math.max(0, num))}%`,
                                             height: "100%",
                                             background: barColor,
-                                            borderRadius: "2px",
+                                            borderRadius: "3px",
                                             transition: "width 0.3s ease",
                                           }}
                                         />

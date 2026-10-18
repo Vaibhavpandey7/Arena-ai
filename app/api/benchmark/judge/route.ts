@@ -134,7 +134,7 @@ Assess each metric independently. Return JSON only with differentiated integer s
         model: effectiveJudge,
         messages,
         temperature: 0.1,
-        max_tokens: 850,
+        max_tokens: 1200,
       });
       content = response.content || "{}";
       usage = response.usage as Record<string, unknown> | undefined;
