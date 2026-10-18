@@ -1209,85 +1209,6 @@ export default function SingleSampleEvaluation({
                 )}
               </div>
 
-              {/* Quick Model Presets Bar */}
-              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "6px" }}>
-                <button
-                  type="button"
-                  disabled={isAnyRunning}
-                  onClick={() => {
-                    const preset = ["openai/gpt-4o-mini", "meta-llama/llama-3.3-70b-instruct"];
-                    setModels(preset);
-                    setStates(preset.map(() => emptyModelState()));
-                  }}
-                  title="Sub-second latency frontier models (avoids 504 gateway timeouts)"
-                  style={{
-                    fontSize: "10.5px",
-                    fontWeight: 600,
-                    padding: "3px 8px",
-                    borderRadius: "4px",
-                    border: "1px solid rgba(16, 185, 129, 0.35)",
-                    background: "rgba(16, 185, 129, 0.08)",
-                    color: "var(--emerald)",
-                    cursor: isAnyRunning ? "not-allowed" : "pointer",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "4px",
-                  }}
-                >
-                  Fast Paid
-                </button>
-                <button
-                  type="button"
-                  disabled={isAnyRunning}
-                  onClick={() => {
-                    const preset = ["deepseek/deepseek-r1", "openai/gpt-4o"];
-                    setModels(preset);
-                    setStates(preset.map(() => emptyModelState()));
-                  }}
-                  title="DeepSeek R1 reasoning vs GPT-4o"
-                  style={{
-                    fontSize: "10.5px",
-                    fontWeight: 600,
-                    padding: "3px 8px",
-                    borderRadius: "4px",
-                    border: "1px solid rgba(139, 92, 246, 0.35)",
-                    background: "rgba(139, 92, 246, 0.08)",
-                    color: "#a78bfa",
-                    cursor: isAnyRunning ? "not-allowed" : "pointer",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "4px",
-                  }}
-                >
-                  Reasoning
-                </button>
-                <button
-                  type="button"
-                  disabled={isAnyRunning}
-                  onClick={() => {
-                    const preset = ["openrouter/free", "nvidia/nemotron-3-super-120b-a12b:free"];
-                    setModels(preset);
-                    setStates(preset.map(() => emptyModelState()));
-                  }}
-                  title="Free models router vs Nemotron Super"
-                  style={{
-                    fontSize: "10.5px",
-                    fontWeight: 600,
-                    padding: "3px 8px",
-                    borderRadius: "4px",
-                    border: "1px solid var(--border-subtle)",
-                    background: "var(--bg-canvas)",
-                    color: "var(--text-subtle)",
-                    cursor: isAnyRunning ? "not-allowed" : "pointer",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "4px",
-                  }}
-                >
-                  Free Tier
-                </button>
-              </div>
-
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                 {models.map((mId, idx) => (
                   <div
@@ -1324,16 +1245,8 @@ export default function SingleSampleEvaluation({
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <span style={{ fontSize: "11px", fontWeight: 800, fontFamily: "var(--font-mono)", color: "var(--accent)", background: "rgba(66, 133, 244, 0.12)", padding: "2px 6px", borderRadius: "4px" }}>
-                    {activePlugin.badgeNumber}
-                  </span>
-                  <div>
-                    <div style={{ fontSize: "12.5px", fontWeight: 700, color: "var(--text-main)" }}>
-                      {activePlugin.name}
-                    </div>
-                    <div style={{ fontSize: "11px", color: "var(--text-subtle)" }}>
-                      {activePlugin.metrics.length} metrics active
-                    </div>
+                  <div style={{ fontSize: "12.5px", fontWeight: 700, color: "var(--text-main)" }}>
+                    {activePlugin.name}
                   </div>
                 </div>
                 <button

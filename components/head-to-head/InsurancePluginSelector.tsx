@@ -104,25 +104,6 @@ export default function InsurancePluginSelector({
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: "10px", flex: 1, minWidth: 0 }}>
-                <span
-                  style={{
-                    fontSize: "12px",
-                    fontWeight: 800,
-                    fontFamily: "var(--font-mono)",
-                    color: isActive ? "var(--accent)" : "var(--text-subtle)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: "28px",
-                    height: "28px",
-                    borderRadius: "6px",
-                    background: isActive ? "rgba(66, 133, 244, 0.15)" : "var(--bg-canvas)",
-                    border: "1px solid var(--border-subtle)",
-                    flexShrink: 0,
-                  }}
-                >
-                  {plugin.badgeNumber}
-                </span>
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div
                     className="gemini-extension-name"
