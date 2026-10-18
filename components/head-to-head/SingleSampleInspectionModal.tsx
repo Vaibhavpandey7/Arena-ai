@@ -289,7 +289,7 @@ export default function SingleSampleInspectionModal({
                     </div>
                   </div>
 
-                  {evalResult && (
+                  {evalResult && correctAnswer && (
                     <span
                       style={{
                         padding: "2px 8px",
@@ -439,7 +439,13 @@ export default function SingleSampleInspectionModal({
                                       color: judgeAuditResults[m.modelId].isCorrect ? "var(--emerald)" : "var(--rose)",
                                     }}
                                   >
-                                    {judgeAuditResults[m.modelId].isCorrect ? "Ground Truth Aligned" : "Reasoning Divergence"}
+                                    {correctAnswer
+                                      ? judgeAuditResults[m.modelId].isCorrect
+                                        ? "Ground Truth Aligned"
+                                        : "Reasoning Divergence"
+                                      : judgeAuditResults[m.modelId].complianceStatus === "compliant"
+                                      ? "Institutional Compliant"
+                                      : "Institutional Review"}
                                   </span>
                                   <span
                                     style={{

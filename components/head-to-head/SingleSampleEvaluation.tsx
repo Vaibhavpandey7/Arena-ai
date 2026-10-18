@@ -125,7 +125,6 @@ export default function SingleSampleEvaluation({
   // Layout Modes & Compact UI State
   const [layoutMode, setLayoutMode] = useState<"columns" | "stacked" | "tabbed">("columns");
   const [isConfigCollapsed, setIsConfigCollapsed] = useState(false);
-  const [isUseCasesExpanded, setIsUseCasesExpanded] = useState(false);
   const [activeTabModelIndex, setActiveTabModelIndex] = useState(0);
   const [syncScroll, setSyncScroll] = useState(true);
   const [maximizedModelIndex, setMaximizedModelIndex] = useState<number | null>(null);
@@ -716,11 +715,11 @@ export default function SingleSampleEvaluation({
     }
   };
 
-  // Ground Truth reference determination
+  // Ground Truth reference determination (ONLY present for benchmark dataset samples, never for documents)
   const goldAnswer =
-    source === "benchmark"
-      ? currentBenchmarkRecord?.correctAnswer
-      : BENCHMARK_GOLD_REGISTRY[USE_CASES_LIST.find((u) => u.id === activeUseCase)?.goldKey || "SC-001"]?.goldResponse;
+    source === "benchmark" ? currentBenchmarkRecord?.correctAnswer : undefined;
+
+  const isDocumentOrManual = source === "manual" || attachedDocs.length > 0 || !goldAnswer;
 
   const currentOptions =
     source === "benchmark" ? currentBenchmarkRecord?.options || {} : {};
@@ -767,8 +766,8 @@ export default function SingleSampleEvaluation({
       }
     }
 
-    // Accuracy comparison against reference if available
-    if (goldAnswer) {
+    // Accuracy comparison against reference if available (strictly only for benchmark ground truth)
+    if (goldAnswer && !isDocumentOrManual) {
       const evalScores = answeredModels.map((m) => ({
         ...m,
         evalRes: evaluateReferenceAnswer(m.state.answer, goldAnswer, currentOptions, scoringPolicy),
@@ -796,7 +795,7 @@ export default function SingleSampleEvaluation({
   const renderModelCard = (modelId: string, idx: number, isStacked = false) => {
     const state = states[idx] || emptyModelState();
     const evalResult: ReferenceTaskResult | null =
-      state.answer && goldAnswer
+      !isDocumentOrManual && state.answer && goldAnswer
         ? evaluateReferenceAnswer(state.answer, goldAnswer, currentOptions, scoringPolicy)
         : null;
 
@@ -877,8 +876,8 @@ export default function SingleSampleEvaluation({
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            {/* Objective status badge */}
-            {evalResult && (
+            {/* Objective status badge (only for benchmark ground truth, never on document runs) */}
+            {!isDocumentOrManual && evalResult && (
               <span
                 style={{
                   padding: "3px 9px",
@@ -1108,7 +1107,15 @@ export default function SingleSampleEvaluation({
                               color: judgeAuditResults[modelId].isCorrect ? "var(--emerald)" : "var(--rose)",
                             }}
                           >
-                            {judgeAuditResults[modelId].isCorrect ? "Ground Truth Aligned" : "Reasoning Divergence"}
+                            {!isDocumentOrManual
+                              ? judgeAuditResults[modelId].isCorrect
+                                ? "Ground Truth Aligned"
+                                : "Reasoning Divergence"
+                              : judgeAuditResults[modelId].complianceStatus === "compliant"
+                              ? "Institutional Compliant"
+                              : judgeAuditResults[modelId].complianceStatus === "warning"
+                              ? "Underwriting Advisory"
+                              : "Compliance Review"}
                           </span>
                           <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
                             <span
@@ -1492,55 +1499,52 @@ export default function SingleSampleEvaluation({
               </div>
             </div>
 
-            {/* Card 2: Insurance Use Cases (Collapsible Accordion matching Chat Arena) */}
+            {/* Card 2: Insurance Use Cases */}
             <div className="h2h-sidepanel-card" style={{ padding: "12px 14px" }}>
               <div
-                onClick={() => setIsUseCasesExpanded((prev) => !prev)}
                 style={{
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  cursor: "pointer",
-                  userSelect: "none",
+                  marginBottom: "10px",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <div style={{ fontSize: "12.5px", fontWeight: 700, color: "var(--text-main)" }}>
-                    {activePlugin.name}
-                  </div>
+                <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-subtle)" }}>
+                  Use Cases
                 </div>
-                <button
-                  type="button"
-                  className="arena-header-btn"
-                  style={{ fontSize: "10.5px", padding: "3px 8px" }}
+                <span
+                  style={{
+                    fontSize: "10px",
+                    fontWeight: 700,
+                    padding: "1px 6px",
+                    borderRadius: "8px",
+                    background: "rgba(66, 133, 244, 0.12)",
+                    color: "var(--accent)",
+                    border: "1px solid rgba(66, 133, 244, 0.25)",
+                  }}
                 >
-                  {isUseCasesExpanded ? "▲ Hide" : "Change ▼"}
-                </button>
+                  {INSURANCE_PLUGINS.length} Available
+                </span>
               </div>
 
-              {isUseCasesExpanded && (
-                <div style={{ marginTop: "12px", borderTop: "1px solid var(--border-subtle)", paddingTop: "12px" }}>
-                  <InsurancePluginSelector
-                    compact={true}
-                    hideDetails={true}
-                    hideHeader={true}
-                    activePluginId={activePluginId}
-                    onSelectPlugin={(plugin) => {
-                      setActivePluginId(plugin.id);
-                      setBenchmarkId(plugin.datasetIds[0]);
-                      setSelectedSampleIndex(0);
-                      handleReset();
-                      setIsUseCasesExpanded(false);
-                    }}
-                    activeDatasetId={benchmarkId}
-                    onSelectDataset={(dsId) => {
-                      setBenchmarkId(dsId);
-                      setSelectedSampleIndex(0);
-                      handleReset();
-                    }}
-                  />
-                </div>
-              )}
+              <InsurancePluginSelector
+                compact={true}
+                hideDetails={true}
+                hideHeader={true}
+                activePluginId={activePluginId}
+                onSelectPlugin={(plugin) => {
+                  setActivePluginId(plugin.id);
+                  setBenchmarkId(plugin.datasetIds[0]);
+                  setSelectedSampleIndex(0);
+                  handleReset();
+                }}
+                activeDatasetId={benchmarkId}
+                onSelectDataset={(dsId) => {
+                  setBenchmarkId(dsId);
+                  setSelectedSampleIndex(0);
+                  handleReset();
+                }}
+              />
             </div>
           </aside>
 

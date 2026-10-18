@@ -77,7 +77,6 @@ export default function BatchBenchmarkEvaluation() {
   const initialPlugin = getInsurancePluginsForDataset("accuracy-rigor")[0] || INSURANCE_PLUGINS[0];
   const [activePluginId, setActivePluginId] = useState<InsurancePluginId>(initialPlugin.id);
   const activePlugin = INSURANCE_PLUGINS.find((p) => p.id === activePluginId) || INSURANCE_PLUGINS[0];
-  const [isUseCasesExpanded, setIsUseCasesExpanded] = useState(false);
 
   // Benchmark Config
   const [benchmarkId, setBenchmarkId] = useState<InsuranceBenchmarkId>("accuracy-rigor");
@@ -1023,49 +1022,46 @@ export default function BatchBenchmarkEvaluation() {
               </div>
             </div>
 
-            {/* Card 2: Insurance Use Cases (Collapsible Accordion matching Chat Arena) */}
+            {/* Card 2: Insurance Use Cases */}
             <div className="h2h-sidepanel-card" style={{ padding: "12px 14px" }}>
               <div
-                onClick={() => setIsUseCasesExpanded((prev) => !prev)}
                 style={{
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  cursor: "pointer",
-                  userSelect: "none",
+                  marginBottom: "10px",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <div style={{ fontSize: "12.5px", fontWeight: 700, color: "var(--text-main)" }}>
-                    {activePlugin.name}
-                  </div>
+                <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-subtle)" }}>
+                  Use Cases
                 </div>
-                <button
-                  type="button"
-                  className="arena-header-btn"
-                  style={{ fontSize: "10.5px", padding: "3px 8px" }}
+                <span
+                  style={{
+                    fontSize: "10px",
+                    fontWeight: 700,
+                    padding: "1px 6px",
+                    borderRadius: "8px",
+                    background: "rgba(66, 133, 244, 0.12)",
+                    color: "var(--accent)",
+                    border: "1px solid rgba(66, 133, 244, 0.25)",
+                  }}
                 >
-                  {isUseCasesExpanded ? "▲ Hide" : "Change ▼"}
-                </button>
+                  {INSURANCE_PLUGINS.length} Available
+                </span>
               </div>
 
-              {isUseCasesExpanded && (
-                <div style={{ marginTop: "12px", borderTop: "1px solid var(--border-subtle)", paddingTop: "12px" }}>
-                  <InsurancePluginSelector
-                    compact={true}
-                    hideDetails={true}
-                    hideHeader={true}
-                    activePluginId={activePluginId}
-                    onSelectPlugin={(plugin) => {
-                      setActivePluginId(plugin.id);
-                      setBenchmarkId(plugin.datasetIds[0]);
-                      setIsUseCasesExpanded(false);
-                    }}
-                    activeDatasetId={benchmarkId}
-                    onSelectDataset={(dsId) => setBenchmarkId(dsId)}
-                  />
-                </div>
-              )}
+              <InsurancePluginSelector
+                compact={true}
+                hideDetails={true}
+                hideHeader={true}
+                activePluginId={activePluginId}
+                onSelectPlugin={(plugin) => {
+                  setActivePluginId(plugin.id);
+                  setBenchmarkId(plugin.datasetIds[0]);
+                }}
+                activeDatasetId={benchmarkId}
+                onSelectDataset={(dsId) => setBenchmarkId(dsId)}
+              />
             </div>
           </aside>
 
