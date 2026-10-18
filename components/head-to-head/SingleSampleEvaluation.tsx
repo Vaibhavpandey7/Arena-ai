@@ -112,10 +112,10 @@ export default function SingleSampleEvaluation({
   // Source: Benchmark Dataset or Manual Question (Defaults to Attach Document / Custom Prompt)
   const [source, setSource] = useState<"benchmark" | "manual">("manual");
 
-  // Models
+  // Models (defaults to fast, cost-efficient frontier models for sub-second responses)
   const [models, setModels] = useState<string[]>([
-    "nvidia/nemotron-3.5-lightning:free",
-    "openrouter/free",
+    "openai/gpt-4o-mini",
+    "meta-llama/llama-3.3-70b-instruct",
   ]);
   const [states, setStates] = useState<SingleModelState[]>([
     emptyModelState(),
@@ -125,6 +125,7 @@ export default function SingleSampleEvaluation({
   // Layout Modes & Compact UI State
   const [layoutMode, setLayoutMode] = useState<"columns" | "stacked" | "tabbed">("columns");
   const [isConfigCollapsed, setIsConfigCollapsed] = useState(false);
+  const [isUseCasesExpanded, setIsUseCasesExpanded] = useState(false);
   const [activeTabModelIndex, setActiveTabModelIndex] = useState(0);
   const [syncScroll, setSyncScroll] = useState(true);
   const [maximizedModelIndex, setMaximizedModelIndex] = useState<number | null>(null);
@@ -188,7 +189,11 @@ export default function SingleSampleEvaluation({
           modelId,
           pluginId: activePlugin.id,
           pluginName: activePlugin.name,
-          metrics: activePlugin.metrics.map((m) => m.name),
+          metrics: activePlugin.metrics.map((m) => ({
+            id: m.id,
+            name: m.name,
+            description: m.description,
+          })),
         }),
       });
       const data = await res.json();
@@ -379,12 +384,13 @@ export default function SingleSampleEvaluation({
   const handleAddModel = () => {
     if (models.length >= 4) return;
     const candidates = [
-      "nvidia/nemotron-3.5-lightning:free",
+      "openai/gpt-4o-mini",
+      "meta-llama/llama-3.3-70b-instruct",
+      "deepseek/deepseek-r1",
+      "openai/gpt-4o",
+      "deepseek/deepseek-chat",
       "openrouter/free",
       "nvidia/nemotron-3-super-120b-a12b:free",
-      "google/gemma-4-31b-it:free",
-      "liquid/lfm-2.5-2.6b:free",
-      "dots-studio/dots-3-note-preview:free",
     ];
     const nextModel = candidates.find((c) => !models.includes(c)) || candidates[0];
     setModels((prev) => [...prev, nextModel]);
@@ -440,26 +446,22 @@ export default function SingleSampleEvaluation({
     async (idx: number, modelId: string, promptText: string) => {
       abortRefs.current[idx] = new AbortController();
       const startTime = Date.now();
-      let state: SingleModelState = {
-        ...emptyModelState(),
-        isRunning: true,
-        startTime,
-      };
 
       const updateState = (updater: (curr: SingleModelState) => SingleModelState) => {
-        state = updater(state);
         setStates((prev) => {
+          if (!prev[idx]) return prev;
           const next = [...prev];
-          next[idx] = state;
+          next[idx] = updater(next[idx]);
           return next;
         });
       };
 
-      setStates((prev) => {
-        const next = [...prev];
-        next[idx] = state;
-        return next;
-      });
+      updateState((curr) => ({
+        ...curr,
+        ...emptyModelState(),
+        isRunning: true,
+        startTime,
+      }));
 
       try {
         const res = await fetch("/api/chat", {
@@ -483,11 +485,14 @@ export default function SingleSampleEvaluation({
           } catch {
             // fallback
           }
+          if (res.status === 504) {
+            errMsg = `Upstream Gateway Timeout (504): Model "${modelId}" timed out on its upstream host. Switch to a fast model like GPT-4o Mini or Llama 3.3 70B for instant evaluation.`;
+          }
           updateState((curr) => ({
             ...curr,
             isRunning: false,
             runStatus: "failed",
-            answer: `[Error: ${errMsg}]`,
+            answer: `⚠️ Inference Failed: ${errMsg}`,
             latencyMs: Date.now() - startTime,
           }));
           return;
@@ -627,8 +632,22 @@ export default function SingleSampleEvaluation({
 
     setShowGroundTruth(false);
     setIsConfigCollapsed(true);
-    models.forEach((modelId, idx) => {
-      void streamSingleModel(idx, modelId, promptText);
+    setJudgeAuditResults({});
+
+    // Initialize all model states simultaneously
+    setStates(
+      models.map(() => ({
+        ...emptyModelState(),
+        isRunning: true,
+        startTime: Date.now(),
+      }))
+    );
+
+    // Launch all model inferences in parallel simultaneously
+    Promise.all(
+      models.map((modelId, idx) => streamSingleModel(idx, modelId, promptText))
+    ).catch((err) => {
+      console.error("Error in simultaneous model evaluation:", err);
     });
   };
 
@@ -773,7 +792,7 @@ export default function SingleSampleEvaluation({
           }}
         >
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
               <span
                 style={{
                   fontSize: "11px",
@@ -787,9 +806,15 @@ export default function SingleSampleEvaluation({
               >
                 Model {String.fromCharCode(65 + idx)}
               </span>
-              <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-main)" }}>
-                {modelId.split("/").pop()}
-              </span>
+              <div style={{ minWidth: "160px" }}>
+                <ModelSelectWidget
+                  label=""
+                  value={modelId}
+                  disabled={isAnyRunning}
+                  onChange={(newId) => handleModelChange(idx, newId)}
+                  compact={true}
+                />
+              </div>
             </div>
             <div
               style={{
@@ -954,8 +979,54 @@ export default function SingleSampleEvaluation({
                   Generating response…
                 </div>
               ) : state.runStatus === "failed" ? (
-                <div style={{ color: "var(--rose)", fontStyle: "italic" }}>
-                  {state.answer || "Model failed to produce a valid response."}
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  <div style={{ color: "var(--rose)", fontSize: "12.5px" }}>
+                    {state.answer || "Model failed to produce a valid response."}
+                  </div>
+                  {/504|timeout|timed out|gateway/i.test(state.answer) && (
+                    <div
+                      style={{
+                        padding: "8px 12px",
+                        borderRadius: "var(--radius-sm)",
+                        background: "rgba(59, 130, 246, 0.08)",
+                        border: "1px solid rgba(59, 130, 246, 0.25)",
+                        fontSize: "11.5px",
+                        color: "var(--text-main)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: "8px",
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <span>💡 <strong>Tip:</strong> Upstream provider timed out. Switch to a high-throughput paid model for instant answers.</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newModels = [...models];
+                          newModels[idx] = "openai/gpt-4o-mini";
+                          setModels(newModels);
+                          setStates((prev) => {
+                            const next = [...prev];
+                            next[idx] = emptyModelState();
+                            return next;
+                          });
+                        }}
+                        style={{
+                          background: "var(--emerald)",
+                          color: "#fff",
+                          border: "none",
+                          padding: "4px 10px",
+                          borderRadius: "4px",
+                          cursor: "pointer",
+                          fontWeight: 600,
+                          fontSize: "11px",
+                        }}
+                      >
+                        ⚡ Switch to GPT-4o Mini
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : state.answer ? (
                 <StructuredMarkdown content={state.answer} />
@@ -1127,6 +1198,85 @@ export default function SingleSampleEvaluation({
                 )}
               </div>
 
+              {/* Quick Model Presets Bar */}
+              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "6px" }}>
+                <button
+                  type="button"
+                  disabled={isAnyRunning}
+                  onClick={() => {
+                    const preset = ["openai/gpt-4o-mini", "meta-llama/llama-3.3-70b-instruct"];
+                    setModels(preset);
+                    setStates(preset.map(() => emptyModelState()));
+                  }}
+                  title="Sub-second latency frontier models (avoids 504 gateway timeouts)"
+                  style={{
+                    fontSize: "10.5px",
+                    fontWeight: 600,
+                    padding: "3px 8px",
+                    borderRadius: "4px",
+                    border: "1px solid rgba(16, 185, 129, 0.35)",
+                    background: "rgba(16, 185, 129, 0.08)",
+                    color: "var(--emerald)",
+                    cursor: isAnyRunning ? "not-allowed" : "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                >
+                  ⚡ Fast Paid
+                </button>
+                <button
+                  type="button"
+                  disabled={isAnyRunning}
+                  onClick={() => {
+                    const preset = ["deepseek/deepseek-r1", "openai/gpt-4o"];
+                    setModels(preset);
+                    setStates(preset.map(() => emptyModelState()));
+                  }}
+                  title="DeepSeek R1 reasoning vs GPT-4o"
+                  style={{
+                    fontSize: "10.5px",
+                    fontWeight: 600,
+                    padding: "3px 8px",
+                    borderRadius: "4px",
+                    border: "1px solid rgba(139, 92, 246, 0.35)",
+                    background: "rgba(139, 92, 246, 0.08)",
+                    color: "#a78bfa",
+                    cursor: isAnyRunning ? "not-allowed" : "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                >
+                  🧠 Reasoning
+                </button>
+                <button
+                  type="button"
+                  disabled={isAnyRunning}
+                  onClick={() => {
+                    const preset = ["openrouter/free", "nvidia/nemotron-3-super-120b-a12b:free"];
+                    setModels(preset);
+                    setStates(preset.map(() => emptyModelState()));
+                  }}
+                  title="Free models router vs Nemotron Super"
+                  style={{
+                    fontSize: "10.5px",
+                    fontWeight: 600,
+                    padding: "3px 8px",
+                    borderRadius: "4px",
+                    border: "1px solid var(--border-subtle)",
+                    background: "var(--bg-canvas)",
+                    color: "var(--text-subtle)",
+                    cursor: isAnyRunning ? "not-allowed" : "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                >
+                  🆓 Free Tier
+                </button>
+              </div>
+
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                 {models.map((mId, idx) => (
                   <div
@@ -1150,46 +1300,61 @@ export default function SingleSampleEvaluation({
               </div>
             </div>
 
-            {/* Card 2: Insurance Use Cases (Plugins) */}
-            <div className="h2h-sidepanel-card">
-              <div className="h2h-sidepanel-header">
-                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <span>🧩</span>
-                  <span>Use Cases</span>
-                </span>
-                <span
-                  style={{
-                    fontSize: "10.5px",
-                    fontWeight: 700,
-                    padding: "1px 7px",
-                    borderRadius: "10px",
-                    background: "rgba(66, 133, 244, 0.12)",
-                    color: "var(--accent)",
-                    border: "1px solid rgba(66, 133, 244, 0.25)",
-                  }}
+            {/* Card 2: Insurance Use Cases (Collapsible Accordion matching Chat Arena) */}
+            <div className="h2h-sidepanel-card" style={{ padding: "12px 14px" }}>
+              <div
+                onClick={() => setIsUseCasesExpanded((prev) => !prev)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  cursor: "pointer",
+                  userSelect: "none",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span style={{ fontSize: "16px" }}>{activePlugin.icon || "🧩"}</span>
+                  <div>
+                    <div style={{ fontSize: "12.5px", fontWeight: 700, color: "var(--text-main)" }}>
+                      {activePlugin.name}
+                    </div>
+                    <div style={{ fontSize: "11px", color: "var(--text-subtle)" }}>
+                      {activePlugin.metrics.length} metrics active
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="arena-header-btn"
+                  style={{ fontSize: "10.5px", padding: "3px 8px" }}
                 >
-                  {INSURANCE_PLUGINS.length} Available
-                </span>
+                  {isUseCasesExpanded ? "▲ Hide" : "Change ▼"}
+                </button>
               </div>
 
-              <InsurancePluginSelector
-                compact={true}
-                hideDetails={true}
-                hideHeader={true}
-                activePluginId={activePluginId}
-                onSelectPlugin={(plugin) => {
-                  setActivePluginId(plugin.id);
-                  setBenchmarkId(plugin.datasetIds[0]);
-                  setSelectedSampleIndex(0);
-                  handleReset();
-                }}
-                activeDatasetId={benchmarkId}
-                onSelectDataset={(dsId) => {
-                  setBenchmarkId(dsId);
-                  setSelectedSampleIndex(0);
-                  handleReset();
-                }}
-              />
+              {isUseCasesExpanded && (
+                <div style={{ marginTop: "12px", borderTop: "1px solid var(--border-subtle)", paddingTop: "12px" }}>
+                  <InsurancePluginSelector
+                    compact={true}
+                    hideDetails={true}
+                    hideHeader={true}
+                    activePluginId={activePluginId}
+                    onSelectPlugin={(plugin) => {
+                      setActivePluginId(plugin.id);
+                      setBenchmarkId(plugin.datasetIds[0]);
+                      setSelectedSampleIndex(0);
+                      handleReset();
+                      setIsUseCasesExpanded(false);
+                    }}
+                    activeDatasetId={benchmarkId}
+                    onSelectDataset={(dsId) => {
+                      setBenchmarkId(dsId);
+                      setSelectedSampleIndex(0);
+                      handleReset();
+                    }}
+                  />
+                </div>
+              )}
             </div>
           </aside>
 
@@ -2262,6 +2427,19 @@ export default function SingleSampleEvaluation({
                                                   }}
                                                 />
                                               </div>
+                                              {judgeAuditResults[modelId].metricFindings?.[metName] && (
+                                                <div
+                                                  style={{
+                                                    fontSize: "9.5px",
+                                                    color: "var(--text-muted)",
+                                                    fontStyle: "italic",
+                                                    lineHeight: 1.3,
+                                                    marginTop: "1px",
+                                                  }}
+                                                >
+                                                  {judgeAuditResults[modelId].metricFindings[metName]}
+                                                </div>
+                                              )}
                                             </div>
                                           );
                                         }

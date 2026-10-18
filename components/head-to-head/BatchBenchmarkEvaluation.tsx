@@ -67,16 +67,17 @@ export default function BatchBenchmarkEvaluation() {
   // Source: Benchmark Dataset or Manual CSV
   const [sourceType, setSourceType] = useState<"benchmark" | "manual-csv">("benchmark");
 
-  // Models
+  // Models (defaults to fast, cost-efficient frontier models for sub-second responses)
   const [models, setModels] = useState<string[]>([
-    "nvidia/nemotron-3.5-lightning:free",
-    "openrouter/free",
+    "openai/gpt-4o-mini",
+    "meta-llama/llama-3.3-70b-instruct",
   ]);
 
   // Insurance Plugin State
   const initialPlugin = getInsurancePluginsForDataset("accuracy-rigor")[0] || INSURANCE_PLUGINS[0];
   const [activePluginId, setActivePluginId] = useState<InsurancePluginId>(initialPlugin.id);
   const activePlugin = INSURANCE_PLUGINS.find((p) => p.id === activePluginId) || INSURANCE_PLUGINS[0];
+  const [isUseCasesExpanded, setIsUseCasesExpanded] = useState(false);
 
   // Benchmark Config
   const [benchmarkId, setBenchmarkId] = useState<InsuranceBenchmarkId>("accuracy-rigor");
@@ -97,7 +98,7 @@ export default function BatchBenchmarkEvaluation() {
   // Advanced Run Settings (collapsible)
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [concurrency, setConcurrency] = useState<number>(2);
-  const [requestDelayMs, setRequestDelayMs] = useState<number>(350);
+  const [requestDelayMs, setRequestDelayMs] = useState<number>(0);
 
   // Execution State
   const [isRunning, setIsRunning] = useState(false);
@@ -109,7 +110,7 @@ export default function BatchBenchmarkEvaluation() {
   const [batchError, setBatchError] = useState<string | null>(null);
   const [isSimulationMode, setIsSimulationMode] = useState<boolean>(false);
   const [apiErrorMessage, setApiErrorMessage] = useState<{
-    type: "credits_exhausted" | "rate_limit_exceeded" | "upstream_error";
+    type: "credits_exhausted" | "rate_limit_exceeded" | "gateway_timeout" | "upstream_error";
     modelId: string;
     message: string;
   } | null>(null);
@@ -156,12 +157,13 @@ export default function BatchBenchmarkEvaluation() {
   const handleAddModel = () => {
     if (models.length >= 4) return;
     const candidates = [
-      "nvidia/nemotron-3.5-lightning:free",
+      "openai/gpt-4o-mini",
+      "meta-llama/llama-3.3-70b-instruct",
+      "deepseek/deepseek-r1",
+      "openai/gpt-4o",
+      "deepseek/deepseek-chat",
       "openrouter/free",
       "nvidia/nemotron-3-super-120b-a12b:free",
-      "google/gemma-4-31b-it:free",
-      "liquid/lfm-2.5-2.6b:free",
-      "dots-studio/dots-3-note-preview:free",
     ];
     const nextModel = candidates.find((c) => !models.includes(c)) || candidates[0];
     setModels((prev) => [...prev, nextModel]);
@@ -285,6 +287,9 @@ export default function BatchBenchmarkEvaluation() {
           if (errData.error) errMsg = errData.error;
         } catch {
           // fallback
+        }
+        if (res.status === 504) {
+          errMsg = `Upstream Gateway Timeout (504): Model "${modelId}" took too long to respond. The upstream provider is experiencing heavy congestion. Switch to a fast model like GPT-4o Mini or Llama 3.3 70B for instant responses.`;
         }
         return {
           modelId,
@@ -532,9 +537,11 @@ export default function BatchBenchmarkEvaluation() {
           const failedWithMsg = modelResults.find((m) => m.runStatus === "failed" && m.errorMessage);
           if (failedWithMsg?.errorMessage) {
             const msg = failedWithMsg.errorMessage;
-            let type: "credits_exhausted" | "rate_limit_exceeded" | "upstream_error" = "upstream_error";
+            let type: "credits_exhausted" | "rate_limit_exceeded" | "gateway_timeout" | "upstream_error" = "upstream_error";
             if (/credit|payment|afford|402/i.test(msg)) {
               type = "credits_exhausted";
+            } else if (/504|gateway timeout|timed out|timeout/i.test(msg)) {
+              type = "gateway_timeout";
             } else if (/rate limit|429|daily|quota|free-models-per-day/i.test(msg)) {
               type = "rate_limit_exceeded";
             }
@@ -920,6 +927,73 @@ export default function BatchBenchmarkEvaluation() {
                 )}
               </div>
 
+              {/* Quick Model Presets Bar */}
+              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "6px" }}>
+                <button
+                  type="button"
+                  disabled={isRunning}
+                  onClick={() => setModels(["openai/gpt-4o-mini", "meta-llama/llama-3.3-70b-instruct"])}
+                  title="Sub-second latency frontier models (avoids 504 gateway timeouts)"
+                  style={{
+                    fontSize: "10.5px",
+                    fontWeight: 600,
+                    padding: "3px 8px",
+                    borderRadius: "4px",
+                    border: "1px solid rgba(16, 185, 129, 0.35)",
+                    background: "rgba(16, 185, 129, 0.08)",
+                    color: "var(--emerald)",
+                    cursor: isRunning ? "not-allowed" : "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                >
+                  ⚡ Fast Paid
+                </button>
+                <button
+                  type="button"
+                  disabled={isRunning}
+                  onClick={() => setModels(["deepseek/deepseek-r1", "openai/gpt-4o"])}
+                  title="DeepSeek R1 reasoning vs GPT-4o"
+                  style={{
+                    fontSize: "10.5px",
+                    fontWeight: 600,
+                    padding: "3px 8px",
+                    borderRadius: "4px",
+                    border: "1px solid rgba(139, 92, 246, 0.35)",
+                    background: "rgba(139, 92, 246, 0.08)",
+                    color: "#a78bfa",
+                    cursor: isRunning ? "not-allowed" : "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                >
+                  🧠 Reasoning
+                </button>
+                <button
+                  type="button"
+                  disabled={isRunning}
+                  onClick={() => setModels(["openrouter/free", "nvidia/nemotron-3-super-120b-a12b:free"])}
+                  title="Free models router vs Nemotron Super"
+                  style={{
+                    fontSize: "10.5px",
+                    fontWeight: 600,
+                    padding: "3px 8px",
+                    borderRadius: "4px",
+                    border: "1px solid var(--border-subtle)",
+                    background: "var(--bg-canvas)",
+                    color: "var(--text-subtle)",
+                    cursor: isRunning ? "not-allowed" : "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                >
+                  🆓 Free Tier
+                </button>
+              </div>
+
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                 {models.map((mId, idx) => (
                   <div
@@ -943,40 +1017,55 @@ export default function BatchBenchmarkEvaluation() {
               </div>
             </div>
 
-            {/* Card 2: Insurance Use Cases (Plugins) */}
-            <div className="h2h-sidepanel-card">
-              <div className="h2h-sidepanel-header">
-                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <span>🧩</span>
-                  <span>Use Cases</span>
-                </span>
-                <span
-                  style={{
-                    fontSize: "10.5px",
-                    fontWeight: 700,
-                    padding: "1px 7px",
-                    borderRadius: "10px",
-                    background: "rgba(66, 133, 244, 0.12)",
-                    color: "var(--accent)",
-                    border: "1px solid rgba(66, 133, 244, 0.25)",
-                  }}
+            {/* Card 2: Insurance Use Cases (Collapsible Accordion matching Chat Arena) */}
+            <div className="h2h-sidepanel-card" style={{ padding: "12px 14px" }}>
+              <div
+                onClick={() => setIsUseCasesExpanded((prev) => !prev)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  cursor: "pointer",
+                  userSelect: "none",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span style={{ fontSize: "16px" }}>{activePlugin.icon || "🧩"}</span>
+                  <div>
+                    <div style={{ fontSize: "12.5px", fontWeight: 700, color: "var(--text-main)" }}>
+                      {activePlugin.name}
+                    </div>
+                    <div style={{ fontSize: "11px", color: "var(--text-subtle)" }}>
+                      {activePlugin.metrics.length} metrics active
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="arena-header-btn"
+                  style={{ fontSize: "10.5px", padding: "3px 8px" }}
                 >
-                  {INSURANCE_PLUGINS.length} Available
-                </span>
+                  {isUseCasesExpanded ? "▲ Hide" : "Change ▼"}
+                </button>
               </div>
 
-              <InsurancePluginSelector
-                compact={true}
-                hideDetails={true}
-                hideHeader={true}
-                activePluginId={activePluginId}
-                onSelectPlugin={(plugin) => {
-                  setActivePluginId(plugin.id);
-                  setBenchmarkId(plugin.datasetIds[0]);
-                }}
-                activeDatasetId={benchmarkId}
-                onSelectDataset={(dsId) => setBenchmarkId(dsId)}
-              />
+              {isUseCasesExpanded && (
+                <div style={{ marginTop: "12px", borderTop: "1px solid var(--border-subtle)", paddingTop: "12px" }}>
+                  <InsurancePluginSelector
+                    compact={true}
+                    hideDetails={true}
+                    hideHeader={true}
+                    activePluginId={activePluginId}
+                    onSelectPlugin={(plugin) => {
+                      setActivePluginId(plugin.id);
+                      setBenchmarkId(plugin.datasetIds[0]);
+                      setIsUseCasesExpanded(false);
+                    }}
+                    activeDatasetId={benchmarkId}
+                    onSelectDataset={(dsId) => setBenchmarkId(dsId)}
+                  />
+                </div>
+              )}
             </div>
           </aside>
 
@@ -1561,8 +1650,16 @@ export default function BatchBenchmarkEvaluation() {
             background:
               apiErrorMessage.type === "credits_exhausted"
                 ? "linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(245, 158, 11, 0.08))"
+                : apiErrorMessage.type === "gateway_timeout"
+                ? "linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(16, 185, 129, 0.08))"
                 : "linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(239, 68, 68, 0.08))",
-            border: `1px solid ${apiErrorMessage.type === "credits_exhausted" ? "var(--rose)" : "var(--amber)"}`,
+            border: `1px solid ${
+              apiErrorMessage.type === "credits_exhausted"
+                ? "var(--rose)"
+                : apiErrorMessage.type === "gateway_timeout"
+                ? "var(--accent)"
+                : "var(--amber)"
+            }`,
             borderRadius: "var(--radius-md)",
             padding: "16px 20px",
             display: "flex",
@@ -1574,18 +1671,20 @@ export default function BatchBenchmarkEvaluation() {
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
               <span style={{ fontSize: "24px" }}>
-                {apiErrorMessage.type === "credits_exhausted" ? "💳" : "⏳"}
+                {apiErrorMessage.type === "credits_exhausted" ? "💳" : apiErrorMessage.type === "gateway_timeout" ? "⚡" : "⏳"}
               </span>
               <div>
                 <h4 style={{ margin: 0, fontSize: "14.5px", fontWeight: 700, color: "var(--text-main)" }}>
                   {apiErrorMessage.type === "credits_exhausted"
                     ? "OpenRouter Credit Limit Reached (HTTP 402)"
+                    : apiErrorMessage.type === "gateway_timeout"
+                    ? "Upstream Provider Gateway Timeout (HTTP 504)"
                     : apiErrorMessage.type === "rate_limit_exceeded"
                     ? "OpenRouter Free Tier Daily Quota Exhausted (HTTP 429)"
                     : "Model Inference Upstream Failure"}
                 </h4>
                 <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--text-muted)", lineHeight: 1.5 }}>
-                  Model <strong style={{ color: "var(--text-main)" }}>{apiErrorMessage.modelId}</strong> was rejected by OpenRouter:{" "}
+                  Model <strong style={{ color: "var(--text-main)" }}>{apiErrorMessage.modelId}</strong> timed out or was rejected:{" "}
                   <span style={{ color: "var(--text-main)" }}>{apiErrorMessage.message}</span>
                 </p>
               </div>
@@ -1618,25 +1717,50 @@ export default function BatchBenchmarkEvaluation() {
               borderTop: "1px solid var(--border-subtle)",
             }}
           >
-            <a
-              href="https://openrouter.ai/settings/credits"
-              target="_blank"
-              rel="noreferrer"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-                background: "var(--accent)",
-                color: "var(--text-inverted)",
-                padding: "7px 16px",
-                borderRadius: "var(--radius-sm)",
-                fontSize: "12px",
-                fontWeight: 600,
-                textDecoration: "none",
-              }}
-            >
-              💳 Top Up Credits on OpenRouter ↗
-            </a>
+            {apiErrorMessage.type === "gateway_timeout" ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setModels(["openai/gpt-4o-mini", "meta-llama/llama-3.3-70b-instruct"]);
+                  setApiErrorMessage(null);
+                }}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  background: "var(--emerald)",
+                  color: "#fff",
+                  border: "none",
+                  padding: "7px 16px",
+                  borderRadius: "var(--radius-sm)",
+                  fontSize: "12px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                ⚡ Switch to Fast Paid Models (GPT-4o Mini & Llama 3.3 70B)
+              </button>
+            ) : (
+              <a
+                href="https://openrouter.ai/settings/credits"
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  background: "var(--accent)",
+                  color: "var(--text-inverted)",
+                  padding: "7px 16px",
+                  borderRadius: "var(--radius-sm)",
+                  fontSize: "12px",
+                  fontWeight: 600,
+                  textDecoration: "none",
+                }}
+              >
+                💳 Top Up Credits on OpenRouter ↗
+              </a>
+            )}
 
             <button
               type="button"
@@ -1662,7 +1786,9 @@ export default function BatchBenchmarkEvaluation() {
             </button>
 
             <span style={{ fontSize: "11px", color: "var(--text-subtle)" }}>
-              Demo mode simulates realistic actuary responses, populating all 5 Radar Charts and Token Speed metrics with zero API costs.
+              {apiErrorMessage.type === "gateway_timeout"
+                ? "Paid tier models like GPT-4o Mini and Llama 3.3 70B average < 600ms latency without queuing bottlenecks."
+                : "Demo mode simulates realistic actuary responses, populating all 5 Radar Charts with zero API costs."}
             </span>
           </div>
         </div>
@@ -2082,7 +2208,11 @@ export default function BatchBenchmarkEvaluation() {
           modelResults={inspectedSample.modelStates}
           pluginId={activePlugin.id}
           pluginName={activePlugin.name}
-          metrics={activePlugin.metrics.map((m) => m.name)}
+          metrics={activePlugin.metrics.map((m) => ({
+            id: m.id,
+            name: m.name,
+            description: m.description,
+          }))}
         />
       )}
     </div>

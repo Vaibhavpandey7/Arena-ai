@@ -11,7 +11,7 @@ export async function GET() {
   try {
     const models = await listModels();
     return NextResponse.json(
-      { models },
+      { models, hasApiKey: Boolean(process.env.OPENROUTER_API_KEY) },
       {
         headers: {
           // Allow CDN + browser to cache for 1 hour; stale responses OK for 24hr

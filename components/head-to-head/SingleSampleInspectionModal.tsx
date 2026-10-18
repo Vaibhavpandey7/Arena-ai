@@ -27,7 +27,7 @@ interface Props {
   modelResults: InspectedModelResult[];
   pluginId?: string;
   pluginName?: string;
-  metrics?: string[];
+  metrics?: Array<string | { id?: string; name: string; description?: string }>;
 }
 
 export default function SingleSampleInspectionModal({
@@ -529,6 +529,19 @@ export default function SingleSampleInspectionModal({
                                                   }}
                                                 />
                                               </div>
+                                              {judgeAuditResults[m.modelId]?.metricFindings?.[metName] && (
+                                                <div
+                                                  style={{
+                                                    fontSize: "9px",
+                                                    color: "var(--text-muted)",
+                                                    fontStyle: "italic",
+                                                    lineHeight: 1.3,
+                                                    marginTop: "1px",
+                                                  }}
+                                                >
+                                                  {judgeAuditResults[m.modelId].metricFindings[metName]}
+                                                </div>
+                                              )}
                                             </div>
                                           );
                                         }

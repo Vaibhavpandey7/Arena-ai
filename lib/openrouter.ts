@@ -264,6 +264,7 @@ export async function chatCompletion(params: ChatParams): Promise<ChatResponse> 
       /r1|qwq|reasoning|thinking|o1|o3|dots/i.test(params.model) ? 800 : 450
     ),
     usage: { include: true },
+    ...(!params.customEndpoint ? { provider: { allow_fallbacks: true, sort: "throughput" } } : {}),
   };
   if (effectiveTools && params.toolChoice) {
     body.tool_choice = params.toolChoice;
@@ -294,8 +295,8 @@ export async function chatCompletion(params: ChatParams): Promise<ChatResponse> 
         body: JSON.stringify(body),
       });
 
-      // Handle 429 Rate Limiting with exponential backoff and jitter
-      if (res.status === 429 && attempt < MAX_RETRIES) {
+      // Handle 429 Rate Limiting or 504/502/503 Upstream Gateway Timeouts with exponential backoff
+      if ((res.status === 429 || res.status === 504 || res.status === 502 || res.status === 503) && attempt < MAX_RETRIES) {
         const retryAfterHdr = res.headers.get("retry-after");
         const delayMs = retryAfterHdr
           ? Math.max(1500, parseInt(retryAfterHdr, 10) * 1000)
@@ -411,6 +412,7 @@ export async function chatCompletionStream(params: ChatParams): Promise<Response
     ),
     stream: true,
     usage: { include: true },
+    ...(!params.customEndpoint ? { provider: { allow_fallbacks: true, sort: "throughput" } } : {}),
   };
   if (effectiveTools && params.toolChoice) {
     body.tool_choice = params.toolChoice;
@@ -429,45 +431,64 @@ export async function chatCompletionStream(params: ChatParams): Promise<Response
       }
     : orHeaders();
 
-  try {
-    const res = await fetch(endpointUrl, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(body),
-    });
-
-    if (!res.ok && body.tools && (res.status === 400 || res.status === 404)) {
-      const errText = await res.text().catch(() => "");
-      if (errText.toLowerCase().includes("support tools") || errText.toLowerCase().includes("tools")) {
-        const bodyNoTools = { ...body, tools: undefined };
-        return await fetch(endpointUrl, {
-          method: "POST",
-          headers,
-          body: JSON.stringify(bodyNoTools),
-        });
-      }
-      return new Response(errText, {
-        status: res.status,
-        statusText: res.statusText,
-        headers: res.headers,
+  const STREAM_RETRIES = 2;
+  for (let attempt = 0; attempt <= STREAM_RETRIES; attempt++) {
+    try {
+      const res = await fetch(endpointUrl, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
       });
-    }
-    return res;
-  } catch (err) {
-    if (body.tools) {
-      try {
-        const bodyNoTools = { ...body, tools: undefined };
-        return await fetch(endpointUrl, {
-          method: "POST",
-          headers,
-          body: JSON.stringify(bodyNoTools),
-        });
-      } catch {
-        // Fall through to throw
+
+      // If gateway timeout (504), bad gateway (502/503), or rate limit (429), retry with backoff
+      if ((res.status === 504 || res.status === 502 || res.status === 503 || res.status === 429) && attempt < STREAM_RETRIES) {
+        const retryAfterHdr = res.headers.get("retry-after");
+        const delayMs = retryAfterHdr
+          ? Math.max(1500, parseInt(retryAfterHdr, 10) * 1000)
+          : (attempt + 1) * 1800 + Math.floor(Math.random() * 500);
+        await new Promise((r) => setTimeout(r, delayMs));
+        continue;
       }
+
+      if (!res.ok && body.tools && (res.status === 400 || res.status === 404)) {
+        const errText = await res.text().catch(() => "");
+        if (errText.toLowerCase().includes("support tools") || errText.toLowerCase().includes("tools")) {
+          const bodyNoTools = { ...body, tools: undefined };
+          return await fetch(endpointUrl, {
+            method: "POST",
+            headers,
+            body: JSON.stringify(bodyNoTools),
+          });
+        }
+        return new Response(errText, {
+          status: res.status,
+          statusText: res.statusText,
+          headers: res.headers,
+        });
+      }
+      return res;
+    } catch (err) {
+      if (attempt < STREAM_RETRIES) {
+        await new Promise((r) => setTimeout(r, 1500));
+        continue;
+      }
+      if (body.tools) {
+        try {
+          const bodyNoTools = { ...body, tools: undefined };
+          return await fetch(endpointUrl, {
+            method: "POST",
+            headers,
+            body: JSON.stringify(bodyNoTools),
+          });
+        } catch {
+          // Fall through to throw
+        }
+      }
+      throw new Error(`Unable to connect to model endpoint at ${endpointUrl}. Make sure your local server (e.g. Ollama) is running: ${(err as Error).message}`);
     }
-    throw new Error(`Unable to connect to model endpoint at ${endpointUrl}. Make sure your local server (e.g. Ollama) is running: ${(err as Error).message}`);
   }
+
+  throw new Error(`Failed to establish streaming inference connection after ${STREAM_RETRIES} attempts.`);
 }
 
 // ── Mock implementations ──────────────────────────────────────────────────────
