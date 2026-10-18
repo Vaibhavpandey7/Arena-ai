@@ -235,7 +235,6 @@ const GeminiExtensionBlock = React.memo(function GeminiExtensionBlock({ events }
           <div key={i} className="gemini-extension-call-card">
             <div className="gemini-extension-call-header" onClick={() => toggle(i)}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ fontSize: "12px", color: "var(--accent-light)" }}>⚙️</span>
                 <span style={{ fontWeight: 600, color: "var(--text-main)" }}>
                   {ev.name}()
                 </span>
@@ -382,7 +381,7 @@ const GeminiMessageRow = React.memo(function GeminiMessageRow({
                 }}
                 title="Copy response text"
               >
-                {copied ? "✓ Copied" : "📋 Copy"}
+                {copied ? "Copied" : "Copy"}
               </button>
             </div>
           )}
@@ -1136,7 +1135,9 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
                         color: isActive ? "var(--accent-light)" : "var(--text-subtle)",
                       }}
                     >
-                      💬
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                      </svg>
                     </button>
                   );
                 }
@@ -1163,7 +1164,6 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
                       />
                     ) : (
                       <>
-                        <span style={{ fontSize: "12px", opacity: isActive ? 1 : 0.6 }}>💬</span>
                         <span className="gemini-thread-title-text" title={thread.title}>
                           {thread.title}
                         </span>
@@ -1174,7 +1174,10 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
                             onClick={(e) => startRenameThread(thread, e)}
                             title="Rename"
                           >
-                            ✎
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M12 20h9" />
+                              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                            </svg>
                           </button>
                           {threads.length > 1 && (
                             <button
@@ -1183,7 +1186,7 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
                               onClick={(e) => deleteThread(thread.id, e)}
                               title="Delete"
                             >
-                              ✕
+                              ×
                             </button>
                           )}
                         </div>
@@ -1253,7 +1256,6 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
         {/* Drag & drop visual overlay */}
         {isDragging && (
           <div className="drag-drop-overlay">
-            <span style={{ fontSize: "28px" }}>📎</span>
             <span style={{ fontSize: "16px", fontWeight: 700, color: "var(--accent)" }}>
               Drop Insurance Documents Here
             </span>
@@ -1294,7 +1296,6 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
 
           <div className="gemini-top-right">
             <div className="gemini-ext-badge-pill" title="Active insurance extensions">
-              <span>🧩</span>
               <span>{activePluginCount} extensions active</span>
             </div>
 
@@ -1369,7 +1370,7 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
                 <div className="arena-multi-upload-items">
                   {uploadingFiles.map((item) => (
                     <span key={item.id} className={`arena-multi-upload-item ${item.status}`} title={item.statusText || item.name}>
-                      {item.status === "parsing" || item.status === "ocr" ? "⏳" : item.status === "done" ? "✓" : "✕"}
+                      {item.status === "parsing" || item.status === "ocr" ? "…" : item.status === "done" ? "Done" : "Error"}
                       {" "}{item.name}
                       {item.statusText && item.status !== "done" && (
                         <span style={{ opacity: 0.85, fontSize: "11px", marginLeft: "4px", color: "var(--accent)" }}>
@@ -1391,7 +1392,7 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
                   onClick={() => setUploadError(null)}
                   style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", fontSize: 14 }}
                 >
-                  ✕
+                  ×
                 </button>
               </div>
             )}
@@ -1401,7 +1402,7 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
               <div className="arena-multi-doc-tray" style={{ marginBottom: "10px" }}>
                 <div className="arena-multi-doc-header">
                   <div className="arena-multi-doc-summary">
-                    <span>📎 {attachedDocs.length} {attachedDocs.length === 1 ? "document" : "documents"} attached</span>
+                    <span>{attachedDocs.length} {attachedDocs.length === 1 ? "document" : "documents"} attached</span>
                     <span className="arena-multi-doc-token-pill">~{totalAttachedTokens.toLocaleString()} tokens</span>
                   </div>
                   <div className="arena-multi-doc-actions">
@@ -1460,7 +1461,7 @@ export default function ChatArenaView({ initialPrompt, onReady }: ChatArenaProps
                         className="arena-multi-doc-chip-remove"
                         onClick={() => removeAttachedDoc(doc.id)}
                       >
-                        ✕
+                        ×
                       </button>
                     </div>
                   ))}

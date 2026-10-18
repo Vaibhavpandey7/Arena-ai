@@ -68,7 +68,7 @@ export default function ToolTimeline({ events, activeTools = [], toolChoice = "a
           </div>
           {!isRunning && (
             <div style={{ fontSize: "11.5px", color: "var(--text-muted)", lineHeight: 1.5 }}>
-              ℹ The model resolved this prompt from internal knowledge without issuing function calls.
+              Note: The model resolved this prompt from internal knowledge without issuing function calls.
               To ensure tool execution, choose <strong>"Force Specific Tool"</strong> in the control station or prompt explicitly for calculations or regulatory search.
             </div>
           )}
@@ -95,9 +95,19 @@ export default function ToolTimeline({ events, activeTools = [], toolChoice = "a
           {isRunning && <span className="live-dot" style={{ background: "var(--cyan)" }} />}
         </div>
 
-        <span style={{ fontSize: 12, opacity: 0.7, transform: open ? "rotate(90deg)" : "none", transition: "transform 150ms" }}>
-          ▶
-        </span>
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{ opacity: 0.7, transform: open ? "rotate(90deg)" : "none", transition: "transform 150ms" }}
+        >
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
       </div>
 
       {open && (

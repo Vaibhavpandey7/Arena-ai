@@ -38,7 +38,7 @@ export const RADAR_CATEGORIES: RadarCategoryDef[] = [
   {
     id: "overview",
     name: "5 Core Competencies Overview",
-    icon: "🌟",
+    icon: "00",
     description: "Holistic macro assessment across all 5 foundational pillars of insurance LLM capabilities.",
     dimensions: [
       {
@@ -81,7 +81,7 @@ export const RADAR_CATEGORIES: RadarCategoryDef[] = [
   {
     id: "theory-knowledge",
     name: "Insurance Theory Knowledge Detailed Comparison Radar Chart",
-    icon: "📘",
+    icon: "01",
     description: "14 core academic, examination, and theoretical insurance dimensions.",
     dimensions: [
       { id: "system-principles", label: "Insurance System & Principles", shortLabel: "System & Principles", description: "Foundational insurance systems, fundamental doctrines, and operational frameworks.", keywords: ["system", "principle", "principles", "fundamental", "doctrine"] },
@@ -103,7 +103,7 @@ export const RADAR_CATEGORIES: RadarCategoryDef[] = [
   {
     id: "industry-understanding",
     name: "Insurance Industry Understanding Detailed Comparison Radar Chart",
-    icon: "🏥",
+    icon: "02",
     description: "18 comprehensive industry ecosystem, medical standardization, and operations dimensions.",
     dimensions: [
       { id: "disease-surgery-std", label: "Insurance Disease & Surgery Standardization", shortLabel: "Disease/Surgery Std", description: "ICD-10 clinical mapping and surgical nomenclature standardization.", keywords: ["disease & surgery", "surgery standardization", "icd", "nomenclature", "standardization"] },
@@ -129,7 +129,7 @@ export const RADAR_CATEGORIES: RadarCategoryDef[] = [
   {
     id: "agent-applications",
     name: "Insurance Agent Applications Detailed Comparison Radar Chart",
-    icon: "🤖",
+    icon: "03",
     description: "12 autonomous agent workflow, tool invocation, and decision reasoning dimensions.",
     dimensions: [
       { id: "tool-timing", label: "Insurance Tool Invocation Timing", shortLabel: "Tool Timing", description: "Autonomous determination of when to execute actuarial or verification tools.", keywords: ["tool invocation timing", "tool timing", "when to call", "tool trigger"] },
@@ -149,7 +149,7 @@ export const RADAR_CATEGORIES: RadarCategoryDef[] = [
   {
     id: "security-compliance",
     name: "Insurance Security Compliance Detailed Comparison Radar Chart",
-    icon: "🛡️",
+    icon: "04",
     description: "5 critical regulatory, values, ethical, and advertising compliance dimensions.",
     dimensions: [
       { id: "copy-compliance", label: "Insurance Copy Compliance", shortLabel: "Copy Compliance", description: "Vetting sales materials for misleading promises, non-disclosed terms, and regulatory compliance.", keywords: ["copy compliance", "copywriting compliance", "misleading", "disclosure", "compliance review"] },
@@ -162,7 +162,7 @@ export const RADAR_CATEGORIES: RadarCategoryDef[] = [
   {
     id: "rigorous-reasoning",
     name: "Insurance Rigorous Reasoning Detailed Comparison Radar Chart",
-    icon: "📐",
+    icon: "05",
     description: "5 mathematical, financial, return, and actuarial calculation competencies.",
     dimensions: [
       { id: "policy-terms-interp", label: "Policy Terms Interpretation", shortLabel: "Policy Terms", description: "Rigorous clause-by-clause legal and operational parsing of policy terms.", keywords: ["policy terms", "terms interpretation", "clause parsing", "operative terms"] },

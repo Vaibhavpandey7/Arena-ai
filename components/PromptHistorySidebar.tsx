@@ -69,7 +69,7 @@ export default function PromptHistorySidebar({ open, onClose, onRestore }: Props
             <span className="brand-tag">{history.length}</span>
           </div>
           <button className="icon-button" onClick={onClose} title="Close drawer">
-            ✕
+            ×
           </button>
         </div>
 

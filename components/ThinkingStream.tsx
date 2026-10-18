@@ -46,12 +46,22 @@ export default function ThinkingStream({ text, isRunning }: Props) {
               onClick={copyTrace}
               style={{ padding: "3px 10px", fontSize: "11px" }}
             >
-              {copied ? "✓ Copied" : "Copy Trace"}
+              {copied ? "Copied" : "Copy Trace"}
             </button>
           )}
-          <span style={{ fontSize: 12, opacity: 0.7, transform: open ? "rotate(90deg)" : "none", transition: "transform 150ms" }}>
-            ▶
-          </span>
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ opacity: 0.7, transform: open ? "rotate(90deg)" : "none", transition: "transform 150ms" }}
+          >
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
         </div>
       </div>
 

@@ -99,7 +99,7 @@ export default function ToolSandboxModal({ isOpen, onClose, onSendToPrompt }: Pr
             </div>
           </div>
           <button className="modal-close" onClick={onClose}>
-            ✕
+            ×
           </button>
         </div>
 
@@ -156,7 +156,7 @@ export default function ToolSandboxModal({ isOpen, onClose, onSendToPrompt }: Pr
             <div style={{ fontSize: 12, color: "var(--text-subtle)" }}>
               {durationMs !== null && (
                 <span style={{ color: "var(--emerald)", fontFamily: "var(--font-mono)" }}>
-                  ✓ Executed in {durationMs}ms
+                  Executed in {durationMs}ms
                 </span>
               )}
             </div>

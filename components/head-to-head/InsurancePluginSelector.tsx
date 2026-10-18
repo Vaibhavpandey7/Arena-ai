@@ -45,7 +45,6 @@ export default function InsurancePluginSelector({
       {!hideHeader && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <span style={{ fontSize: "16px" }}>🧩</span>
             <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-main)", letterSpacing: "-0.01em" }}>
               {compact ? "Use Cases" : "Insurance Use-Case Plugins"}
             </span>
@@ -107,7 +106,10 @@ export default function InsurancePluginSelector({
               <div style={{ display: "flex", alignItems: "center", gap: "10px", flex: 1, minWidth: 0 }}>
                 <span
                   style={{
-                    fontSize: "17px",
+                    fontSize: "12px",
+                    fontWeight: 800,
+                    fontFamily: "var(--font-mono)",
+                    color: isActive ? "var(--accent)" : "var(--text-subtle)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -119,7 +121,7 @@ export default function InsurancePluginSelector({
                     flexShrink: 0,
                   }}
                 >
-                  {plugin.icon}
+                  {plugin.badgeNumber}
                 </span>
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div
@@ -205,7 +207,6 @@ export default function InsurancePluginSelector({
                       gap: "4px",
                     }}
                   >
-                    <span>📊</span>
                     <span>{dsName}</span>
                   </button>
                 );
@@ -213,7 +214,6 @@ export default function InsurancePluginSelector({
             </div>
 
             <span style={{ fontSize: "11px", color: "var(--text-subtle)", display: "flex", alignItems: "center", gap: "4px" }}>
-              <span>⚖️</span>
               <span>LLM Judge Target Metrics (Scored 0–100)</span>
             </span>
           </div>

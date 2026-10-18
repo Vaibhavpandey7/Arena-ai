@@ -511,7 +511,7 @@ export default function ModelSelectWidget({
               }}
               title="Remove model"
             >
-              ✕
+              ×
             </button>
           )}
         </div>
@@ -708,7 +708,7 @@ export default function ModelSelectWidget({
                     fontSize: "0.75rem",
                   }}
                 >
-                  ✕
+                  ×
                 </button>
               )}
             </div>
@@ -984,8 +984,10 @@ export default function ModelSelectWidget({
                     </div>
 
                     {isSelected && (
-                      <span style={{ color: "var(--accent-light)", fontWeight: 800, fontSize: "0.9rem", flexShrink: 0 }}>
-                        ✓
+                      <span style={{ color: "var(--accent-light)", display: "flex", alignItems: "center", flexShrink: 0 }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
                       </span>
                     )}
                   </div>

@@ -314,7 +314,7 @@ function ComparisonTable({
                 }}
                 title="Pin verified gold response as a column in the arena"
               >
-                {pinGoldSideBySide ? "✓ Gold Column Pinned" : "+ Pin Gold Column in Arena"}
+                {pinGoldSideBySide ? "Gold Column Pinned" : "+ Pin Gold Column in Arena"}
               </button>
 
               <button
@@ -549,7 +549,7 @@ function ComparisonTable({
                   onClick={() => copyText("gold-standard", activeRecord.response)}
                   style={{ fontSize: 11, padding: "4px 10px" }}
                 >
-                  {copiedModel === "gold-standard" ? "✓ Copied" : "Copy Gold Answer"}
+                  {copiedModel === "gold-standard" ? "Copied" : "Copy Gold Answer"}
                 </button>
                 <button
                   type="button"
@@ -557,7 +557,7 @@ function ComparisonTable({
                   onClick={() => setPinGoldSideBySide(false)}
                   style={{ fontSize: 11, padding: "4px 10px" }}
                 >
-                  ✕ Unpin
+                  Unpin
                 </button>
               </div>
             </div>
@@ -801,7 +801,7 @@ function ComparisonTable({
                         onClick={() => copyText(row.model, row.answer!)}
                         style={{ fontSize: 11, padding: "4px 10px" }}
                       >
-                        {copiedModel === row.model ? "✓ Copied" : "Copy"}
+                        {copiedModel === row.model ? "Copied" : "Copy"}
                       </button>
                     )}
 
@@ -891,7 +891,7 @@ function ComparisonTable({
                     className="btn-secondary"
                     onClick={() => copyText(activeTabRow.model, activeTabRow.answer!)}
                   >
-                    {copiedModel === activeTabRow.model ? "✓ Copied" : "Copy Output"}
+                    {copiedModel === activeTabRow.model ? "Copied" : "Copy Output"}
                   </button>
                 )}
               </div>
@@ -1117,7 +1117,7 @@ function ComparisonTable({
                               onClick={() => copyText(row.model, row.answer!)}
                               style={{ fontSize: 11, padding: "3px 8px" }}
                             >
-                              {copiedModel === row.model ? "✓" : "Copy"}
+                              {copiedModel === row.model ? "Copied" : "Copy"}
                             </button>
                           )}
                         </div>
@@ -1154,7 +1154,7 @@ function ComparisonTable({
                       copyText(modalModel, results.find((r) => r.model === modalModel)?.answer!)
                     }
                   >
-                    {copiedModel === modalModel ? "✓ Copied" : "Copy"}
+                    {copiedModel === modalModel ? "Copied" : "Copy"}
                   </button>
                 )}
                 <button
@@ -1163,7 +1163,7 @@ function ComparisonTable({
                   onClick={() => setModalModel(null)}
                   style={{ fontWeight: 700 }}
                 >
-                  ✕ Close
+                  Close
                 </button>
               </div>
             </div>

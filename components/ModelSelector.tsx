@@ -402,7 +402,7 @@ function ModelSelectorComponent({ mode, selected, onChange, onCustomEndpointsCha
                       onClick={(e) => removeSelected(selId, e)}
                       title={`Remove ${name}`}
                     >
-                      ✕
+                      ×
                     </button>
                   </div>
                 );
@@ -476,7 +476,7 @@ function ModelSelectorComponent({ mode, selected, onChange, onCustomEndpointsCha
                   className="popover-clear-btn"
                   onClick={() => setSearch("")}
                 >
-                  ✕
+                  ×
                 </button>
               )}
             </div>
@@ -600,7 +600,7 @@ function ModelSelectorComponent({ mode, selected, onChange, onCustomEndpointsCha
                         onClick={(e) => handleDeleteCustom(m.id, e)}
                         title="Delete custom model"
                       >
-                        ✕
+                        ×
                       </button>
                     )}
                   </div>
@@ -649,7 +649,7 @@ function ModelSelectorComponent({ mode, selected, onChange, onCustomEndpointsCha
                 className="modal-close"
                 onClick={() => setShowModal(false)}
               >
-                ✕
+                ×
               </button>
             </div>
 

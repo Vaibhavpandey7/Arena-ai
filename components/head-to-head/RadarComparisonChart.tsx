@@ -142,7 +142,6 @@ export default function RadarComparisonChart({
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <span style={{ fontSize: "20px" }}>{currentCatDef.icon}</span>
             <h3 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "#f8fafc" }}>
               {currentCatDef.name}
             </h3>
@@ -194,7 +193,6 @@ export default function RadarComparisonChart({
                     color: isSelected ? "#38bdf8" : "#cbd5e1",
                   }}
                 >
-                  <span>{cat.icon}</span>
                   <span>{cat.name.replace(" Detailed Comparison Radar Chart", "").replace("Insurance ", "").replace(" 5 Core Competencies", "")}</span>
                 </button>
               );

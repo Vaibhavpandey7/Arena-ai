@@ -113,7 +113,7 @@ export default function ModelMaximizeModal({
               className="arena-header-btn"
               title="Copy response to clipboard"
             >
-              📋 Copy Response
+              Copy Response
             </button>
             <button
               type="button"
@@ -133,7 +133,7 @@ export default function ModelMaximizeModal({
               }}
               title="Close (Esc)"
             >
-              ✕
+              ×
             </button>
           </div>
         </div>
@@ -189,7 +189,7 @@ export default function ModelMaximizeModal({
                   letterSpacing: "0.05em",
                 }}
               >
-                💭 Chain-of-Thought / Internal Reasoning
+                Chain-of-Thought / Internal Reasoning
               </div>
               <div
                 style={{

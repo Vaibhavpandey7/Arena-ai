@@ -55,7 +55,6 @@ export default function TokenSpeedComparisonPanel({ modelIds, items }: TokenSpee
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <span style={{ fontSize: "20px" }}>⚡</span>
             <h3 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "#f8fafc" }}>
               Token Speed & Operational Efficiency
             </h3>
@@ -136,7 +135,7 @@ export default function TokenSpeedComparisonPanel({ modelIds, items }: TokenSpee
                         border: "1px solid rgba(251, 191, 36, 0.3)",
                       }}
                     >
-                      ⚡ Fastest
+                      Fastest
                     </span>
                   )}
                   {stat.isParetoOptimal && (
@@ -151,7 +150,7 @@ export default function TokenSpeedComparisonPanel({ modelIds, items }: TokenSpee
                         border: "1px solid rgba(52, 211, 153, 0.3)",
                       }}
                     >
-                      🏆 Optimal
+                      Optimal
                     </span>
                   )}
                 </div>

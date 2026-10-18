@@ -171,7 +171,7 @@ export function DocumentPreviewModal({
             )}
 
             <button className="modal-close" onClick={onClose} title="Close preview">
-              ✕
+              ×
             </button>
           </div>
         </div>
@@ -216,7 +216,7 @@ export function DocumentPreviewModal({
               />
               {searchTerm && (
                 <button className="doc-search-clear" onClick={() => setSearchTerm("")}>
-                  ✕
+                  ×
                 </button>
               )}
             </div>

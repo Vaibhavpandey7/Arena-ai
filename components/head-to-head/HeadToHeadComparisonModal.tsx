@@ -158,10 +158,10 @@ export default function HeadToHeadComparisonModal({
     ];
 
     if (speedChampion) {
-      lines.push(`⚡ Speed Champion: Model ${speedChampion.letter} (${speedChampion.latencySec.toFixed(2)}s)`);
+      lines.push(`Speed Champion: Model ${speedChampion.letter} (${speedChampion.latencySec.toFixed(2)}s)`);
     }
     if (accuracyChampion) {
-      lines.push(`🎯 Accuracy Champion: Model ${accuracyChampion.letter} (${accuracyChampion.shortName})`);
+      lines.push(`Accuracy Champion: Model ${accuracyChampion.letter} (${accuracyChampion.shortName})`);
     }
 
     navigator.clipboard.writeText(lines.join("\n"));
@@ -245,7 +245,7 @@ export default function HeadToHeadComparisonModal({
               className="arena-header-btn"
               title="Copy text summary to clipboard"
             >
-              📋 Copy Summary
+              Copy Summary
             </button>
             <button
               type="button"
@@ -254,7 +254,7 @@ export default function HeadToHeadComparisonModal({
               title="Export complete scorecard as CSV"
               style={{ background: "var(--accent)", color: "var(--text-inverted)" }}
             >
-              📥 Export CSV
+              Export CSV
             </button>
             <button
               type="button"
@@ -274,7 +274,7 @@ export default function HeadToHeadComparisonModal({
               }}
               title="Close (Esc)"
             >
-              ✕
+              ×
             </button>
           </div>
         </div>
@@ -300,7 +300,7 @@ export default function HeadToHeadComparisonModal({
             }}
           >
             <div style={{ fontSize: "11px", fontWeight: 700, color: "#60a5fa", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-              ⚡ Speed Champion
+              Speed Champion
             </div>
             <div style={{ fontSize: "14px", fontWeight: 700, color: "var(--text-main)", marginTop: "3px" }}>
               {speedChampion ? `Model ${speedChampion.letter} (${speedChampion.shortName})` : "N/A"}
@@ -320,7 +320,7 @@ export default function HeadToHeadComparisonModal({
             }}
           >
             <div style={{ fontSize: "11px", fontWeight: 700, color: "#34d399", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-              🎯 Ground Truth Champion
+              Ground Truth Champion
             </div>
             <div style={{ fontSize: "14px", fontWeight: 700, color: "var(--text-main)", marginTop: "3px" }}>
               {accuracyChampion ? `Model ${accuracyChampion.letter} (${accuracyChampion.shortName})` : "Pending evaluation"}
@@ -344,7 +344,7 @@ export default function HeadToHeadComparisonModal({
             }}
           >
             <div style={{ fontSize: "11px", fontWeight: 700, color: "#c084fc", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-              📊 Token Economy Champion
+              Token Economy Champion
             </div>
             <div style={{ fontSize: "14px", fontWeight: 700, color: "var(--text-main)", marginTop: "3px" }}>
               {efficiencyChampion ? `Model ${efficiencyChampion.letter} (${efficiencyChampion.shortName})` : "N/A"}
@@ -395,7 +395,7 @@ export default function HeadToHeadComparisonModal({
               {/* Category 1: Time & Speed */}
               <tr style={{ background: "rgba(255, 255, 255, 0.02)" }}>
                 <td colSpan={modelMetrics.length + 1} style={{ padding: "8px 14px", fontSize: "11px", fontWeight: 700, color: "#60a5fa", letterSpacing: "0.05em", textTransform: "uppercase", borderTop: "1px solid var(--border-subtle)" }}>
-                  ⚡ Speed & Latency Metrics
+                  Speed & Latency Metrics
                 </td>
               </tr>
               <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
@@ -428,7 +428,7 @@ export default function HeadToHeadComparisonModal({
               {/* Category 2: Ground Truth Alignment */}
               <tr style={{ background: "rgba(255, 255, 255, 0.02)" }}>
                 <td colSpan={modelMetrics.length + 1} style={{ padding: "8px 14px", fontSize: "11px", fontWeight: 700, color: "#34d399", letterSpacing: "0.05em", textTransform: "uppercase", borderTop: "1px solid var(--border-subtle)" }}>
-                  🎯 Ground Truth Alignment & Accuracy
+                  Ground Truth Alignment & Accuracy
                 </td>
               </tr>
               <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
@@ -498,7 +498,7 @@ export default function HeadToHeadComparisonModal({
               {/* Category 3: Token Usage & Cost */}
               <tr style={{ background: "rgba(255, 255, 255, 0.02)" }}>
                 <td colSpan={modelMetrics.length + 1} style={{ padding: "8px 14px", fontSize: "11px", fontWeight: 700, color: "#c084fc", letterSpacing: "0.05em", textTransform: "uppercase", borderTop: "1px solid var(--border-subtle)" }}>
-                  📊 Token Economy & Cost
+                  Token Economy & Cost
                 </td>
               </tr>
               <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>

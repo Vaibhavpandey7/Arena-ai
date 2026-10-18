@@ -249,7 +249,7 @@ export function DocumentIngestModal({ initialDocument, initialDocuments, isOpen,
             </div>
           </div>
           <button className="modal-close" onClick={handleResetAndClose} title="Close">
-            ✕
+            ×
           </button>
         </div>
 
@@ -259,7 +259,11 @@ export function DocumentIngestModal({ initialDocument, initialDocuments, isOpen,
 
           {successInfo ? (
             <div className="doc-ingest-success">
-              <div className="success-check-icon">✓</div>
+              <div className="success-check-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </div>
               <h4>{successInfo.documentNames.length > 1 ? `${successInfo.documentNames.length} Documents` : "Document"} Successfully Ingested!</h4>
               <p>
                 Created <strong>{successInfo.recordsIngested} verified records</strong> in domain{" "}

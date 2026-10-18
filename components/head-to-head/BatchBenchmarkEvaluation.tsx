@@ -875,7 +875,7 @@ export default function BatchBenchmarkEvaluation() {
                 }}
                 title="Execute live inferences via OpenRouter API"
               >
-                <span>⚡ Live API</span>
+                <span>Live API</span>
               </button>
               <button
                 type="button"
@@ -898,7 +898,7 @@ export default function BatchBenchmarkEvaluation() {
                 }}
                 title="Zero-cost insurance benchmark simulation mode"
               >
-                <span>🧪 Demo Mode</span>
+                <span>Demo Mode</span>
               </button>
             </div>
           </div>
@@ -912,7 +912,6 @@ export default function BatchBenchmarkEvaluation() {
             <div className="h2h-sidepanel-card">
               <div className="h2h-sidepanel-header">
                 <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <span>🤖</span>
                   <span>Models ({models.length} of 4)</span>
                 </span>
                 {models.length < 4 && !isRunning && (
@@ -948,7 +947,7 @@ export default function BatchBenchmarkEvaluation() {
                     gap: "4px",
                   }}
                 >
-                  ⚡ Fast Paid
+                  Fast Paid
                 </button>
                 <button
                   type="button"
@@ -969,7 +968,7 @@ export default function BatchBenchmarkEvaluation() {
                     gap: "4px",
                   }}
                 >
-                  🧠 Reasoning
+                  Reasoning
                 </button>
                 <button
                   type="button"
@@ -990,7 +989,7 @@ export default function BatchBenchmarkEvaluation() {
                     gap: "4px",
                   }}
                 >
-                  🆓 Free Tier
+                  Free Tier
                 </button>
               </div>
 
@@ -1030,7 +1029,9 @@ export default function BatchBenchmarkEvaluation() {
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <span style={{ fontSize: "16px" }}>{activePlugin.icon || "🧩"}</span>
+                  <span style={{ fontSize: "11px", fontWeight: 800, fontFamily: "var(--font-mono)", color: "var(--accent)", background: "rgba(66, 133, 244, 0.12)", padding: "2px 6px", borderRadius: "4px" }}>
+                    {activePlugin.badgeNumber}
+                  </span>
                   <div>
                     <div style={{ fontSize: "12.5px", fontWeight: 700, color: "var(--text-main)" }}>
                       {activePlugin.name}
@@ -1127,7 +1128,7 @@ export default function BatchBenchmarkEvaluation() {
                       transition: "all var(--transition-fast)",
                     }}
                   >
-                    <span>📊</span> Built-in Benchmark
+                    Built-in Benchmark
                   </button>
                   <button
                     type="button"
@@ -1150,7 +1151,7 @@ export default function BatchBenchmarkEvaluation() {
                       transition: "all var(--transition-fast)",
                     }}
                   >
-                    <span>📁</span> Manual CSV Upload
+                    Manual CSV Upload
                   </button>
                 </div>
               </div>
@@ -1170,7 +1171,6 @@ export default function BatchBenchmarkEvaluation() {
                     gap: "5px",
                   }}
                 >
-                  <span>{activePlugin.icon}</span>
                   <span>{activePlugin.name}</span>
                 </span>
               </div>
@@ -1215,7 +1215,7 @@ export default function BatchBenchmarkEvaluation() {
                             transition: "all var(--transition-fast)",
                           }}
                         >
-                          📊 {dsId}
+                          {dsId}
                         </button>
                       ))}
                     </div>
@@ -1307,7 +1307,6 @@ export default function BatchBenchmarkEvaluation() {
                       e.currentTarget.value = "";
                     }}
                   />
-                  <div style={{ fontSize: "28px" }}>📥</div>
                   <div style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--text-main)" }}>
                     Drop insurance test CSV here, or click to browse
                   </div>
@@ -1332,7 +1331,7 @@ export default function BatchBenchmarkEvaluation() {
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                         <span style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--text-main)" }}>
-                          📄 {csvFile.name} ({(csvFile.size / 1024).toFixed(1)} KB)
+                          {csvFile.name} ({(csvFile.size / 1024).toFixed(1)} KB)
                         </span>
                         <span
                           style={{
@@ -1410,7 +1409,7 @@ export default function BatchBenchmarkEvaluation() {
             >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "6px" }}>
                 <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                  ⚖️ LLM Judge Target Metrics (Scored 0–100):
+                  LLM Judge Target Metrics (Scored 0–100):
                 </span>
                 <span style={{ fontSize: "11px", color: "var(--text-subtle)" }}>
                   Active Use Case: <strong>{activePlugin.name}</strong>
@@ -1458,7 +1457,19 @@ export default function BatchBenchmarkEvaluation() {
                   padding: 0,
                 }}
               >
-                <span>{showAdvancedSettings ? "▼" : "▶"}</span>
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ transform: showAdvancedSettings ? "rotate(90deg)" : "none", transition: "transform 150ms" }}
+                >
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
                 <span style={{ fontWeight: 600 }}>Advanced Concurrency & Rate Limit Settings</span>
               </button>
 
@@ -1572,7 +1583,7 @@ export default function BatchBenchmarkEvaluation() {
                       cursor: "pointer",
                     }}
                   >
-                    ⏹ Cancel Batch
+                    Cancel Batch
                   </button>
                 ) : (
                   <button
@@ -1593,7 +1604,7 @@ export default function BatchBenchmarkEvaluation() {
                       boxShadow: "0 2px 8px rgba(66, 133, 244, 0.25)",
                     }}
                   >
-                    {isSimulationMode ? "🧪 Run Demo Benchmark" : "▶ Run Batch Evaluation"}
+                    {isSimulationMode ? "Run Demo Benchmark" : "Run Batch Evaluation"}
                   </button>
                 )}
               </div>
@@ -1670,9 +1681,6 @@ export default function BatchBenchmarkEvaluation() {
         >
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <span style={{ fontSize: "24px" }}>
-                {apiErrorMessage.type === "credits_exhausted" ? "💳" : apiErrorMessage.type === "gateway_timeout" ? "⚡" : "⏳"}
-              </span>
               <div>
                 <h4 style={{ margin: 0, fontSize: "14.5px", fontWeight: 700, color: "var(--text-main)" }}>
                   {apiErrorMessage.type === "credits_exhausted"
@@ -1698,12 +1706,12 @@ export default function BatchBenchmarkEvaluation() {
                 border: "none",
                 color: "var(--text-subtle)",
                 cursor: "pointer",
-                fontSize: "18px",
+                fontSize: "16px",
                 padding: "2px 6px",
               }}
               aria-label="Dismiss alert"
             >
-              ✕
+              ×
             </button>
           </div>
 
@@ -1738,7 +1746,7 @@ export default function BatchBenchmarkEvaluation() {
                   cursor: "pointer",
                 }}
               >
-                ⚡ Switch to Fast Paid Models (GPT-4o Mini & Llama 3.3 70B)
+                Switch to Fast Paid Models (GPT-4o Mini & Llama 3.3 70B)
               </button>
             ) : (
               <a
@@ -1758,7 +1766,7 @@ export default function BatchBenchmarkEvaluation() {
                   textDecoration: "none",
                 }}
               >
-                💳 Top Up Credits on OpenRouter ↗
+                Top Up Credits on OpenRouter
               </a>
             )}
 
@@ -1782,7 +1790,7 @@ export default function BatchBenchmarkEvaluation() {
                 cursor: "pointer",
               }}
             >
-              ⚡ Run in Demo Simulation Mode
+              Run in Demo Simulation Mode
             </button>
 
             <span style={{ fontSize: "11px", color: "var(--text-subtle)" }}>
@@ -2069,7 +2077,7 @@ export default function BatchBenchmarkEvaluation() {
                   }}
                 >
                   <option value="all">All Outcomes</option>
-                  <option value="disagreements">⚠️ Disagreements Only</option>
+                  <option value="disagreements">Disagreements Only</option>
                   <option value="correct">Model A Correct</option>
                   <option value="incorrect">Model A Incorrect</option>
                   <option value="failed">Failed / Errored</option>
@@ -2131,9 +2139,9 @@ export default function BatchBenchmarkEvaluation() {
                               <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
                                 <div>
                                   {ev?.correct === true ? (
-                                    <span style={{ color: "var(--emerald)", fontWeight: 700 }}>✓ Pass</span>
+                                    <span style={{ color: "var(--emerald)", fontWeight: 700 }}>Pass</span>
                                   ) : ev?.correct === false ? (
-                                    <span style={{ color: "var(--rose)", fontWeight: 700 }}>✗ Fail</span>
+                                    <span style={{ color: "var(--rose)", fontWeight: 700 }}>Fail</span>
                                   ) : m?.runStatus === "failed" ? (
                                     <span
                                       style={{
@@ -2145,7 +2153,7 @@ export default function BatchBenchmarkEvaluation() {
                                       }}
                                       title={m.errorMessage || "Model inference failed"}
                                     >
-                                      ⚠️ Failed
+                                      Failed
                                     </span>
                                   ) : (
                                     <span style={{ color: "var(--text-subtle)" }}>—</span>

@@ -492,7 +492,7 @@ export default function SingleSampleEvaluation({
             ...curr,
             isRunning: false,
             runStatus: "failed",
-            answer: `⚠️ Inference Failed: ${errMsg}`,
+            answer: `Inference Failed: ${errMsg}`,
             latencyMs: Date.now() - startTime,
           }));
           return;
@@ -532,7 +532,7 @@ export default function SingleSampleEvaluation({
                   ...curr,
                   isRunning: false,
                   runStatus: "failed",
-                  answer: `⚠️ Inference Failed: ${errText}`,
+                  answer: `Inference Failed: ${errText}`,
                   latencyMs: curr.latencyMs || Date.now() - startTime,
                 }));
                 return;
@@ -933,7 +933,19 @@ export default function SingleSampleEvaluation({
                     padding: 0,
                   }}
                 >
-                  <span>{expandedReasoning[idx] ? "▼" : "▶"}</span>
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    style={{ transform: expandedReasoning[idx] ? "rotate(90deg)" : "none", transition: "transform 150ms" }}
+                  >
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
                   <span>Thinking Trace ({state.reasoning.length} chars)</span>
                 </button>
 
@@ -999,7 +1011,7 @@ export default function SingleSampleEvaluation({
                         flexWrap: "wrap",
                       }}
                     >
-                      <span>💡 <strong>Tip:</strong> Upstream provider timed out. Switch to a high-throughput paid model for instant answers.</span>
+                      <span><strong>Tip:</strong> Upstream provider timed out. Switch to a high-throughput paid model for instant answers.</span>
                       <button
                         type="button"
                         onClick={() => {
@@ -1023,7 +1035,7 @@ export default function SingleSampleEvaluation({
                           fontSize: "11px",
                         }}
                       >
-                        ⚡ Switch to GPT-4o Mini
+                        Switch to GPT-4o Mini
                       </button>
                     </div>
                   )}
@@ -1075,17 +1087,17 @@ export default function SingleSampleEvaluation({
         <div className="h2h-config-summary-bar">
           <div className="h2h-summary-chips">
             <span className="h2h-chip category">
-              📂 {source === "benchmark" ? (INSURANCE_BENCHMARKS.find((b) => b.id === benchmarkId)?.name || benchmarkId) : (USE_CASES_LIST.find((u) => u.id === activeUseCase)?.label || activeUseCase)}
+              {source === "benchmark" ? (INSURANCE_BENCHMARKS.find((b) => b.id === benchmarkId)?.name || benchmarkId) : (USE_CASES_LIST.find((u) => u.id === activeUseCase)?.label || activeUseCase)}
             </span>
             <span className="h2h-chip sample">
-              📑 {source === "benchmark" ? (currentBenchmarkRecord?.id || `Sample #${selectedSampleIndex + 1}`) : "Manual Testing"}
+              {source === "benchmark" ? (currentBenchmarkRecord?.id || `Sample #${selectedSampleIndex + 1}`) : "Manual Testing"}
             </span>
             <span className="h2h-chip models">
-              🤖 {models.map((m, i) => `Model ${String.fromCharCode(65 + i)}: ${m.split("/").pop()}`).join(" vs ")}
+              {models.map((m, i) => `Model ${String.fromCharCode(65 + i)}: ${m.split("/").pop()}`).join(" vs ")}
             </span>
             {attachedDocs.length > 0 && (
               <span className="h2h-chip doc">
-                📄 {attachedDocs.length === 1 ? attachedDocs[0].name : `${attachedDocs.length} Docs Attached`}
+                {attachedDocs.length === 1 ? attachedDocs[0].name : `${attachedDocs.length} Docs Attached`}
               </span>
             )}
           </div>
@@ -1097,7 +1109,7 @@ export default function SingleSampleEvaluation({
               className="arena-header-btn"
               style={{ background: "var(--accent-dim)", color: "var(--accent)", border: "1px solid var(--accent-border)" }}
             >
-              ✎ Edit Configuration
+              Edit Configuration
             </button>
             {isAnyRunning ? (
               <button
@@ -1106,7 +1118,7 @@ export default function SingleSampleEvaluation({
                 className="arena-header-btn"
                 style={{ color: "var(--rose)", borderColor: "var(--rose)" }}
               >
-                ⏹ Stop
+                Stop
               </button>
             ) : (
               <button
@@ -1116,7 +1128,7 @@ export default function SingleSampleEvaluation({
                 className="arena-header-btn"
                 style={{ background: "var(--accent)", color: "var(--text-inverted)" }}
               >
-                ▶ Re-Run
+                Re-Run
               </button>
             )}
           </div>
@@ -1183,7 +1195,6 @@ export default function SingleSampleEvaluation({
             <div className="h2h-sidepanel-card">
               <div className="h2h-sidepanel-header">
                 <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <span>🤖</span>
                   <span>Models ({models.length} of 4)</span>
                 </span>
                 {models.length < 4 && !isAnyRunning && (
@@ -1223,7 +1234,7 @@ export default function SingleSampleEvaluation({
                     gap: "4px",
                   }}
                 >
-                  ⚡ Fast Paid
+                  Fast Paid
                 </button>
                 <button
                   type="button"
@@ -1248,7 +1259,7 @@ export default function SingleSampleEvaluation({
                     gap: "4px",
                   }}
                 >
-                  🧠 Reasoning
+                  Reasoning
                 </button>
                 <button
                   type="button"
@@ -1273,7 +1284,7 @@ export default function SingleSampleEvaluation({
                     gap: "4px",
                   }}
                 >
-                  🆓 Free Tier
+                  Free Tier
                 </button>
               </div>
 
@@ -1313,7 +1324,9 @@ export default function SingleSampleEvaluation({
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <span style={{ fontSize: "16px" }}>{activePlugin.icon || "🧩"}</span>
+                  <span style={{ fontSize: "11px", fontWeight: 800, fontFamily: "var(--font-mono)", color: "var(--accent)", background: "rgba(66, 133, 244, 0.12)", padding: "2px 6px", borderRadius: "4px" }}>
+                    {activePlugin.badgeNumber}
+                  </span>
                   <div>
                     <div style={{ fontSize: "12.5px", fontWeight: 700, color: "var(--text-main)" }}>
                       {activePlugin.name}
@@ -1420,7 +1433,7 @@ export default function SingleSampleEvaluation({
                     transition: "all var(--transition-fast)",
                   }}
                 >
-                  <span>📊</span> Example from Dataset
+                  Example from Dataset
                 </button>
                 <button
                   type="button"
@@ -1446,7 +1459,7 @@ export default function SingleSampleEvaluation({
                     transition: "all var(--transition-fast)",
                   }}
                 >
-                  <span>📎</span> Attach Document / Custom Prompt
+                  Attach Document / Custom Prompt
                 </button>
               </div>
             </div>
@@ -1516,7 +1529,6 @@ export default function SingleSampleEvaluation({
                     style={{ fontSize: "11px", padding: "3px 8px", display: "inline-flex", alignItems: "center", gap: "4px" }}
                     title="Optionally attach insurance policy files to augment this sample"
                   >
-                    <span>📎</span>
                     <span>{isUploadingDoc ? "Parsing…" : attachedDocs.length > 0 ? `Docs Attached (${attachedDocs.length})` : "Attach Policy Document (Optional)"}</span>
                   </button>
                   <input
@@ -1571,7 +1583,6 @@ export default function SingleSampleEvaluation({
                         fontSize: "11px",
                       }}
                     >
-                      <span>📄</span>
                       <span style={{ color: "var(--text-main)", maxWidth: "140px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={doc.name}>
                         {doc.name}
                       </span>
@@ -1583,14 +1594,14 @@ export default function SingleSampleEvaluation({
                         }}
                         style={{ background: "transparent", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: "11px", padding: 0 }}
                       >
-                        👁
+                        View
                       </button>
                       <button
                         type="button"
                         onClick={() => setAttachedDocs((prev) => prev.filter((_, i) => i !== dIdx))}
                         style={{ background: "transparent", border: "none", color: "var(--rose)", cursor: "pointer", fontSize: "11px", padding: 0 }}
                       >
-                        ✕
+                        ×
                       </button>
                     </div>
                   ))}
@@ -1674,7 +1685,6 @@ export default function SingleSampleEvaluation({
                   style={{ display: "none" }}
                   onChange={handleFileChange}
                 />
-                <div style={{ fontSize: "24px" }}>📥</div>
                 <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-main)" }}>
                   {isUploadingDoc ? "Parsing and indexing documents…" : "Drop insurance documents here, or click to browse"}
                 </div>
@@ -1703,7 +1713,6 @@ export default function SingleSampleEvaluation({
                         fontSize: "11.5px",
                       }}
                     >
-                      <span>📄</span>
                       <strong style={{ color: "var(--text-main)", maxWidth: "160px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={doc.name}>
                         {doc.name}
                       </strong>
@@ -1717,10 +1726,10 @@ export default function SingleSampleEvaluation({
                           setPreviewDoc(doc);
                           setShowDocPreview(true);
                         }}
-                        style={{ background: "transparent", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: "11.5px", padding: "0 2px" }}
+                        style={{ background: "transparent", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: "11px", padding: "0 2px" }}
                         title="Preview Document"
                       >
-                        👁
+                        View
                       </button>
                       <button
                         type="button"
@@ -1728,10 +1737,10 @@ export default function SingleSampleEvaluation({
                           e.stopPropagation();
                           setAttachedDocs((prev) => prev.filter((_, i) => i !== dIdx));
                         }}
-                        style={{ background: "transparent", border: "none", color: "var(--rose)", cursor: "pointer", fontSize: "12px", padding: "0 2px" }}
+                        style={{ background: "transparent", border: "none", color: "var(--rose)", cursor: "pointer", fontSize: "13px", padding: "0 2px" }}
                         title="Remove Document"
                       >
-                        ✕
+                        ×
                       </button>
                     </div>
                   ))}
@@ -1747,7 +1756,7 @@ export default function SingleSampleEvaluation({
 
               {docUploadError && (
                 <div style={{ fontSize: "11.5px", color: "var(--rose)" }}>
-                  ⚠️ {docUploadError}
+                  {docUploadError}
                 </div>
               )}
 
@@ -1774,7 +1783,7 @@ export default function SingleSampleEvaluation({
                   }}
                 />
                 <div style={{ fontSize: "11px", color: "var(--text-subtle)", marginTop: "4px" }}>
-                  💡 If left blank, models will automatically perform a comprehensive standard insurance analysis on the attached document(s).
+                  If left blank, models will automatically perform a comprehensive standard insurance analysis on the attached document(s).
                 </div>
               </div>
             </div>
@@ -1794,7 +1803,7 @@ export default function SingleSampleEvaluation({
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "6px" }}>
               <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                ⚖️ LLM Judge Target Metrics (Scored 0–100):
+                LLM Judge Target Metrics (Scored 0–100):
               </span>
               <span style={{ fontSize: "11px", color: "var(--text-subtle)" }}>
                 Active Use Case: <strong>{activePlugin.name}</strong>
@@ -1888,7 +1897,7 @@ export default function SingleSampleEvaluation({
                 gap: "6px",
               }}
             >
-              <span>⏹</span> Stop Inference
+              Stop Inference
             </button>
           ) : (
             <button
@@ -1910,7 +1919,7 @@ export default function SingleSampleEvaluation({
                 boxShadow: "0 2px 8px rgba(66, 133, 244, 0.25)",
               }}
             >
-              <span>▶</span> Run Comparison
+              Run Comparison
             </button>
           )}
 
@@ -1963,17 +1972,17 @@ export default function SingleSampleEvaluation({
               </span>
               {speedVerdict && (
                 <span className="h2h-verdict-badge speed-win">
-                  ⚡ {speedVerdict}
+                  {speedVerdict}
                 </span>
               )}
               {accuracyVerdict && (
                 <span className="h2h-verdict-badge accuracy-win">
-                  🎯 {accuracyVerdict}
+                  {accuracyVerdict}
                 </span>
               )}
               {tokenVerdict && (
                 <span className="h2h-verdict-badge tie">
-                  📊 {tokenVerdict}
+                  {tokenVerdict}
                 </span>
               )}
             </div>
@@ -2011,7 +2020,7 @@ export default function SingleSampleEvaluation({
                 onClick={() => setLayoutMode("columns")}
                 title="Side-by-side columns with horizontal scroll rail"
               >
-                ⫴ Columns
+                Columns
               </button>
               <button
                 type="button"
@@ -2019,7 +2028,7 @@ export default function SingleSampleEvaluation({
                 onClick={() => setLayoutMode("stacked")}
                 title="Full-width stacked rows with collapsible cards"
               >
-                ☰ Stacked
+                Stacked
               </button>
               <button
                 type="button"
@@ -2027,7 +2036,7 @@ export default function SingleSampleEvaluation({
                 onClick={() => setLayoutMode("tabbed")}
                 title="Single-model focus reader with tabs"
               >
-                ⧉ Tabbed Focus
+                Tabbed Focus
               </button>
             </div>
 
@@ -2040,7 +2049,7 @@ export default function SingleSampleEvaluation({
                 style={{ fontSize: "11px", padding: "4px 8px" }}
                 title="Synchronize vertical scrolling across columns"
               >
-                {syncScroll ? "🔗 Sync Scroll: ON" : "⛓ Sync Scroll: OFF"}
+                {syncScroll ? "Sync Scroll: ON" : "Sync Scroll: OFF"}
               </button>
             )}
 
@@ -2287,7 +2296,7 @@ export default function SingleSampleEvaluation({
                             gap: "5px",
                           }}
                         >
-                          {isJudging[modelId] ? "⏳ Auditing with LLM Judge…" : "⚖️ Audit with LLM Judge"}
+                          {isJudging[modelId] ? "Auditing with LLM Judge…" : "Audit with LLM Judge"}
                         </button>
 
                         {judgeAuditResults[modelId] && (
@@ -2314,7 +2323,7 @@ export default function SingleSampleEvaluation({
                                       color: judgeAuditResults[modelId].isCorrect ? "var(--emerald)" : "var(--rose)",
                                     }}
                                   >
-                                    {judgeAuditResults[modelId].isCorrect ? "✓ Ground Truth Aligned" : "✗ Reasoning Divergence"}
+                                    {judgeAuditResults[modelId].isCorrect ? "Ground Truth Aligned" : "Reasoning Divergence"}
                                   </span>
                                   <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                                     <span

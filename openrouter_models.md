@@ -2,7 +2,7 @@
 
 Total Models: **445** | Generated: 2026-09-18T07:11:38.313Z
 
-## 🌟 Free Models (Verified on OpenRouter)
+## Free Models (Verified on OpenRouter)
 
 | Model ID | Name | Context Window | Modality |
 |---|---|---|---|

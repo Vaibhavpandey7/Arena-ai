@@ -422,7 +422,7 @@ export default function GroundTruthPanel({
             {goldEval.keyTermsMatched.length > 0 && (
               <div>
                 <span style={{ fontSize: "0.7rem", color: "var(--emerald)", fontWeight: 600, marginRight: "6px" }}>
-                  ✓ Matched Entities ({goldEval.keyTermsMatched.length}):
+                  Matched Entities ({goldEval.keyTermsMatched.length}):
                 </span>
                 <span style={{ display: "inline-flex", flexWrap: "wrap", gap: "4px" }}>
                   {goldEval.keyTermsMatched.slice(0, 10).map((t, idx) => (
@@ -488,7 +488,7 @@ export default function GroundTruthPanel({
                 fontWeight: 600,
               }}
             >
-              {showGoldText ? "▼ Hide Expert Reference Text" : "▶ View Expert Reference Text & Legal Evidence"}
+              {showGoldText ? "Hide Expert Reference Text" : "View Expert Reference Text & Legal Evidence"}
             </button>
 
             {showGoldText && (
@@ -562,7 +562,7 @@ export default function GroundTruthPanel({
                 onClick={() => setShowUploadModal(false)}
                 style={{ background: "transparent", border: "none", color: "var(--text-muted)", fontSize: "1.2rem", cursor: "pointer" }}
               >
-                ✕
+                ×
               </button>
             </div>
             <p style={{ fontSize: "0.78rem", color: "var(--text-dim)", marginBottom: "14px", lineHeight: 1.4 }}>

@@ -1,6 +1,6 @@
 ---
 title: DIL-V1 Insurance Intelligence Studio
-emoji: 🛡️
+emoji: ""
 colorFrom: blue
 colorTo: indigo
 sdk: gradio
