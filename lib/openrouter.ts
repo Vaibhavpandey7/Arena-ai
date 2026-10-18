@@ -1,5 +1,12 @@
 // OpenRouter API wrapper — server-side only
 // Never import this file from any client component.
+import { sanitizeResponseText } from "@/lib/prompts";
+
+export const DIL_FALLBACK_MODELS = [
+  "nvidia/nemotron-3-super-120b-a12b:free",
+  "qwen/qwen3.8-27b:free",
+  "google/gemma-4-31b-it:free",
+];
 
 export interface NormalizedModel {
   id: string;
@@ -261,14 +268,14 @@ export async function chatCompletion(params: ChatParams): Promise<ChatResponse> 
     ? [{ role: "system", content: params.systemPrompt }, ...params.messages]
     : params.messages;
 
-  const effectiveModel =
-    params.model === "dil/dil-v1" || params.model === "dil-v1" ? "openrouter/free" : params.model;
+  const isDil = params.model === "dil/dil-v1" || params.model === "dil-v1";
+  const effectiveModel = isDil ? "openrouter/free" : params.model;
 
   const isGemmaOrNoTools = effectiveModel.toLowerCase().includes("gemma");
   const effectiveTools = isGemmaOrNoTools ? undefined : (params.tools ?? undefined);
 
   const body: Record<string, unknown> = {
-    model: effectiveModel,
+    ...(isDil && !params.customEndpoint ? { models: DIL_FALLBACK_MODELS } : { model: effectiveModel }),
     messages,
     tools: effectiveTools,
     temperature: params.temperature ?? 0.7,
@@ -387,6 +394,13 @@ export async function chatCompletion(params: ChatParams): Promise<ChatResponse> 
     }
   }
 
+  // Sanitize any safety classifier artifacts or emojis
+  if (/^\s*User\s+safety\s*:\s*safe\s*$/i.test(content.trim())) {
+    content = "";
+  } else {
+    content = sanitizeResponseText(content);
+  }
+
   return {
     content,
     tool_calls: message?.tool_calls as ToolCall[] | undefined,
@@ -410,14 +424,14 @@ export async function chatCompletionStream(params: ChatParams): Promise<Response
     ? [{ role: "system", content: params.systemPrompt }, ...params.messages]
     : params.messages;
 
-  const effectiveModel =
-    params.model === "dil/dil-v1" || params.model === "dil-v1" ? "openrouter/free" : params.model;
+  const isDil = params.model === "dil/dil-v1" || params.model === "dil-v1";
+  const effectiveModel = isDil ? "openrouter/free" : params.model;
 
   const isGemmaOrNoTools = effectiveModel.toLowerCase().includes("gemma");
   const effectiveTools = isGemmaOrNoTools ? undefined : (params.tools ?? undefined);
 
   const body: Record<string, unknown> = {
-    model: effectiveModel,
+    ...(isDil && !params.customEndpoint ? { models: DIL_FALLBACK_MODELS } : { model: effectiveModel }),
     messages,
     tools: effectiveTools,
     temperature: params.temperature ?? 0.7,

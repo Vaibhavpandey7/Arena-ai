@@ -257,7 +257,7 @@ function parseOpenRouterError(status: number, errText: string, modelName: string
   };
 }
 
-      let activeModel = model === "dil/dil-v1" || model === "dil-v1" ? "openrouter/free" : model;
+      let activeModel = model === "dil/dil-v1" || model === "dil-v1" ? "dil/dil-v1" : model;
       try {
         for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
           const isReasoningOrFree =
@@ -429,6 +429,12 @@ function parseOpenRouterError(status: number, errText: string, modelName: string
             const fallbackContent = sanitizeStreamChunk(accumulatedReasoning.trim());
             assistantContent = fallbackContent;
             send({ type: "content", delta: fallbackContent });
+          }
+
+          // If the output from upstream was purely a safety classifier tag (e.g. "User safety:safe")
+          // instead of answering the user prompt, clear it
+          if (/^\s*User\s+safety\s*:\s*safe\s*$/i.test(assistantContent.trim())) {
+            assistantContent = "";
           }
 
           // If neither content nor reasoning was returned and no tools were called, emit a clear error

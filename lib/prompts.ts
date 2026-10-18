@@ -78,6 +78,7 @@ export function enhanceSystemPrompt(
 }
 
 const EMOJI_REGEX = new RegExp("[\\p{Extended_Pictographic}\\uFE0E\\uFE0F\\u200D]+", "gu");
+const SAFETY_CLASSIFIER_REGEX = /^\s*User\s+safety\s*:\s*safe\s*[\r\n]*/i;
 
 /**
  * Sanitizes streaming chunk to guarantee no decorative emojis reach the client UI in real time.
@@ -91,10 +92,13 @@ export function sanitizeStreamChunk(chunk: string): string {
 /**
  * Sanitizes complete model answer text: removes all emojis, cleans up spacing,
  * heading indents, and bullet formatting left behind by stripped emojis.
+ * Also removes upstream safety classifier prefix tags (e.g., 'User safety:safe').
  */
 export function sanitizeResponseText(text: string): string {
   if (!text) return "";
   return text
+    // Strip upstream safety classifier tag output (e.g. from Nemotron Content Safety)
+    .replace(SAFETY_CLASSIFIER_REGEX, "")
     // Strip extended pictographs, emoji variation selectors, zero-width joiners
     .replace(EMOJI_REGEX, "")
     // Clean up empty emoji bullets like "- \n" or "*  \n"
