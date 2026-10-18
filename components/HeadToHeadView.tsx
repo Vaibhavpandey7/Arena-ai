@@ -131,6 +131,7 @@ export default function HeadToHeadView({
           }}
         >
           <button
+            id="btn-mode-single"
             type="button"
             onClick={() => setEvaluationMode("single")}
             style={{
@@ -151,6 +152,7 @@ export default function HeadToHeadView({
             <span>Single-Sample Evaluation</span>
           </button>
           <button
+            id="btn-mode-batch"
             type="button"
             onClick={() => setEvaluationMode("batch")}
             style={{

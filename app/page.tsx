@@ -135,6 +135,7 @@ export default function Page() {
           {TABS.map((tab) => (
             <button
               key={tab.id}
+              id={`nav-tab-${tab.id}`}
               className={`studio-nav-tab${activeTab === tab.id ? " active" : ""}`}
               onClick={() => setActiveTab(tab.id)}
             >
@@ -144,18 +145,7 @@ export default function Page() {
         </nav>
 
         {/* Right side */}
-        <div className="studio-navbar-right">
-          <div className="studio-status-pill">
-            <span className="live-dot" />
-            OpenRouter Live
-          </div>
-
-          <div className="studio-tag-pills">
-            <span className="studio-tag-pill">INS-MMBench</span>
-            <span className="studio-tag-pill">CUFEInse</span>
-            <span className="studio-tag-pill">INS-ActBench</span>
-          </div>
-        </div>
+        <div className="studio-navbar-right" />
       </header>
 
       {/* ── Tab Content ────────────────────────────────────────────────── */}

@@ -209,6 +209,19 @@ export default function SingleSampleEvaluation({
     }
   };
 
+  const handleRunJudgeAll = async () => {
+    const promises = models.map((modelId, idx) => {
+      const ans = states[idx]?.answer;
+      if (ans) {
+        return handleRunJudge(modelId, ans);
+      }
+      return Promise.resolve();
+    });
+    await Promise.all(promises);
+  };
+
+  const isAnyJudging = Object.values(isJudging).some(Boolean);
+
   const uploadFileList = async (files: FileList | File[]) => {
     if (!files || files.length === 0) return;
     setIsUploadingDoc(true);
@@ -1048,6 +1061,221 @@ export default function SingleSampleEvaluation({
                 </div>
               )}
             </div>
+
+            {/* Integrated In-Card LLM-as-a-Judge Audit (Columns & Stacked) */}
+            {state.answer && (
+              <div style={{ padding: "0 14px 12px 14px" }}>
+                {judgeAuditResults[modelId] ? (
+                  <div className="h2h-inline-judge-card">
+                    {judgeAuditResults[modelId].error ? (
+                      <div style={{ color: "var(--rose)", fontSize: "11px" }}>
+                        Error: {judgeAuditResults[modelId].error}
+                      </div>
+                    ) : (
+                      <>
+                        <div className="h2h-inline-judge-header">
+                          <span
+                            style={{
+                              fontWeight: 700,
+                              fontSize: "12px",
+                              color: judgeAuditResults[modelId].isCorrect ? "var(--emerald)" : "var(--rose)",
+                            }}
+                          >
+                            {judgeAuditResults[modelId].isCorrect ? "Ground Truth Aligned" : "Reasoning Divergence"}
+                          </span>
+                          <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                            <span
+                              style={{
+                                fontSize: "10px",
+                                padding: "2px 6px",
+                                borderRadius: "4px",
+                                background: judgeAuditResults[modelId].complianceStatus === "compliant"
+                                  ? "rgba(52, 168, 83, 0.15)"
+                                  : judgeAuditResults[modelId].complianceStatus === "warning"
+                                  ? "rgba(234, 179, 8, 0.15)"
+                                  : "rgba(239, 68, 68, 0.15)",
+                                color: judgeAuditResults[modelId].complianceStatus === "compliant"
+                                  ? "var(--emerald)"
+                                  : judgeAuditResults[modelId].complianceStatus === "warning"
+                                  ? "#eab308"
+                                  : "var(--rose)",
+                                textTransform: "uppercase",
+                                fontWeight: 700,
+                              }}
+                            >
+                              {judgeAuditResults[modelId].complianceStatus}
+                            </span>
+                            <span
+                              style={{
+                                color:
+                                  (judgeAuditResults[modelId].scoreOutOf100 ?? 0) >= 80
+                                    ? "var(--emerald)"
+                                    : (judgeAuditResults[modelId].scoreOutOf100 ?? 0) >= 60
+                                    ? "var(--amber)"
+                                    : "var(--rose)",
+                                fontWeight: 800,
+                                fontSize: "12px",
+                                background: "var(--bg-surface-elevated)",
+                                padding: "2px 8px",
+                                borderRadius: "4px",
+                                border: "1px solid var(--border-subtle)",
+                              }}
+                            >
+                              Score: {judgeAuditResults[modelId].scoreOutOf100 ?? Math.round((judgeAuditResults[modelId].reasoningScore || 0) * 20)}/100
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleRunJudge(modelId, state.answer)}
+                              disabled={isJudging[modelId]}
+                              style={{
+                                background: "transparent",
+                                border: "1px solid var(--border-subtle)",
+                                color: "var(--text-subtle)",
+                                borderRadius: "4px",
+                                padding: "2px 6px",
+                                fontSize: "10px",
+                                cursor: isJudging[modelId] ? "not-allowed" : "pointer",
+                              }}
+                              title="Re-audit this model response"
+                            >
+                              Re-Audit
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Concise small message / verdict finding */}
+                        {judgeAuditResults[modelId].rationale && (
+                          <div className="h2h-inline-judge-verdict">
+                            <strong style={{ color: "var(--text-main)" }}>Verdict: </strong>
+                            <span>{judgeAuditResults[modelId].rationale}</span>
+                          </div>
+                        )}
+
+                        {/* Metric Score Breakdown */}
+                        {judgeAuditResults[modelId].metricScores &&
+                          Object.keys(judgeAuditResults[modelId].metricScores).length > 0 && (
+                            <div className="h2h-inline-judge-metrics">
+                              <div
+                                style={{
+                                  fontSize: "9.5px",
+                                  textTransform: "uppercase",
+                                  letterSpacing: "0.05em",
+                                  color: "var(--text-subtle)",
+                                  fontWeight: 700,
+                                  display: "flex",
+                                  justifyContent: "space-between",
+                                }}
+                              >
+                                <span>Insurance Metric Breakdown</span>
+                                <span>Scale 0–100</span>
+                              </div>
+                              {Object.entries(judgeAuditResults[modelId].metricScores).map(
+                                ([metName, metScore]: [string, any]) => {
+                                  const num = typeof metScore === "number" ? metScore : 0;
+                                  const barColor =
+                                    num >= 80 ? "var(--emerald)" : num >= 60 ? "var(--amber)" : "var(--rose)";
+                                  return (
+                                    <div
+                                      key={metName}
+                                      style={{ display: "flex", flexDirection: "column", gap: "2px" }}
+                                    >
+                                      <div
+                                        style={{
+                                          display: "flex",
+                                          justifyContent: "space-between",
+                                          fontSize: "10.5px",
+                                        }}
+                                      >
+                                        <span style={{ color: "var(--text-muted)", fontWeight: 500 }}>{metName}</span>
+                                        <span style={{ fontWeight: 700, color: barColor }}>{num}/100</span>
+                                      </div>
+                                      <div
+                                        style={{
+                                          height: "4px",
+                                          width: "100%",
+                                          background: "var(--bg-surface-elevated)",
+                                          borderRadius: "2px",
+                                          overflow: "hidden",
+                                        }}
+                                      >
+                                        <div
+                                          style={{
+                                            width: `${Math.min(100, Math.max(0, num))}%`,
+                                            height: "100%",
+                                            background: barColor,
+                                            borderRadius: "2px",
+                                            transition: "width 0.3s ease",
+                                          }}
+                                        />
+                                      </div>
+                                      {judgeAuditResults[modelId].metricFindings?.[metName] && (
+                                        <div
+                                          style={{
+                                            fontSize: "9.5px",
+                                            color: "var(--text-subtle)",
+                                            fontStyle: "italic",
+                                            lineHeight: 1.3,
+                                            marginTop: "1px",
+                                          }}
+                                        >
+                                          {judgeAuditResults[modelId].metricFindings[metName]}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                }
+                              )}
+                            </div>
+                          )}
+                      </>
+                    )}
+                  </div>
+                ) : isJudging[modelId] ? (
+                  <div
+                    style={{
+                      marginTop: "10px",
+                      padding: "10px 14px",
+                      borderRadius: "var(--radius-md)",
+                      background: "rgba(56, 189, 248, 0.08)",
+                      border: "1px solid rgba(56, 189, 248, 0.25)",
+                      color: "#38bdf8",
+                      fontSize: "11px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <span className="live-dot" style={{ background: "#38bdf8" }} />
+                    Auditing response with LLM Judge against {activePlugin.name} metrics…
+                  </div>
+                ) : (
+                  <div style={{ marginTop: "10px", display: "flex", justifyContent: "flex-end" }}>
+                    <button
+                      id={`btn-audit-model-${idx}`}
+                      type="button"
+                      onClick={() => handleRunJudge(modelId, state.answer)}
+                      disabled={isJudging[modelId]}
+                      style={{
+                        fontSize: "11px",
+                        fontWeight: 600,
+                        padding: "5px 12px",
+                        borderRadius: "var(--radius-sm)",
+                        background: "rgba(56, 189, 248, 0.12)",
+                        color: "#38bdf8",
+                        border: "1px solid rgba(56, 189, 248, 0.25)",
+                        cursor: "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px",
+                      }}
+                      title="Run LLM Judge evaluation on this model response"
+                    >
+                      Audit with LLM Judge
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Performance & Operational Metrics Footer */}
             {state.answer && (
@@ -1925,9 +2153,34 @@ export default function SingleSampleEvaluation({
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+            {/* Unified 1-Click LLM Judge Audit Trigger */}
+            <button
+              type="button"
+              onClick={handleRunJudgeAll}
+              disabled={isAnyJudging || isAnyRunning || !states.some((s) => !!s.answer)}
+              className="arena-header-btn"
+              style={{
+                fontSize: "11px",
+                padding: "5px 12px",
+                color: "#38bdf8",
+                borderColor: "rgba(56, 189, 248, 0.35)",
+                background: "rgba(56, 189, 248, 0.08)",
+                fontWeight: 600,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+              id="btn-audit-all-judge"
+              title="Run LLM Judge evaluation across all model responses simultaneously"
+            >
+              {isAnyJudging && <span className="live-dot" style={{ background: "#38bdf8" }} />}
+              {isAnyJudging ? "Auditing with LLM Judge…" : "Audit All with LLM Judge"}
+            </button>
+
             {/* 3-Way Layout Switcher */}
             <div className="h2h-segmented-control" role="group" aria-label="Layout mode">
               <button
+                id="btn-layout-columns"
                 type="button"
                 className={`h2h-segmented-btn ${layoutMode === "columns" ? "active" : ""}`}
                 onClick={() => setLayoutMode("columns")}
@@ -1936,6 +2189,7 @@ export default function SingleSampleEvaluation({
                 Columns
               </button>
               <button
+                id="btn-layout-stacked"
                 type="button"
                 className={`h2h-segmented-btn ${layoutMode === "stacked" ? "active" : ""}`}
                 onClick={() => setLayoutMode("stacked")}
@@ -1944,6 +2198,7 @@ export default function SingleSampleEvaluation({
                 Stacked
               </button>
               <button
+                id="btn-layout-tabbed"
                 type="button"
                 className={`h2h-segmented-btn ${layoutMode === "tabbed" ? "active" : ""}`}
                 onClick={() => setLayoutMode("tabbed")}
@@ -2188,191 +2443,6 @@ export default function SingleSampleEvaluation({
                           Lexical F1: {(res.tokenF1 * 100).toFixed(1)}% (Precision: {((res.tokenPrecision ?? 0) * 100).toFixed(1)}%, Recall: {((res.tokenRecall ?? 0) * 100).toFixed(1)}%)
                         </div>
                       )}
-
-                      {/* LLM-as-a-Judge Trigger */}
-                      <div style={{ marginTop: "8px", paddingTop: "8px", borderTop: "1px dashed var(--border-subtle)" }}>
-                        <button
-                          type="button"
-                          onClick={() => handleRunJudge(modelId, state.answer)}
-                          disabled={isJudging[modelId] || !state.answer}
-                          style={{
-                            fontSize: "11px",
-                            fontWeight: 600,
-                            padding: "4px 10px",
-                            borderRadius: "4px",
-                            background: "rgba(56, 189, 248, 0.12)",
-                            color: "#38bdf8",
-                            border: "1px solid rgba(56, 189, 248, 0.25)",
-                            cursor: isJudging[modelId] ? "not-allowed" : "pointer",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "5px",
-                          }}
-                        >
-                          {isJudging[modelId] ? "Auditing with LLM Judge…" : "Audit with LLM Judge"}
-                        </button>
-
-                        {judgeAuditResults[modelId] && (
-                          <div
-                            style={{
-                              marginTop: "8px",
-                              padding: "10px 14px",
-                              borderRadius: "var(--radius-md)",
-                              background: "var(--bg-canvas)",
-                              border: "1px solid var(--border-default)",
-                            }}
-                          >
-                            {judgeAuditResults[modelId].error ? (
-                              <div style={{ color: "var(--rose)", fontSize: "11px" }}>
-                                {judgeAuditResults[modelId].error}
-                              </div>
-                            ) : (
-                              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "6px" }}>
-                                  <span
-                                    style={{
-                                      fontWeight: 700,
-                                      fontSize: "12px",
-                                      color: judgeAuditResults[modelId].isCorrect ? "var(--emerald)" : "var(--rose)",
-                                    }}
-                                  >
-                                    {judgeAuditResults[modelId].isCorrect ? "Ground Truth Aligned" : "Reasoning Divergence"}
-                                  </span>
-                                  <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                                    <span
-                                      style={{
-                                        fontSize: "10px",
-                                        padding: "1px 6px",
-                                        borderRadius: "4px",
-                                        background: judgeAuditResults[modelId].complianceStatus === "compliant"
-                                          ? "rgba(52, 168, 83, 0.15)"
-                                          : judgeAuditResults[modelId].complianceStatus === "warning"
-                                          ? "rgba(234, 179, 8, 0.15)"
-                                          : "rgba(239, 68, 68, 0.15)",
-                                        color: judgeAuditResults[modelId].complianceStatus === "compliant"
-                                          ? "var(--emerald)"
-                                          : judgeAuditResults[modelId].complianceStatus === "warning"
-                                          ? "#eab308"
-                                          : "var(--rose)",
-                                        textTransform: "uppercase",
-                                        fontWeight: 700,
-                                      }}
-                                    >
-                                      {judgeAuditResults[modelId].complianceStatus}
-                                    </span>
-                                    <span
-                                      style={{
-                                        color:
-                                          (judgeAuditResults[modelId].scoreOutOf100 ?? 0) >= 80
-                                            ? "var(--emerald)"
-                                            : (judgeAuditResults[modelId].scoreOutOf100 ?? 0) >= 60
-                                            ? "var(--amber)"
-                                            : "var(--rose)",
-                                        fontWeight: 800,
-                                        fontSize: "12px",
-                                        background: "var(--bg-surface-elevated)",
-                                        padding: "2px 8px",
-                                        borderRadius: "4px",
-                                        border: "1px solid var(--border-subtle)",
-                                      }}
-                                    >
-                                      Score: {judgeAuditResults[modelId].scoreOutOf100 ?? Math.round((judgeAuditResults[modelId].reasoningScore || 0) * 20)}/100
-                                    </span>
-                                  </div>
-                                </div>
-                                <div style={{ color: "var(--text-muted)", fontSize: "11px", marginTop: "2px", lineHeight: 1.5 }}>
-                                  <strong>Verdict:</strong> {judgeAuditResults[modelId].rationale}
-                                </div>
-
-                                {judgeAuditResults[modelId].metricScores &&
-                                  Object.keys(judgeAuditResults[modelId].metricScores).length > 0 && (
-                                    <div
-                                      style={{
-                                        marginTop: "6px",
-                                        paddingTop: "8px",
-                                        borderTop: "1px dashed var(--border-subtle)",
-                                        display: "flex",
-                                        flexDirection: "column",
-                                        gap: "4px",
-                                      }}
-                                    >
-                                      <div
-                                        style={{
-                                          fontSize: "9.5px",
-                                          textTransform: "uppercase",
-                                          letterSpacing: "0.05em",
-                                          color: "var(--text-muted)",
-                                          fontWeight: 700,
-                                          display: "flex",
-                                          justifyContent: "space-between",
-                                        }}
-                                      >
-                                        <span>Insurance Metric Breakdown</span>
-                                        <span>(Scale 0–100)</span>
-                                      </div>
-                                      {Object.entries(judgeAuditResults[modelId].metricScores).map(
-                                        ([metName, metScore]: [string, any]) => {
-                                          const num = typeof metScore === "number" ? metScore : 0;
-                                          const barColor =
-                                            num >= 80 ? "var(--emerald)" : num >= 60 ? "var(--amber)" : "var(--rose)";
-                                          return (
-                                            <div
-                                              key={metName}
-                                              style={{ display: "flex", flexDirection: "column", gap: "2px" }}
-                                            >
-                                              <div
-                                                style={{
-                                                  display: "flex",
-                                                  justifyContent: "space-between",
-                                                  fontSize: "10px",
-                                                }}
-                                              >
-                                                <span style={{ color: "var(--text-secondary)" }}>{metName}</span>
-                                                <span style={{ fontWeight: 700, color: barColor }}>{num}/100</span>
-                                              </div>
-                                              <div
-                                                style={{
-                                                  height: "4px",
-                                                  width: "100%",
-                                                  background: "var(--bg-surface-elevated)",
-                                                  borderRadius: "2px",
-                                                  overflow: "hidden",
-                                                }}
-                                              >
-                                                <div
-                                                  style={{
-                                                    width: `${Math.min(100, Math.max(0, num))}%`,
-                                                    height: "100%",
-                                                    background: barColor,
-                                                    borderRadius: "2px",
-                                                    transition: "width 0.3s ease",
-                                                  }}
-                                                />
-                                              </div>
-                                              {judgeAuditResults[modelId].metricFindings?.[metName] && (
-                                                <div
-                                                  style={{
-                                                    fontSize: "9.5px",
-                                                    color: "var(--text-muted)",
-                                                    fontStyle: "italic",
-                                                    lineHeight: 1.3,
-                                                    marginTop: "1px",
-                                                  }}
-                                                >
-                                                  {judgeAuditResults[modelId].metricFindings[metName]}
-                                                </div>
-                                              )}
-                                            </div>
-                                          );
-                                        }
-                                      )}
-                                    </div>
-                                  )}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
                     </div>
                   );
                 })}

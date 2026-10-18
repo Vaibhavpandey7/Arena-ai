@@ -5059,9 +5059,9 @@ body {
   border-bottom: 1px solid var(--border-default);
   padding: 0 24px;
   height: 56px;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
   gap: 16px;
 }
 
@@ -5071,6 +5071,7 @@ body {
   gap: 10px;
   cursor: pointer;
   text-decoration: none;
+  justify-self: start;
 }
 
 .studio-brand-logo {
@@ -5107,6 +5108,7 @@ body {
 .studio-nav-tabs {
   display: flex;
   align-items: center;
+  justify-self: center;
   gap: 2px;
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
@@ -5151,7 +5153,47 @@ body {
 .studio-navbar-right {
   display: flex;
   align-items: center;
+  justify-self: end;
   gap: 10px;
+}
+
+/* ── Integrated In-Card LLM Judge Audit (Columns & Stacked) ─────────────── */
+.h2h-inline-judge-card {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--bg-canvas);
+  border: 1px solid var(--border-default);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.h2h-inline-judge-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.h2h-inline-judge-verdict {
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--bg-surface-elevated);
+  border-left: 3px solid var(--accent);
+  color: var(--text-main);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.h2h-inline-judge-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--border-subtle);
 }
 
 .studio-status-pill {

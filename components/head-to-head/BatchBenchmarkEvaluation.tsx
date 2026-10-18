@@ -631,6 +631,80 @@ export default function BatchBenchmarkEvaluation() {
     return calculateHierarchicalBatchScore(categoryScores);
   }, [categoryScores]);
 
+  // Metric-Level Accuracy Breakdown & Overall Metric Accuracy
+  const metricAnalysis = useMemo(() => {
+    if (results.length === 0) return null;
+
+    // Collect metrics by taskType / metricName
+    const metricGroupsMap = new Map<string, {
+      metricName: string;
+      taskType: string;
+      evaluated: number;
+      correct: number;
+      modelBreakdown: { modelId: string; evaluated: number; correct: number }[];
+    }>();
+
+    let totalAllEvaluated = 0;
+    let totalAllCorrect = 0;
+
+    for (const r of results) {
+      if (!r.correctAnswer) continue;
+
+      models.forEach((modelId, mIdx) => {
+        const state = r.modelStates[mIdx];
+        if (!state?.answer || state.runStatus === "failed") return;
+
+        const ev = evaluateReferenceAnswer(state.answer, r.correctAnswer!, r.options, r.scoringPolicy);
+        if (!ev.available || ev.correct === undefined) return;
+
+        totalAllEvaluated++;
+        if (ev.correct) totalAllCorrect++;
+
+        const key = ev.metricName || ev.taskType || "General Accuracy";
+        let entry = metricGroupsMap.get(key);
+        if (!entry) {
+          entry = {
+            metricName: key,
+            taskType: ev.taskType,
+            evaluated: 0,
+            correct: 0,
+            modelBreakdown: models.map((m) => ({ modelId: m, evaluated: 0, correct: 0 })),
+          };
+          metricGroupsMap.set(key, entry);
+        }
+
+        entry.evaluated++;
+        if (ev.correct) entry.correct++;
+
+        if (entry.modelBreakdown[mIdx]) {
+          entry.modelBreakdown[mIdx].evaluated++;
+          if (ev.correct) entry.modelBreakdown[mIdx].correct++;
+        }
+      });
+    }
+
+    const groups = Array.from(metricGroupsMap.values()).map((g) => ({
+      ...g,
+      overallAccuracy: g.evaluated > 0 ? (g.correct / g.evaluated) * 100 : null,
+      modelAccuracies: g.modelBreakdown.map((mb) => ({
+        modelId: mb.modelId,
+        evaluated: mb.evaluated,
+        correct: mb.correct,
+        accuracy: mb.evaluated > 0 ? (mb.correct / mb.evaluated) * 100 : null,
+      })),
+    }));
+
+    const overallMetricAccuracy =
+      totalAllEvaluated > 0 ? (totalAllCorrect / totalAllEvaluated) * 100 : null;
+
+    return {
+      overallMetricAccuracy,
+      totalAllEvaluated,
+      totalAllCorrect,
+      groups,
+    };
+  }, [results, models]);
+
   // Overall operational stats
   const operationalStats = useMemo(() => {
     if (results.length === 0) return null;
@@ -1776,6 +1850,37 @@ export default function BatchBenchmarkEvaluation() {
               gap: "12px",
             }}
           >
+            {/* Overall Metric Accuracy Card */}
+            <div
+              style={{
+                background: "var(--bg-surface)",
+                border: "1px solid var(--border-default)",
+                borderRadius: "var(--radius-md)",
+                padding: "14px",
+              }}
+            >
+              <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", color: "var(--accent)" }}>
+                Overall Metric Accuracy
+              </div>
+              <div
+                style={{
+                  fontSize: "26px",
+                  fontWeight: 800,
+                  color: metricAnalysis?.overallMetricAccuracy !== null ? "var(--emerald)" : "var(--text-subtle)",
+                  marginTop: "4px",
+                }}
+              >
+                {metricAnalysis?.overallMetricAccuracy !== null && metricAnalysis?.overallMetricAccuracy !== undefined
+                  ? `${metricAnalysis.overallMetricAccuracy.toFixed(1)}%`
+                  : "N/A"}
+              </div>
+              <div style={{ fontSize: "10.5px", color: "var(--text-subtle)", marginTop: "4px" }}>
+                {metricAnalysis?.totalAllEvaluated
+                  ? `${metricAnalysis.totalAllCorrect} of ${metricAnalysis.totalAllEvaluated} scored metric responses`
+                  : "Empirical metric evaluation"}
+              </div>
+            </div>
+
             {/* Equal-Weighted Category Score Card */}
             <div
               style={{
@@ -1949,6 +2054,106 @@ export default function BatchBenchmarkEvaluation() {
               })}
             </div>
           </div>
+
+          {/* Metric-Level Accuracy Breakdown Section */}
+          {metricAnalysis && metricAnalysis.groups.length > 0 && (
+            <div
+              style={{
+                background: "var(--bg-surface)",
+                border: "1px solid var(--border-default)",
+                borderRadius: "var(--radius-lg)",
+                padding: "16px 20px",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", flexWrap: "wrap", gap: "8px" }}>
+                <div>
+                  <div style={{ fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--accent)" }}>
+                    Overall Accuracy According to Metrics
+                  </div>
+                  <div style={{ fontSize: "11px", color: "var(--text-subtle)", marginTop: "2px" }}>
+                    Empirical benchmark accuracy broken down by specific evaluation metrics
+                  </div>
+                </div>
+                <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--emerald)", background: "rgba(16, 185, 129, 0.1)", padding: "2px 8px", borderRadius: "12px", border: "1px solid rgba(16, 185, 129, 0.25)" }}>
+                  Overall: {metricAnalysis.overallMetricAccuracy !== null ? `${metricAnalysis.overallMetricAccuracy.toFixed(1)}%` : "N/A"}
+                </span>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {metricAnalysis.groups.map((g) => {
+                  const pct = g.overallAccuracy !== null ? Math.round(g.overallAccuracy) : 0;
+                  return (
+                    <div
+                      key={g.metricName}
+                      style={{
+                        background: "var(--bg-surface-elevated)",
+                        border: "1px solid var(--border-subtle)",
+                        borderRadius: "var(--radius-sm)",
+                        padding: "12px 14px",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "8px",
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "6px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <span style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase", padding: "1px 6px", borderRadius: "4px", background: "var(--accent-dim)", color: "var(--accent)", border: "1px solid var(--accent-border)" }}>
+                            {g.taskType}
+                          </span>
+                          <span style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--text-main)" }}>
+                            {g.metricName}
+                          </span>
+                        </div>
+                        <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+                          <strong>{g.overallAccuracy !== null ? `${g.overallAccuracy.toFixed(1)}%` : "N/A"}</strong> ({g.correct} / {g.evaluated} scored)
+                        </span>
+                      </div>
+
+                      {/* Overall Metric Score Bar */}
+                      <div
+                        style={{
+                          width: "100%",
+                          height: "6px",
+                          background: "var(--bg-canvas)",
+                          borderRadius: "3px",
+                          overflow: "hidden",
+                          border: "1px solid var(--border-subtle)",
+                        }}
+                      >
+                        <div
+                          style={{
+                            height: "100%",
+                            width: `${pct}%`,
+                            background: pct >= 70 ? "var(--emerald)" : pct >= 40 ? "var(--accent)" : "var(--rose)",
+                            transition: "width 0.3s ease",
+                          }}
+                        />
+                      </div>
+
+                      {/* Per-Model Breakdown for this Metric */}
+                      {g.modelAccuracies.length > 1 && (
+                        <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginTop: "2px", paddingTop: "6px", borderTop: "1px dashed var(--border-subtle)", fontSize: "11px" }}>
+                          {g.modelAccuracies.map((ma, mIdx) => (
+                            <div key={ma.modelId} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                              <span style={{ color: "var(--text-subtle)", fontWeight: 500 }}>
+                                Model {String.fromCharCode(65 + mIdx)} ({ma.modelId.split("/").pop()}):
+                              </span>
+                              <strong style={{ color: ma.accuracy !== null && ma.accuracy >= 50 ? "var(--emerald)" : "var(--rose)" }}>
+                                {ma.accuracy !== null ? `${ma.accuracy.toFixed(1)}%` : "N/A"}
+                              </strong>
+                              <span style={{ color: "var(--text-subtle)", fontSize: "10px" }}>
+                                ({ma.correct}/{ma.evaluated})
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Question-Level Results Table */}
           <div
