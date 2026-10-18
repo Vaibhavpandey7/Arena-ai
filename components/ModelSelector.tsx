@@ -353,7 +353,9 @@ function ModelSelectorComponent({ mode, selected, onChange, onCustomEndpointsCha
               </div>
 
               <div className="model-pill-meta">
-                <span className="model-pill-badge ctx">{formatCtx(currentModel.context_length)} ctx</span>
+                {currentModel.context_length && !currentModel.id.toLowerCase().includes("dil") && currentModel.name !== "DIL-v1" ? (
+                  <span className="model-pill-badge ctx">{formatCtx(currentModel.context_length)} ctx</span>
+                ) : null}
                 {currentModel.supportsReasoning && (
                   <span className="model-pill-badge reasoning">Reasoning</span>
                 )}
@@ -592,7 +594,9 @@ function ModelSelectorComponent({ mode, selected, onChange, onCustomEndpointsCha
                   </div>
 
                   <div className="row-right">
-                    <span className="row-ctx">{formatCtx(m.context_length)} ctx</span>
+                    {!m.id.toLowerCase().includes("dil") && m.name !== "DIL-v1" && (
+                      <span className="row-ctx">{formatCtx(m.context_length)} ctx</span>
+                    )}
                     {m.isCustom && (
                       <button
                         type="button"

@@ -236,26 +236,28 @@ export default function ModelSelectWidget({
         tier: isDilModel ? "premium" : effectiveFree ? "free" : fromRegistry.tier === "free" ? "budget" : fromRegistry.tier,
         badge: isDilModel ? "reasoning" : fromRegistry.badge,
         tags: isDilModel ? ["reasoning", "domain-specific"] : fromRegistry.tags,
+        contextK: isDilModel ? undefined : fromRegistry.contextK,
       };
     }
 
     // 2. Direct API models lookup
     if (fromApi) {
-      const isFree = checkIsFree(value, fromApi.pricing);
+      const isDil = value.includes("dil") || value === "openrouter/free" || fromApi.id.includes("dil") || fromApi.id === "openrouter/free";
+      const isFree = isDil ? false : checkIsFree(value, fromApi.pricing);
       return {
-        id: value,
-        label: fromApi.name || fromApi.id.split("/")[1] || fromApi.id,
-        provider: fromApi.id.split("/")[0] || "Custom",
-        providerInitial: (fromApi.id.split("/")[0] || "AI").slice(0, 2).toUpperCase(),
-        tier: isFree ? "free" : "standard",
-        tags: [
+        id: isDil ? "dil/dil-v1" : value,
+        label: isDil ? "DIL-v1" : (fromApi.name || fromApi.id.split("/")[1] || fromApi.id),
+        provider: isDil ? "DIL Labs" : (fromApi.id.split("/")[0] || "Custom"),
+        providerInitial: isDil ? "DIL" : (fromApi.id.split("/")[0] || "AI").slice(0, 2).toUpperCase(),
+        tier: isDil ? "premium" : (isFree ? "free" : "standard"),
+        tags: isDil ? ["reasoning", "domain-specific"] : [
           fromApi.supportsReasoning ? "reasoning" : "fast",
           isFree ? "open-source" : undefined,
         ].filter(Boolean),
-        contextK: Math.round((fromApi.context_length || 4096) / 1000),
+        contextK: isDil ? undefined : Math.round((fromApi.context_length || 4096) / 1000),
         isFree: Boolean(isFree),
-        tooltip: `${fromApi.name || fromApi.id} (${Math.round((fromApi.context_length || 4096) / 1000)}k ctx)`,
-        badge: fromApi.supportsReasoning ? "reasoning" : "fast",
+        tooltip: isDil ? "DIL-v1 Frontier Insurance Reasoning Engine" : `${fromApi.name || fromApi.id} (${Math.round((fromApi.context_length || 4096) / 1000)}k ctx)`,
+        badge: isDil ? "reasoning" : (fromApi.supportsReasoning ? "reasoning" : "fast"),
       } as unknown as ModelDef;
     }
 
@@ -268,7 +270,7 @@ export default function ModelSelectWidget({
         providerInitial: "DIL",
         tier: "premium",
         tags: ["reasoning", "domain-specific"],
-        contextK: 200,
+        contextK: undefined,
         isFree: false,
         tooltip: "DIL-v1 Frontier Insurance Reasoning Engine",
         badge: "reasoning",
@@ -315,6 +317,7 @@ export default function ModelSelectWidget({
           tier: "premium",
           tags: ["reasoning", "domain-specific"],
           badge: "reasoning",
+          contextK: undefined,
         };
       }
       const apiM = apiMap.get(regModel.id);
@@ -1000,13 +1003,13 @@ export default function ModelSelectWidget({
                         }}
                       >
                         <span style={{ flexShrink: 0 }}>{m.provider}</span>
-                        <span style={{ flexShrink: 0, opacity: 0.5 }}>·</span>
-                        {m.contextK ? (
+                        {m.contextK && !m.id.includes("dil") && m.label !== "DIL-v1" ? (
                           <>
-                            <span style={{ flexShrink: 0 }}>{m.contextK}k ctx</span>
                             <span style={{ flexShrink: 0, opacity: 0.5 }}>·</span>
+                            <span style={{ flexShrink: 0 }}>{m.contextK}k ctx</span>
                           </>
                         ) : null}
+                        <span style={{ flexShrink: 0, opacity: 0.5 }}>·</span>
                         <span
                           style={{
                             fontFamily: "var(--font-mono)",

@@ -20,7 +20,7 @@ export interface ModelDef {
   providerInitial: string;
   tier: ModelTier;
   tags: ModelTag[];
-  contextK: number;    // context window in thousands of tokens
+  contextK?: number;   // context window in thousands of tokens
   isFree: boolean;     // completely free on OpenRouter
   tooltip: string;
   badge: "reasoning" | "extended" | "fast" | "premium"; // legacy badge for col headers
@@ -35,7 +35,6 @@ export const MODEL_REGISTRY: ModelDef[] = [
     providerInitial: "DIL",
     tier: "premium",
     tags: ["reasoning", "domain-specific"],
-    contextK: 200,
     isFree: false,
     badge: "reasoning",
     tooltip:
